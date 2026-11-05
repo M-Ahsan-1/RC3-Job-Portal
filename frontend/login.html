@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - RC3 Job Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <h1>Welcome back</h1>
+            <p class="subtitle">Log in to RC3 Job Portal</p>
+
+            <div id="form-error" class="form-error hidden"></div>
+
+            <form id="login-form" novalidate>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+                    <div class="error-text" id="email-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+                    <div class="error-text" id="password-error"></div>
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn btn-block">Log in</button>
+            </form>
+
+            <div class="auth-footer">
+                New here? <a href="register.html">Create an account</a>
+            </div>
+
+            <div id="demo-hint" class="auth-footer hidden">
+                Demo accounts (password 12345678):<br>
+                recruiter@test.com or candidate@test.com
+            </div>
+        </div>
+    </div>
+
+    <script src="js/mock.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        const form = document.getElementById('login-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const submitButton = document.getElementById('submit-btn');
+        const formError = document.getElementById('form-error');
+
+        const existingUser = getUser();
+
+        if (getToken() && existingUser)
+        {
+            window.location.href = dashboardFor(existingUser.role);
+        }
+
+        if (USE_MOCK)
+        {
+            document.getElementById('demo-hint').classList.remove('hidden');
+        }
+
+        function setFieldError(input, message)
+        {
+            const errorBox = document.getElementById(input.id + '-error');
+            errorBox.textContent = message;
+
+            if (message)
+            {
+                input.classList.add('invalid');
+            }
+            else
+            {
+                input.classList.remove('invalid');
+            }
+        }
+
+        function showFormError(message)
+        {
+            formError.textContent = message;
+            formError.classList.remove('hidden');
+        }
+
+        function hideFormError()
+        {
+            formError.classList.add('hidden');
+        }
+
+        function validateForm()
+        {
+            let valid = true;
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email)
+            {
+                setFieldError(emailInput, 'Please enter your email.');
+                valid = false;
+            }
+            else if (!EMAIL_PATTERN.test(email))
+            {
+                setFieldError(emailInput, 'Please enter a valid email, like name@example.com.');
+                valid = false;
+            }
+            else
+            {
+                setFieldError(emailInput, '');
+            }
+
+            if (!password)
+            {
+                setFieldError(passwordInput, 'Please enter your password.');
+                valid = false;
+            }
+            else if (password.length < 8)
+            {
+                setFieldError(passwordInput, 'Password must be at least 8 characters.');
+                valid = false;
+            }
+            else
+            {
+                setFieldError(passwordInput, '');
+            }
+
+            return valid;
+        }
+
+        form.addEventListener('submit', async function (event)
+        {
+            event.preventDefault();
+            hideFormError();
+
+            if (!validateForm())
+            {
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+
+            try
+            {
+                const data = await Api.post('/api/auth/login',
+                {
+                    email: emailInput.value.trim(),
+                    password: passwordInput.value
+                });
+
+                saveSession(data.token, data.user);
+                window.location.href = dashboardFor(data.user.role);
+            }
+            catch (error)
+            {
+                showFormError(error.message);
+                submitButton.disabled = false;
+                submitButton.classList.remove('loading');
+            }
+        });
+
+        emailInput.addEventListener('input', hideFormError);
+        passwordInput.addEventListener('input', hideFormError);
+    </script>
+</body>
+</html>

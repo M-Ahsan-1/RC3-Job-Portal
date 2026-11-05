@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+        .sk-row{display:grid;grid-template-columns:1fr 150px 150px 38px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #eef0f6}
+        .sk-add{display:flex;gap:10px;margin-top:12px}
+        @media(max-width:700px){.f-grid{grid-template-columns:1fr}.sk-row{grid-template-columns:1fr 1fr 38px}.sk-row b{grid-column:1/-1}}
+    </style>
+</head>
+<body class="theme-recruiter">
+    <div id="content" class="d-content">
+        <form id="job-form" novalidate>
+            <div id="form-error" class="form-error hidden" role="alert"></div>
+
+            <section class="d-panel" aria-label="Job details">
+                <h3>Job details</h3>
+                <p class="sub">Tell candidates what the role is about</p>
+                <div class="f-grid">
+                    <div class="form-group"><label for="title">Job title</label><input type="text" id="title" placeholder="Backend Developer"><div class="error-text" id="title-error"></div></div>
+                    <div class="form-group"><label for="department">Department</label><input type="text" id="department" placeholder="Engineering"><div class="error-text" id="department-error"></div></div>
+                    <div class="form-group"><label for="location">Location</label><input type="text" id="location" placeholder="Lahore, Pakistan"><div class="error-text" id="location-error"></div></div>
+                    <div class="form-group"><label for="type">Employment type</label>
+                        <select id="type"><option value="Full-time">Full-time</option><option value="Part-time">Part-time</option><option value="Contract">Contract</option><option value="Internship">Internship</option></select>
+                    </div>
+                    <div class="form-group"><label for="salary">Salary range (optional)</label><input type="text" id="salary" placeholder="PKR 250,000 - 350,000"></div>
+                    <div class="form-group"><label for="experienceYears">Years of experience</label><input type="number" id="experienceYears" min="0" max="40" value="0"><div class="error-text" id="experienceYears-error"></div></div>
+                </div>
+                <div class="form-group"><label for="qualifications">Qualifications</label><input type="text" id="qualifications" placeholder="BS in Computer Science or equivalent"><div class="error-text" id="qualifications-error"></div></div>
+                <div class="form-group"><label for="description">Description</label><textarea id="description" placeholder="Describe the role, responsibilities and the tools your team uses."></textarea><div class="error-text" id="description-error"></div></div>
+            </section>
+
+            <section class="d-panel" aria-label="Required skills">
+                <div class="d-panel-head">
+                    <div><h3>Skills</h3><p class="sub">Let AI read the description, then edit the list before saving</p></div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="extract-btn"><i data-lucide="sparkles"></i>Extract requirements with AI</button>
+                </div>
+                <div id="extract-error" class="form-error hidden" role="alert"></div>
+                <div id="skill-list"></div>
+                <div class="sk-add">
+                    <input type="text" id="new-skill" placeholder="Add a skill, for example Docker" aria-label="New skill name">
+                    <button type="button" class="btn btn-secondary" id="add-skill">Add skill</button>
+                </div>
+                <div class="error-text" id="skills-error"></div>
+            </section>
+
+            <div class="row">
+                <button type="submit" class="btn" id="save-btn">Save job</button>
+                <a class="btn btn-secondary" href="jobs.html">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-jobs.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        const user = guardPage('recruiter');
+        const jobId = new URLSearchParams(window.location.search).get('id');
+        const TEXT_FIELDS = ['title', 'department', 'location', 'type', 'salary', 'description', 'qualifications'];
+        let skills = [];
+
+        function el(id)
+        {
+            return document.getElementById(id);
+        }
+
+        function showBox(id, message)
+        {
+            el(id).textContent = message;
+            el(id).classList.toggle('hidden', !message);
+        }
+
+        function setError(id, message)
+        {
+            el(id + '-error').textContent = message;
+            const input = el(id);
+
+            if (input)
+            {
+                input.classList.toggle('invalid', Boolean(message));
+            }
+        }
+
+        function option(value, current, label)
+        {
+            return '<option value="' + value + '"' + (value === current ? ' selected' : '') + '>' + label + '</option>';
+        }
+
+        function renderSkills()
+        {
+            const box = el('skill-list');
+
+            if (!skills.length)
+            {
+                box.innerHTML = Dash.empty('sparkles', 'No skills yet. Use the AI button or add skills by hand.');
+                Dash.icons();
+                return;
+            }
+
+            box.innerHTML = skills.map(function (item, index)
+            {
+                return '<div class="sk-row"><b>' + Dash.esc(item.skill) + '</b>' +
+                    '<select data-index="' + index + '" data-field="requirement" aria-label="Requirement for ' + Dash.esc(item.skill) + '">' + option('required', item.requirement, 'Required') + option('preferred', item.requirement, 'Preferred') + '</select>' +
+                    '<select data-index="' + index + '" data-field="importance" aria-label="Importance of ' + Dash.esc(item.skill) + '">' + option('high', item.importance, 'High importance') + option('medium', item.importance, 'Medium importance') + option('low', item.importance, 'Low importance') + '</select>' +
+                    '<button type="button" class="btn btn-secondary btn-sm" data-remove="' + index + '" aria-label="Remove ' + Dash.esc(item.skill) + '">&times;</button></div>';
+            }).join('');
+        }
+
+        function addSkill(item)
+        {
+            const name = String(item.skill || '').trim();
+
+            if (!name)
+            {
+                return false;
+            }
+
+            const exists = skills.some(function (current)
+            {
+                return current.skill.toLowerCase() === name.toLowerCase();
+            });
+
+            if (exists)
+            {
+                return false;
+            }
+
+            skills.push({ skill: name, requirement: item.requirement || 'required', importance: item.importance || 'medium' });
+            return true;
+        }
+
+        async function extractSkills()
+        {
+            const button = el('extract-btn');
+            showBox('extract-error', '');
+
+            if (el('description').value.trim().length < 20)
+            {
+                showBox('extract-error', 'Write a job description first (at least 20 characters), then try again.');
+                return;
+            }
+
+            button.disabled = true;
+            button.classList.add('loading');
+
+            try
+            {
+                const data = await Api.post('/api/jobs/extract-requirements', { description: el('description').value.trim() });
+                const found = Array.isArray(data) ? data : (data.skills || []);
+                let added = 0;
+
+                found.forEach(function (item)
+                {
+                    if (addSkill(item))
+                    {
+                        added++;
+                    }
+                });
+
+                renderSkills();
+                setError('skills', '');
+                showToast(added ? added + ' skills added. Review them before saving.' : 'No new skills found. You can add them by hand.', added ? 'success' : 'info');
+            }
+            catch (error)
+            {
+                showBox('extract-error', error.message + ' You can still add skills by hand.');
+            }
+
+            button.disabled = false;
+            button.classList.remove('loading');
+            Dash.icons();
+        }
+
+        function validate()
+        {
+            let valid = true;
+            const required = { title: 'Please enter a job title.', department: 'Please enter the department.', location: 'Please enter the location.', qualifications: 'Please enter the qualifications.', description: 'Please add a job description.' };
+
+            Object.keys(required).forEach(function (id)
+            {
+                const empty = !el(id).value.trim();
+                setError(id, empty ? required[id] : '');
+                valid = valid && !empty;
+            });
+
+            const years = Number(el('experienceYears').value);
+            const badYears = el('experienceYears').value === '' || isNaN(years) || years < 0;
+            setError('experienceYears', badYears ? 'Enter years of experience as 0 or more.' : '');
+            valid = valid && !badYears;
+
+            el('skills-error').textContent = skills.length ? '' : 'Add at least one skill before saving.';
+            return valid && skills.length > 0;
+        }
+
+        function collect()
+        {
+            const job = { experienceYears: Number(el('experienceYears').value), skills: skills };
+
+            TEXT_FIELDS.forEach(function (id)
+            {
+                job[id] = el(id).value.trim();
+            });
+
+            return job;
+        }
+
+        async function save(event)
+        {
+            event.preventDefault();
+            showBox('form-error', '');
+
+            if (!validate())
+            {
+                showBox('form-error', 'Please fix the highlighted fields and try again.');
+                return;
+            }
+
+            const button = el('save-btn');
+            button.disabled = true;
+            button.classList.add('loading');
+
+            try
+            {
+                if (jobId)
+                {
+                    await Api.put('/api/jobs/' + encodeURIComponent(jobId), collect());
+                }
+                else
+                {
+                    await Api.post('/api/jobs', collect());
+                }
+
+                showToast(jobId ? 'Job updated.' : 'Job posted.', 'success');
+                setTimeout(function ()
+                {
+                    window.location.href = 'jobs.html';
+                }, 700);
+            }
+            catch (error)
+            {
+                showBox('form-error', error.message);
+                button.disabled = false;
+                button.classList.remove('loading');
+            }
+        }
+
+        async function loadJob()
+        {
+            try
+            {
+                const job = await Api.get('/api/jobs/' + encodeURIComponent(jobId));
+                TEXT_FIELDS.forEach(function (id)
+                {
+                    el(id).value = job[id] || '';
+                });
+                el('experienceYears').value = job.experienceYears === undefined ? 0 : job.experienceYears;
+                skills = (job.skills || []).map(function (item) { return Object.assign({}, item); });
+                renderSkills();
+            }
+            catch (error)
+            {
+                showBox('form-error', error.message);
+            }
+        }
+
+        if (user)
+        {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'sparkles',
+                title: jobId ? 'Edit job' : 'Post a job',
+                subtitle: 'Add details, then let AI suggest skills',
+                search: true,
+                items:
+                [
+                    { label: 'Overview', href: 'recruiter.html', icon: 'layout-dashboard' },
+                    { label: 'Jobs', href: 'jobs.html', icon: 'briefcase' },
+                    { label: 'Interviews', href: 'interviews.html', icon: 'calendar-clock' },
+                    { label: 'Talent Search', href: 'search.html', icon: 'search' }
+                ],
+                onBell: function ()
+                {
+                    showToast('You have no new notifications.', 'info');
+                }
+            });
+
+            document.querySelectorAll('.d-nav a').forEach(function (link)
+            {
+                link.classList.toggle('on', link.getAttribute('href') === 'jobs.html');
+            });
+
+            el('skill-list').addEventListener('change', function (event)
+            {
+                const field = event.target.getAttribute('data-field');
+
+                if (field)
+                {
+                    skills[Number(event.target.getAttribute('data-index'))][field] = event.target.value;
+                }
+            });
+
+            el('skill-list').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-remove]');
+
+                if (button)
+                {
+                    skills.splice(Number(button.getAttribute('data-remove')), 1);
+                    renderSkills();
+                    Dash.icons();
+                }
+            });
+
+            function addFromInput()
+            {
+                const input = el('new-skill');
+
+                if (!input.value.trim())
+                {
+                    el('skills-error').textContent = 'Type a skill name first.';
+                    return;
+                }
+
+                if (!addSkill({ skill: input.value }))
+                {
+                    el('skills-error').textContent = 'That skill is already in the list.';
+                    return;
+                }
+
+                el('skills-error').textContent = '';
+                input.value = '';
+                renderSkills();
+            }
+
+            el('add-skill').addEventListener('click', addFromInput);
+            el('new-skill').addEventListener('keydown', function (event)
+            {
+                if (event.key === 'Enter')
+                {
+                    event.preventDefault();
+                    addFromInput();
+                }
+            });
+
+            el('extract-btn').addEventListener('click', extractSkills);
+            el('job-form').addEventListener('submit', save);
+            renderSkills();
+
+            if (jobId)
+            {
+                loadJob();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - RC3 Job Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <h1>Create your account</h1>
+            <p class="subtitle">Join RC3 Job Portal</p>
+
+            <div id="form-error" class="form-error hidden"></div>
+
+            <form id="register-form" novalidate>
+                <div class="form-group">
+                    <label for="name">Full name</label>
+                    <input type="text" id="name" placeholder="Your full name" autocomplete="name">
+                    <div class="error-text" id="name-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+                    <div class="error-text" id="email-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password">
+                    <div class="error-text" id="password-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm">Confirm password</label>
+                    <input type="password" id="confirm" placeholder="Type your password again" autocomplete="new-password">
+                    <div class="error-text" id="confirm-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>I am a</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="role" value="candidate"> Candidate
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="role" value="recruiter"> Recruiter
+                        </label>
+                    </div>
+                    <div class="error-text" id="role-error"></div>
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn btn-block">Create account</button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="login.html">Log in</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/mock.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        const form = document.getElementById('register-form');
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmInput = document.getElementById('confirm');
+        const roleError = document.getElementById('role-error');
+        const submitButton = document.getElementById('submit-btn');
+        const formError = document.getElementById('form-error');
+
+        const existingUser = getUser();
+
+        if (getToken() && existingUser)
+        {
+            window.location.href = dashboardFor(existingUser.role);
+        }
+
+        function setFieldError(input, message)
+        {
+            const errorBox = document.getElementById(input.id + '-error');
+            errorBox.textContent = message;
+
+            if (message)
+            {
+                input.classList.add('invalid');
+            }
+            else
+            {
+                input.classList.remove('invalid');
+            }
+        }
+
+        function showFormError(message)
+        {
+            formError.textContent = message;
+            formError.classList.remove('hidden');
+        }
+
+        function hideFormError()
+        {
+            formError.classList.add('hidden');
+        }
+
+        function selectedRole()
+        {
+            const chosen = document.querySelector('input[name="role"]:checked');
+            return chosen ? chosen.value : '';
+        }
+
+        function validateForm()
+        {
+            let valid = true;
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            const confirm = confirmInput.value;
+
+            if (name.length < 2)
+            {
+                setFieldError(nameInput, 'Please enter your full name.');
+                valid = false;
+            }
+            else
+            {
+                setFieldError(nameInput, '');
+            }
+
+            if (!email)
+            {
+                setFieldError(emailInput, 'Please enter your email.');
+                valid = false;
+            }
+            else if (!EMAIL_PATTERN.test(email))
+            {
+                setFieldError(emailInput, 'Please enter a valid email, like name@example.com.');
+                valid = false;
+            }
+            else
+            {
+                setFieldError(emailInput, '');
+            }
+
+            if (password.length < 8)
+            {
+                setFieldError(passwordInput, 'Password must be at least 8 characters.');
+                valid = false;
+            }
+            else
+            {
+                setFieldError(passwordInput, '');
+            }
+
+            if (!confirm)
+            {
+                setFieldError(confirmInput, 'Please type your password again.');
+                valid = false;
+            }
+            else if (confirm !== password)
+            {
+                setFieldError(confirmInput, 'The two passwords do not match.');
+                valid = false;
+            }
+            else
+            {
+                setFieldError(confirmInput, '');
+            }
+
+            if (!selectedRole())
+            {
+                roleError.textContent = 'Please choose Candidate or Recruiter.';
+                valid = false;
+            }
+            else
+            {
+                roleError.textContent = '';
+            }
+
+            return valid;
+        }
+
+        form.addEventListener('submit', async function (event)
+        {
+            event.preventDefault();
+            hideFormError();
+
+            if (!validateForm())
+            {
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+
+            try
+            {
+                const data = await Api.post('/api/auth/register',
+                {
+                    name: nameInput.value.trim(),
+                    email: emailInput.value.trim(),
+                    password: passwordInput.value,
+                    role: selectedRole()
+                });
+
+                if (data && data.token && data.user)
+                {
+                    saveSession(data.token, data.user);
+                    window.location.href = dashboardFor(data.user.role);
+                }
+                else
+                {
+                    window.location.href = 'login.html';
+                }
+            }
+            catch (error)
+            {
+                showFormError(error.message);
+                submitButton.disabled = false;
+                submitButton.classList.remove('loading');
+            }
+        });
+
+        form.addEventListener('input', hideFormError);
+    </script>
+</body>
+</html>

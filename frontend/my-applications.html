@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Applications - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        .tl{list-style:none;margin:14px 0 0 6px;border-left:2px solid #e6e8f0;padding-left:18px}
+        .tl li{position:relative;padding-bottom:12px;font-size:.88rem}
+        .tl li::before{content:"";position:absolute;left:-25px;top:4px;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid var(--ac)}
+        .tl li:last-child::before{background:var(--ac)}
+        .tl small{display:block;color:#94a3b8;font-size:.76rem}
+    </style>
+</head>
+<body class="theme-candidate">
+    <div id="content" class="d-content">
+        <div id="error-box" class="d-panel hidden" role="alert"></div>
+        <section class="d-panel" aria-label="My applications">
+            <h3>My applications</h3>
+            <p class="sub">Every application and where it stands</p>
+            <div id="apps-list"></div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-candidate.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        const user = guardPage('candidate');
+        const LABEL_OF = { 'Submitted': 'Submitted', 'Parsed': 'Resume received', 'AI Assessment Available': 'Under review', 'Recruiter Review': 'Under review', 'Shortlisted': 'Shortlisted', 'Interview': 'Interview', 'Selected': 'Selected', 'Rejected': 'Not selected' };
+
+        function label(status)
+        {
+            return LABEL_OF[status] || status;
+        }
+
+        function timelineHtml(timeline)
+        {
+            const steps = [];
+
+            (timeline || []).forEach(function (entry)
+            {
+                const text = label(entry.status);
+
+                if (!steps.length || steps[steps.length - 1].text !== text)
+                {
+                    steps.push({ text: text, at: entry.at });
+                }
+            });
+
+            return '<ol class="tl">' + steps.map(function (step)
+            {
+                return '<li>' + Dash.esc(step.text) + '<small>' + Dash.esc(Dash.formatDate(step.at)) + '</small></li>';
+            }).join('') + '</ol>';
+        }
+
+        function renderApps(apps)
+        {
+            const box = el('apps-list');
+
+            if (!apps.length)
+            {
+                box.innerHTML = Dash.empty('file-text', 'You have not applied to any jobs yet.', '<a class="btn btn-sm" href="candidate.html#jobs">Find a job</a>');
+                Dash.icons();
+                return;
+            }
+
+            box.innerHTML = apps.map(function (app)
+            {
+                const badge = app.status === 'Rejected' ? 'bad' : (app.status === 'Selected' ? 'ok' : 'info');
+                const date = Dash.formatDate(app.appliedAt);
+
+                return '<div class="d-item" style="display:block"><div style="display:flex;gap:12px;align-items:center;justify-content:space-between">' +
+                    '<div class="main"><b>' + Dash.esc(app.jobTitle) + '</b><span>' + (date ? 'Applied ' + date : '') + '</span></div>' +
+                    '<span class="d-badge ' + badge + '">' + Dash.esc(label(app.status)) + '</span></div>' +
+                    timelineHtml(app.timeline) + '</div>';
+            }).join('');
+        }
+
+        function el(id)
+        {
+            return document.getElementById(id);
+        }
+
+        async function load()
+        {
+            el('error-box').classList.add('hidden');
+            el('apps-list').innerHTML = Dash.skeletons(2);
+
+            try
+            {
+                renderApps(await Api.get('/api/candidate/applications'));
+            }
+            catch (error)
+            {
+                el('apps-list').innerHTML = '';
+                el('error-box').innerHTML = Dash.empty('triangle-alert', error.message, '<button class="btn btn-sm" id="retry-btn" type="button">Try again</button>');
+                el('error-box').classList.remove('hidden');
+                el('retry-btn').addEventListener('click', load);
+            }
+
+            Dash.icons();
+        }
+
+        if (user)
+        {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'rocket',
+                title: 'My applications',
+                subtitle: 'Track every application',
+                search: false,
+                items:
+                [
+                    { label: 'Overview', href: 'candidate.html', icon: 'layout-dashboard' },
+                    { label: 'Browse Jobs', href: 'candidate.html#jobs', icon: 'search' },
+                    { label: 'My Applications', href: 'my-applications.html', icon: 'file-text' },
+                    { label: 'My Profile', href: 'profile.html', icon: 'user' },
+                    { label: 'Notifications', href: 'candidate.html#notifications', icon: 'bell' }
+                ],
+                onBell: function ()
+                {
+                    window.location.href = 'candidate.html#notifications';
+                }
+            });
+
+            document.querySelectorAll('.d-nav a').forEach(function (link)
+            {
+                link.classList.toggle('on', link.getAttribute('href') === 'my-applications.html');
+            });
+
+            load();
+        }
+    </script>
+</body>
+</html>

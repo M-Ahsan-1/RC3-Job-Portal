@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        .chip.flag{background:#fef3c7;color:#b45309}
+        .chip svg{width:14px;height:14px}
+        .sk-add{display:flex;gap:10px;margin-top:10px}
+    </style>
+</head>
+<body class="theme-candidate">
+    <div id="content" class="d-content">
+        <div id="form-error" class="form-error hidden" role="alert"></div>
+        <div id="loading"></div>
+        <form id="profile-form" class="hidden" novalidate>
+            <section class="d-panel" aria-label="Skills">
+                <h3>Skills</h3>
+                <p class="sub">Read from your resume. A flag means we could not confirm the skill, so check it and correct it if needed.</p>
+                <div id="skills"></div>
+                <div class="sk-add">
+                    <input type="text" id="new-skill" placeholder="Add a skill" aria-label="New skill name">
+                    <button type="button" class="btn btn-secondary" id="add-skill">Add skill</button>
+                </div>
+                <div class="error-text" id="skills-error"></div>
+            </section>
+
+            <section class="d-panel" aria-label="Resume details">
+                <h3>Resume details</h3>
+                <p class="sub">Write one item per line</p>
+                <div class="form-group"><label for="education">Education</label><textarea id="education"></textarea></div>
+                <div class="form-group"><label for="experience">Experience</label><textarea id="experience"></textarea></div>
+                <div class="form-group"><label for="projects">Projects</label><textarea id="projects"></textarea></div>
+            </section>
+
+            <button type="submit" class="btn" id="save-btn">Save corrections</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-candidate.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        const user = guardPage('candidate');
+        const LIST_FIELDS = ['education', 'experience', 'projects'];
+        let profile = null;
+
+        function el(id)
+        {
+            return document.getElementById(id);
+        }
+
+        function showError(message)
+        {
+            el('form-error').textContent = message;
+            el('form-error').classList.toggle('hidden', !message);
+        }
+
+        function renderSkills()
+        {
+            const box = el('skills');
+
+            if (!profile.skills.length)
+            {
+                box.innerHTML = '<p class="muted">No skills yet. Add the skills that describe you.</p>';
+                return;
+            }
+
+            box.innerHTML = profile.skills.map(function (item, index)
+            {
+                const flagged = item.verified === false;
+                return '<span class="chip' + (flagged ? ' flag' : '') + '">' +
+                    (flagged ? '<i data-lucide="flag" title="Unverified skill"></i>' : '') + Dash.esc(item.skill) +
+                    '<button type="button" data-remove="' + index + '" aria-label="Remove ' + Dash.esc(item.skill) + '">&times;</button></span>';
+            }).join('');
+
+            Dash.icons();
+        }
+
+        function fillForm()
+        {
+            LIST_FIELDS.forEach(function (id)
+            {
+                el(id).value = (profile[id] || []).join('\n');
+            });
+
+            renderSkills();
+            el('loading').innerHTML = '';
+            el('profile-form').classList.remove('hidden');
+        }
+
+        function lines(id)
+        {
+            return el(id).value.split('\n').map(function (line) { return line.trim(); }).filter(Boolean);
+        }
+
+        async function loadProfile()
+        {
+            el('loading').innerHTML = Dash.skeletons(2);
+
+            try
+            {
+                profile = await Api.get('/api/candidate/profile');
+                profile.skills = profile.skills || [];
+                fillForm();
+            }
+            catch (error)
+            {
+                el('loading').innerHTML = '';
+                showError(error.message);
+            }
+        }
+
+        async function save(event)
+        {
+            event.preventDefault();
+            showError('');
+
+            if (!profile.skills.length)
+            {
+                el('skills-error').textContent = 'Keep at least one skill on your profile.';
+                return;
+            }
+
+            el('skills-error').textContent = '';
+            const button = el('save-btn');
+            button.disabled = true;
+            button.classList.add('loading');
+
+            const payload = Object.assign({}, profile);
+            LIST_FIELDS.forEach(function (id)
+            {
+                payload[id] = lines(id);
+            });
+
+            try
+            {
+                profile = await Api.put('/api/candidate/profile', payload);
+                profile.skills = profile.skills || [];
+                fillForm();
+                showToast('Your corrections were saved.', 'success');
+            }
+            catch (error)
+            {
+                showError(error.message);
+            }
+
+            button.disabled = false;
+            button.classList.remove('loading');
+        }
+
+        function addSkill()
+        {
+            const input = el('new-skill');
+            const name = input.value.trim();
+            const exists = profile.skills.some(function (item) { return item.skill.toLowerCase() === name.toLowerCase(); });
+
+            if (!name || exists)
+            {
+                el('skills-error').textContent = name ? 'That skill is already on your profile.' : 'Type a skill name first.';
+                return;
+            }
+
+            profile.skills.push({ skill: name, verified: false });
+            el('skills-error').textContent = '';
+            input.value = '';
+            renderSkills();
+        }
+
+        if (user)
+        {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'rocket',
+                title: 'My profile',
+                subtitle: 'Check what we read from your resume',
+                search: false,
+                items:
+                [
+                    { label: 'Overview', href: 'candidate.html', icon: 'layout-dashboard' },
+                    { label: 'Browse Jobs', href: 'candidate.html#jobs', icon: 'search' },
+                    { label: 'My Applications', href: 'my-applications.html', icon: 'file-text' },
+                    { label: 'My Profile', href: 'profile.html', icon: 'user' },
+                    { label: 'Notifications', href: 'candidate.html#notifications', icon: 'bell' }
+                ],
+                onBell: function ()
+                {
+                    window.location.href = 'candidate.html#notifications';
+                }
+            });
+
+            document.querySelectorAll('.d-nav a').forEach(function (link)
+            {
+                link.classList.toggle('on', link.getAttribute('href') === 'profile.html');
+            });
+
+            el('skills').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-remove]');
+
+                if (button)
+                {
+                    profile.skills.splice(Number(button.getAttribute('data-remove')), 1);
+                    renderSkills();
+                }
+            });
+
+            el('add-skill').addEventListener('click', addSkill);
+            el('new-skill').addEventListener('keydown', function (event)
+            {
+                if (event.key === 'Enter')
+                {
+                    event.preventDefault();
+                    addSkill();
+                }
+            });
+
+            el('profile-form').addEventListener('submit', save);
+            loadProfile();
+        }
+    </script>
+</body>
+</html>

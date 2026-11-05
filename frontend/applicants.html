@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applicants - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+        .filters .form-group{margin:0}
+        .filters input{width:170px}
+        .score{font-weight:700;font-size:1.05rem}
+        .rank{width:34px;height:34px;border-radius:50%;background:var(--soft);color:var(--ac);display:grid;place-items:center;font-weight:700}
+        dialog{border:0;border-radius:16px;padding:24px;width:min(420px,92vw);box-shadow:0 20px 60px rgba(15,23,42,.3)}
+        dialog::backdrop{background:rgba(15,23,42,.45)}
+        td input[type=checkbox]{width:18px;height:18px}
+    </style>
+</head>
+<body class="theme-recruiter">
+    <div id="content" class="d-content">
+        <section class="d-panel" aria-label="Applicants">
+            <div class="d-panel-head">
+                <div><h3 id="job-title">Applicants</h3><p class="sub" id="job-meta">Ranked by score, highest first</p></div>
+                <div class="row">
+                    <a class="btn btn-secondary btn-sm" href="jobs.html">Back to jobs</a>
+                    <button class="btn btn-sm" id="compare-btn" type="button" disabled>Compare selected</button>
+                </div>
+            </div>
+            <div id="error-box" class="form-error hidden" role="alert"></div>
+            <div class="filters">
+                <div class="form-group"><label for="min-score">Minimum score</label><input type="number" id="min-score" min="0" max="100" placeholder="0"></div>
+                <div class="form-group"><label for="skill-filter">Skill</label><input type="text" id="skill-filter" placeholder="for example Docker"></div>
+                <button class="btn btn-secondary btn-sm" id="clear-filters" type="button">Clear filters</button>
+            </div>
+            <div id="list"></div>
+        </section>
+    </div>
+
+    <dialog id="override-dialog" aria-labelledby="override-title">
+        <form id="override-form" novalidate>
+            <h3 id="override-title">Override score</h3>
+            <p class="sub" id="override-name"></p>
+            <div id="override-error" class="form-error hidden" role="alert"></div>
+            <div class="form-group"><label for="override-score">New score (0 to 100)</label><input type="number" id="override-score" min="0" max="100"></div>
+            <div class="form-group"><label for="override-reason">Reason (required)</label><textarea id="override-reason" placeholder="Why does this score need to change?"></textarea></div>
+            <div class="row"><button class="btn" id="override-save" type="submit">Save override</button><button class="btn btn-secondary" id="override-cancel" type="button">Cancel</button></div>
+        </form>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-applicants.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        const user = guardPage('recruiter');
+        const jobId = new URLSearchParams(window.location.search).get('jobId');
+        const selected = new Set();
+        let applicants = [];
+        let overrideId = null;
+
+        function el(id)
+        {
+            return document.getElementById(id);
+        }
+
+        function showError(message)
+        {
+            el('error-box').textContent = message;
+            el('error-box').classList.toggle('hidden', !message);
+        }
+
+        function effective(applicant)
+        {
+            const has = applicant.overrideScore !== null && applicant.overrideScore !== undefined;
+            return has ? applicant.overrideScore : applicant.score;
+        }
+
+        function sortedAll()
+        {
+            return applicants.slice().sort(function (a, b)
+            {
+                return effective(b) - effective(a);
+            });
+        }
+
+        function visible(ranked)
+        {
+            const min = Number(el('min-score').value) || 0;
+            const skill = el('skill-filter').value.trim().toLowerCase();
+
+            return ranked.filter(function (applicant)
+            {
+                const skills = ((applicant.score_json || {}).matched_skills || []).map(function (item) { return item.skill.toLowerCase(); });
+                const skillOk = !skill || skills.some(function (name) { return name.indexOf(skill) !== -1; });
+                return effective(applicant) >= min && skillOk;
+            });
+        }
+
+        function rowHtml(applicant, rank)
+        {
+            const overridden = applicant.overrideScore !== null && applicant.overrideScore !== undefined;
+            const badge = applicant.status === 'Shortlisted' || applicant.status === 'Selected' ? 'ok' : (applicant.status === 'Rejected' ? 'bad' : 'info');
+            const id = Dash.esc(applicant.id);
+
+            return '<tr><td><input type="checkbox" data-select="' + id + '"' + (selected.has(applicant.id) ? ' checked' : '') + ' aria-label="Select ' + Dash.esc(applicant.candidateName) + ' for comparison"></td>' +
+                '<td><span class="rank">' + rank + '</span></td>' +
+                '<td><b>' + Dash.esc(applicant.candidateName) + '</b><br><span class="muted">' + Dash.esc(applicant.email || '') + '</span></td>' +
+                '<td><span class="score">' + effective(applicant) + '</span>' + (overridden ? ' <span class="d-badge" title="' + Dash.esc(applicant.overrideReason || '') + '">Overridden, was ' + applicant.score + '</span>' : '') + '</td>' +
+                '<td><span class="d-badge ' + badge + '">' + Dash.esc(applicant.status) + '</span></td>' +
+                '<td><div class="row"><a class="btn btn-sm" href="applicant-detail.html?id=' + encodeURIComponent(applicant.id) + '">View</a>' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-override="' + id + '">Override</button></div></td></tr>';
+        }
+
+        function render()
+        {
+            const ranked = sortedAll();
+            const rankOf = {};
+            ranked.forEach(function (applicant, index) { rankOf[applicant.id] = index + 1; });
+            const rows = visible(ranked);
+
+            if (!applicants.length)
+            {
+                el('list').innerHTML = Dash.empty('users', 'No one has applied to this job yet.');
+            }
+            else if (!rows.length)
+            {
+                el('list').innerHTML = Dash.empty('filter', 'No applicants match these filters. Lower the minimum score or clear the skill.');
+            }
+            else
+            {
+                el('list').innerHTML = '<div class="table-wrap"><table><thead><tr><th>Compare</th><th>Rank</th><th>Applicant</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead><tbody>' +
+                    rows.map(function (applicant) { return rowHtml(applicant, rankOf[applicant.id]); }).join('') + '</tbody></table></div>';
+            }
+
+            el('compare-btn').disabled = selected.size < 2;
+            Dash.icons();
+        }
+
+        async function load()
+        {
+            if (!jobId)
+            {
+                showError('Open an applicants list from the Jobs page.');
+                return;
+            }
+
+            el('list').innerHTML = Dash.skeletons(3);
+            showError('');
+
+            try
+            {
+                const results = await Promise.all([Api.get('/api/jobs/' + encodeURIComponent(jobId)), Api.get('/api/jobs/' + encodeURIComponent(jobId) + '/applicants')]);
+                el('job-title').textContent = 'Applicants for ' + results[0].title;
+                applicants = results[1];
+                render();
+            }
+            catch (error)
+            {
+                el('list').innerHTML = '';
+                showError(error.message);
+            }
+        }
+
+        function openOverride(id)
+        {
+            const applicant = applicants.filter(function (item) { return String(item.id) === id; })[0];
+            overrideId = id;
+            el('override-name').textContent = applicant.candidateName + ', current score ' + effective(applicant);
+            el('override-score').value = effective(applicant);
+            el('override-reason').value = '';
+            el('override-error').classList.add('hidden');
+            el('override-dialog').showModal();
+        }
+
+        async function saveOverride(event)
+        {
+            event.preventDefault();
+            const score = el('override-score').value;
+            const reason = el('override-reason').value.trim();
+            const errorBox = el('override-error');
+            errorBox.classList.add('hidden');
+
+            if (score === '' || Number(score) < 0 || Number(score) > 100)
+            {
+                errorBox.textContent = 'Enter a score between 0 and 100.';
+                errorBox.classList.remove('hidden');
+                return;
+            }
+
+            if (reason.length < 5)
+            {
+                errorBox.textContent = 'Please give a reason for the override (at least 5 characters).';
+                errorBox.classList.remove('hidden');
+                return;
+            }
+
+            el('override-save').disabled = true;
+            el('override-save').classList.add('loading');
+
+            try
+            {
+                await Api.patch('/api/applications/' + encodeURIComponent(overrideId) + '/override', { score: Number(score), reason: reason });
+                const applicant = applicants.filter(function (item) { return String(item.id) === overrideId; })[0];
+                applicant.overrideScore = Number(score);
+                applicant.overrideReason = reason;
+                el('override-dialog').close();
+                render();
+                showToast('Score overridden. The reason is saved.', 'success');
+            }
+            catch (error)
+            {
+                errorBox.textContent = error.message;
+                errorBox.classList.remove('hidden');
+            }
+
+            el('override-save').disabled = false;
+            el('override-save').classList.remove('loading');
+        }
+
+        if (user)
+        {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'sparkles',
+                title: 'Applicants',
+                subtitle: 'Ranked candidates for this job',
+                search: true,
+                items:
+                [
+                    { label: 'Overview', href: 'recruiter.html', icon: 'layout-dashboard' },
+                    { label: 'Jobs', href: 'jobs.html', icon: 'briefcase' },
+                    { label: 'Interviews', href: 'interviews.html', icon: 'calendar-clock' },
+                    { label: 'Talent Search', href: 'search.html', icon: 'search' }
+                ],
+                onBell: function ()
+                {
+                    showToast('You have no new notifications.', 'info');
+                }
+            });
+
+            document.querySelectorAll('.d-nav a').forEach(function (link)
+            {
+                link.classList.toggle('on', link.getAttribute('href') === 'jobs.html');
+            });
+
+            el('list').addEventListener('change', function (event)
+            {
+                const box = event.target.closest('[data-select]');
+
+                if (!box)
+                {
+                    return;
+                }
+
+                const id = Number(box.getAttribute('data-select'));
+
+                if (box.checked && selected.size >= 3)
+                {
+                    box.checked = false;
+                    showToast('You can compare up to 3 applicants at a time.', 'info');
+                    return;
+                }
+
+                if (box.checked)
+                {
+                    selected.add(id);
+                }
+                else
+                {
+                    selected.delete(id);
+                }
+
+                el('compare-btn').disabled = selected.size < 2;
+            });
+
+            el('list').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-override]');
+
+                if (button)
+                {
+                    openOverride(button.getAttribute('data-override'));
+                }
+            });
+
+            el('compare-btn').addEventListener('click', function ()
+            {
+                window.location.href = 'compare.html?ids=' + Array.from(selected).join(',');
+            });
+
+            el('min-score').addEventListener('input', render);
+            el('skill-filter').addEventListener('input', render);
+            el('clear-filters').addEventListener('click', function ()
+            {
+                el('min-score').value = '';
+                el('skill-filter').value = '';
+                render();
+            });
+
+            el('override-form').addEventListener('submit', saveOverride);
+            el('override-cancel').addEventListener('click', function ()
+            {
+                el('override-dialog').close();
+            });
+
+            load();
+        }
+    </script>
+</body>
+</html>

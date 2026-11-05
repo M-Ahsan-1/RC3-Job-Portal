@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="theme-candidate">
+    <div id="content" class="d-content">
+        <section class="d-hero" id="overview">
+            <div>
+                <h2 id="greeting">Welcome</h2>
+                <p>Every application is a step forward. Find a role that fits and track it from first look to final answer.</p>
+                <a class="btn" href="#jobs"><i data-lucide="search"></i>Browse jobs</a>
+            </div>
+            <svg class="art" viewBox="0 0 220 140" fill="none" aria-hidden="true">
+                <path d="M10 120 L70 90 L120 100 L200 30" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+                <circle cx="70" cy="90" r="8" fill="#fff" opacity=".6"/>
+                <circle cx="120" cy="100" r="8" fill="#fff" opacity=".6"/>
+                <circle cx="200" cy="30" r="12" fill="#fff"/>
+                <path d="M194 30 l5 5 l9 -10" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </section>
+
+        <div id="error-box" class="d-panel hidden" role="alert"></div>
+
+        <section class="d-kpis" id="kpis" aria-label="My statistics"></section>
+
+        <section class="d-panel" id="jobs" aria-label="Open jobs">
+            <h3>Open jobs</h3>
+            <p class="sub">Roles you can apply to right now</p>
+            <div id="jobs-list"></div>
+        </section>
+
+        <section class="d-panel" id="applications" aria-label="My applications">
+            <h3>My applications</h3>
+            <p class="sub">Follow each application through the hiring process</p>
+            <div id="apps-list"></div>
+        </section>
+
+        <section class="d-panel" id="notifications" aria-label="Notifications">
+            <div class="d-panel-head">
+                <div><h3>Notifications</h3><p class="sub">Updates about your applications</p></div>
+                <button class="btn btn-secondary btn-sm" id="mark-read" type="button">Mark all as read</button>
+            </div>
+            <div id="notes-list"></div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        const user = guardPage('candidate');
+        const STEPS = ['Submitted', 'Under review', 'Shortlisted', 'Interview', 'Decision'];
+        const STEP_OF = { 'Submitted': 0, 'Parsed': 0, 'AI Assessment Available': 1, 'Recruiter Review': 1, 'Shortlisted': 2, 'Interview': 3, 'Selected': 4, 'Rejected': 4 };
+        const LABEL_OF = { 'Submitted': 'Submitted', 'Parsed': 'Received', 'AI Assessment Available': 'Under review', 'Recruiter Review': 'Under review', 'Shortlisted': 'Shortlisted', 'Interview': 'Interview', 'Selected': 'Selected', 'Rejected': 'Not selected' };
+        const REVIEW = ['Submitted', 'Parsed', 'AI Assessment Available', 'Recruiter Review'];
+        let notifications = [];
+
+        function kpiCard(icon, value, label)
+        {
+            return '<div class="d-kpi"><div class="ic"><i data-lucide="' + icon + '"></i></div><b>' + value + '</b><span>' + label + '</span></div>';
+        }
+
+        function countWhere(apps, test)
+        {
+            return apps.filter(function (app) { return test(app.status); }).length;
+        }
+
+        function renderKpis(apps)
+        {
+            document.getElementById('kpis').innerHTML =
+                kpiCard('file-text', apps.length, 'Total applications') +
+                kpiCard('eye', countWhere(apps, function (s) { return REVIEW.indexOf(s) !== -1; }), 'Under review') +
+                kpiCard('star', countWhere(apps, function (s) { return s === 'Shortlisted'; }), 'Shortlisted') +
+                kpiCard('calendar-check', countWhere(apps, function (s) { return s === 'Interview'; }), 'Interviews scheduled');
+        }
+
+        function renderJobs(jobs)
+        {
+            const box = document.getElementById('jobs-list');
+
+            if (!jobs.length)
+            {
+                box.innerHTML = Dash.empty('briefcase', 'No open jobs right now. Check back soon for new roles.');
+                return;
+            }
+
+            box.innerHTML = '<div class="d-jobs">' + jobs.map(function (job)
+            {
+                const tags = [job.department, job.location, job.type].filter(Boolean).map(function (tag)
+                {
+                    return '<span class="d-badge info">' + Dash.esc(tag) + '</span>';
+                }).join('');
+
+                return '<article class="d-job"><h4>' + Dash.esc(job.title) + '</h4><div class="d-meta">' + tags + '</div>' +
+                    '<p>' + Dash.esc(job.description || 'No description provided yet.') + '</p>' +
+                    '<a class="btn btn-sm" href="apply.html?jobId=' + encodeURIComponent(job.id) + '">Apply now</a></article>';
+            }).join('') + '</div>';
+        }
+
+        function renderApps(apps)
+        {
+            const box = document.getElementById('apps-list');
+
+            if (!apps.length)
+            {
+                box.innerHTML = Dash.empty('file-text', 'You have not applied to any jobs yet.', '<a class="btn btn-sm" href="#jobs">Find a job</a>');
+                return;
+            }
+
+            box.innerHTML = apps.map(function (app)
+            {
+                const step = STEP_OF[app.status] === undefined ? 0 : STEP_OF[app.status];
+                const rejected = app.status === 'Rejected';
+                const bars = STEPS.map(function (name, index)
+                {
+                    const cls = index <= step ? (rejected && index === step ? 'stop' : 'done') : '';
+                    return '<i class="' + cls + '"></i>';
+                }).join('');
+                const badge = rejected ? 'bad' : (app.status === 'Selected' ? 'ok' : 'info');
+                const date = Dash.formatDate(app.appliedAt);
+
+                return '<div class="d-item" style="display:block"><div style="display:flex;gap:12px;align-items:center;justify-content:space-between">' +
+                    '<div class="main"><b>' + Dash.esc(app.jobTitle) + '</b><span>' + (date ? 'Applied ' + date : '') + '</span></div>' +
+                    '<span class="d-badge ' + badge + '">' + Dash.esc(LABEL_OF[app.status] || app.status) + '</span></div>' +
+                    '<div class="d-steps" role="img" aria-label="Step ' + (step + 1) + ' of ' + STEPS.length + ': ' + Dash.esc(LABEL_OF[app.status] || app.status) + '">' + bars + '</div>' +
+                    '<div class="d-steplabels"><span>' + STEPS.join('</span><span>') + '</span></div></div>';
+            }).join('');
+        }
+
+        function renderNotes()
+        {
+            const box = document.getElementById('notes-list');
+            const unread = notifications.filter(function (note) { return note.read !== true; }).length;
+            Dash.setBell(unread);
+
+            if (!notifications.length)
+            {
+                box.innerHTML = Dash.empty('bell', 'No notifications yet. We will tell you when something changes.');
+                Dash.icons();
+                return;
+            }
+
+            box.innerHTML = notifications.map(function (note)
+            {
+                const isUnread = note.read !== true;
+                return '<div class="d-note"><span class="' + (isUnread ? 'unread' : 'read') + '"' + (isUnread ? ' title="Unread"' : '') + '></span>' +
+                    '<div' + (isUnread ? ' style="font-weight:600"' : '') + '>' + Dash.esc(note.message) + '<small>' + Dash.esc(Dash.timeAgo(note.createdAt)) + '</small></div></div>';
+            }).join('');
+
+            Dash.icons();
+        }
+
+        async function load()
+        {
+            const errorBox = document.getElementById('error-box');
+            errorBox.classList.add('hidden');
+            document.getElementById('kpis').innerHTML = Dash.skeletons(4);
+            document.getElementById('jobs-list').innerHTML = Dash.skeletons(2);
+            document.getElementById('apps-list').innerHTML = Dash.skeletons(1);
+            document.getElementById('notes-list').innerHTML = Dash.skeletons(1);
+
+            try
+            {
+                const results = await Promise.all([Api.get('/api/jobs/open'), Api.get('/api/candidate/applications'), Api.get('/api/notifications')]);
+                notifications = results[2];
+                renderKpis(results[1]);
+                renderJobs(results[0]);
+                renderApps(results[1]);
+                renderNotes();
+            }
+            catch (error)
+            {
+                ['kpis', 'jobs-list', 'apps-list', 'notes-list'].forEach(function (id)
+                {
+                    document.getElementById(id).innerHTML = '';
+                });
+
+                errorBox.innerHTML = Dash.empty('triangle-alert', error.message, '<button class="btn btn-sm" id="retry-btn" type="button">Try again</button>');
+                errorBox.classList.remove('hidden');
+                document.getElementById('retry-btn').addEventListener('click', load);
+            }
+
+            Dash.icons();
+        }
+
+        if (user)
+        {
+            document.getElementById('greeting').textContent = 'Hi ' + user.name.split(' ')[0] + ', ready for your next role?';
+
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'rocket',
+                title: 'Hi, ' + user.name.split(' ')[0],
+                subtitle: 'Your job search at a glance',
+                search: false,
+                items:
+                [
+                    { label: 'Overview', href: '#overview', icon: 'layout-dashboard' },
+                    { label: 'Browse Jobs', href: '#jobs', icon: 'search' },
+                    { label: 'My Applications', href: 'my-applications.html', icon: 'file-text' },
+                    { label: 'My Profile', href: 'profile.html', icon: 'user' },
+                    { label: 'Notifications', href: '#notifications', icon: 'bell' }
+                ],
+                onBell: function ()
+                {
+                    document.getElementById('notifications').scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+
+            document.getElementById('mark-read').addEventListener('click', function ()
+            {
+                notifications.forEach(function (note) { note.read = true; });
+                renderNotes();
+                showToast('All notifications marked as read.', 'success');
+            });
+
+            load();
+        }
+    </script>
+</body>
+</html>

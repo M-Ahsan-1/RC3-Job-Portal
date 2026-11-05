@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jobs - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="theme-recruiter">
+    <div id="content" class="d-content">
+        <section class="d-panel" aria-label="Jobs">
+            <div class="d-panel-head">
+                <div><h3>All jobs</h3><p class="sub">Open and closed postings</p></div>
+                <a class="btn btn-sm" href="job-form.html"><i data-lucide="plus"></i>Post a job</a>
+            </div>
+            <div id="error-box" class="form-error hidden" role="alert"></div>
+            <div id="jobs-list"></div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-jobs.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        const user = guardPage('recruiter');
+        const list = document.getElementById('jobs-list');
+        const errorBox = document.getElementById('error-box');
+
+        function showError(message)
+        {
+            errorBox.textContent = message;
+            errorBox.classList.remove('hidden');
+        }
+
+        function rowHtml(job)
+        {
+            const open = job.status === 'open';
+            const id = encodeURIComponent(job.id);
+            const place = [job.department, job.location].filter(Boolean).map(Dash.esc).join(', ');
+
+            return '<tr>' +
+                '<td><b>' + Dash.esc(job.title) + '</b><br><span class="muted">' + place + '</span></td>' +
+                '<td>' + Dash.esc(job.type || '-') + '</td>' +
+                '<td><span class="d-badge ' + (open ? 'ok' : '') + '">' + (open ? 'Open' : 'Closed') + '</span></td>' +
+                '<td>' + (job.applicantCount || 0) + '</td>' +
+                '<td><div class="row">' +
+                    '<a class="btn btn-secondary btn-sm" href="applicants.html?jobId=' + id + '">Applicants</a>' +
+                    '<a class="btn btn-secondary btn-sm" href="job-form.html?id=' + id + '">Edit</a>' +
+                    '<button class="btn btn-sm ' + (open ? 'btn-danger' : 'btn-success') + '" type="button" data-id="' + Dash.esc(job.id) + '" data-action="' + (open ? 'close' : 'reopen') + '">' + (open ? 'Close' : 'Reopen') + '</button>' +
+                '</div></td></tr>';
+        }
+
+        async function load()
+        {
+            list.innerHTML = Dash.skeletons(3);
+            errorBox.classList.add('hidden');
+
+            try
+            {
+                const jobs = await Api.get('/api/jobs');
+
+                if (!jobs.length)
+                {
+                    list.innerHTML = Dash.empty('briefcase', 'You have not posted any jobs yet.', '<a class="btn btn-sm" href="job-form.html">Post your first job</a>');
+                }
+                else
+                {
+                    list.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Job</th><th>Type</th><th>Status</th><th>Applicants</th><th>Actions</th></tr></thead><tbody>' +
+                        jobs.map(rowHtml).join('') + '</tbody></table></div>';
+                }
+            }
+            catch (error)
+            {
+                list.innerHTML = '';
+                showError(error.message);
+            }
+
+            Dash.icons();
+        }
+
+        async function changeStatus(button)
+        {
+            const action = button.getAttribute('data-action');
+            const id = button.getAttribute('data-id');
+
+            if (action === 'close' && !window.confirm('Close this job? Candidates will no longer be able to apply.'))
+            {
+                return;
+            }
+
+            button.disabled = true;
+            button.classList.add('loading');
+            errorBox.classList.add('hidden');
+
+            try
+            {
+                await Api.patch('/api/jobs/' + id + '/' + action);
+                showToast(action === 'close' ? 'Job closed.' : 'Job reopened.', 'success');
+                await load();
+            }
+            catch (error)
+            {
+                showError(error.message);
+                button.disabled = false;
+                button.classList.remove('loading');
+            }
+        }
+
+        if (user)
+        {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'sparkles',
+                title: 'Jobs',
+                subtitle: 'Manage your job postings',
+                search: true,
+                items:
+                [
+                    { label: 'Overview', href: 'recruiter.html', icon: 'layout-dashboard' },
+                    { label: 'Jobs', href: 'jobs.html', icon: 'briefcase' },
+                    { label: 'Interviews', href: 'interviews.html', icon: 'calendar-clock' },
+                    { label: 'Talent Search', href: 'search.html', icon: 'search' }
+                ],
+                onBell: function ()
+                {
+                    showToast('You have no new notifications.', 'info');
+                }
+            });
+
+            document.querySelectorAll('.d-nav a').forEach(function (link)
+            {
+                link.classList.toggle('on', link.getAttribute('href') === 'jobs.html');
+            });
+
+            list.addEventListener('click', function (event)
+            {
+                const button = event.target.closest('button[data-action]');
+
+                if (button)
+                {
+                    changeStatus(button);
+                }
+            });
+
+            load();
+        }
+    </script>
+</body>
+</html>
