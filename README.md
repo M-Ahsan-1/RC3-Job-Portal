@@ -39,15 +39,43 @@ npm start
 
 On Linux or Mac, use `cp` instead of `copy`. Fill in `.env` before starting, the file lists every variable the app reads. The server listens on port 3000 unless `PORT` says otherwise, so open `http://localhost:3000`.
 
+### Environment variables
+
+Copy `.env.example` to `.env` and fill it in. Never commit `.env`.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `PORT` | `3000` | Port the server listens on |
+| `NODE_ENV` | `development` | `development` or `production` |
+| `DB_HOST` | `localhost` | MySQL host |
+| `DB_PORT` | `3306` | MySQL port |
+| `DB_USER` | `root` | MySQL user |
+| `DB_PASSWORD` | `change_me` | MySQL password. Change it |
+| `DB_NAME` | `rc3_job_portal` | MySQL database name |
+| `JWT_SECRET` | `change_me_to_a_long_random_string` | Secret used to sign login tokens. Use a long random value |
+| `JWT_EXPIRES_IN` | `1d` | How long a login token stays valid |
+| `GEMINI_API_KEY` | none | Gemini key for resume parsing, matching and explanations |
+| `UPLOAD_DIR` | `uploads` | Folder where uploaded resumes are stored |
+| `MAX_UPLOAD_MB` | `5` | Largest resume upload allowed, in MB |
+| `CORS_ORIGINS` | empty | Origins the browser may call the API from, comma separated |
+| `RATE_LIMIT_MAX` | `300` | Most requests one client may make per rate limit window |
+| `RATE_LIMIT_WINDOW_MIN` | `15` | Length of the rate limit window, in minutes |
+| `AUTH_RATE_LIMIT_MAX` | `20` | Stricter request limit for the login and register routes |
+| `JSON_LIMIT` | `100kb` | Largest JSON request body the server accepts |
+| `TRUST_PROXY` | empty | Set when the app runs behind a proxy or load balancer, so client IPs and rate limits are read correctly |
+| `CSP_OFF` | `false` | Set to `true` to turn off the Content Security Policy header, for debugging only |
+
+`.env.example` is the full list. If you add a variable to the code, add it there and here.
+
 Note: `npm start` only works once Sameer's `src/server.js` is in the repo and a `start` script exists in `package.json`.
 
 ## Mock mode vs the real backend
 
 The frontend can run on its own with fake data. In `frontend/js/api.js` there is a `USE_MOCK` switch.
 
-With `USE_MOCK = true`, every call is answered by the mock files in `frontend/js`, so you can open the pages straight from disk, no server needed. Good for working on the UI.
+With `USE_MOCK = true`, every call is answered by `frontend/js/mock.js`, so you can open the pages straight from disk, no server needed. Good for working on the UI. `mock.js` follows `docs/API.md`, so it is the only mock file the pages should load.
 
-With `USE_MOCK = false`, calls go to the real `/api` routes. When you switch, remove the script tags for `mock-jobs.js`, `mock-candidate.js` and `mock-applicants.js` from the pages that load them.
+With `USE_MOCK = false`, calls go to the real `/api` routes. When you switch, remove the `mock.js` script tag from every page. The older helper files (`mock-extra.js`, `mock-applicants.js`, `mock-jobs.js`, `mock-candidate.js`) are retired: take their script tags out of any page that still has one and delete the files.
 
 ## Tests
 

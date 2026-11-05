@@ -2219,7 +2219,73 @@ const MockApi =
             return interview.status === 'scheduled' && new Date(interview.scheduled_at).getTime() >= Date.now() - 86400000;
         }).length;
 
+        const scored = applications.filter(function (application) { return application.score !== null && application.score !== undefined; });
+        const effective = function (application) { return application.overrideScore === null ? application.score : application.overrideScore; };
+        const average = function (list)
+        {
+            return list.length ? Math.round(list.reduce(function (sum, value) { return sum + value; }, 0) / list.length) : 0;
+        };
+        const scores = scored.map(effective);
+        const band = function (low, high) { return scores.filter(function (value) { return value >= low && value <= high; }).length; };
+
+        const tally = function (pick)
+        {
+            const counts = {};
+            const labels = {};
+
+            applications.forEach(function (application)
+            {
+                const seen = {};
+
+                pick(application).forEach(function (name)
+                {
+                    const key = String(name).toLowerCase();
+
+                    if (!seen[key])
+                    {
+                        seen[key] = true;
+                        counts[key] = (counts[key] || 0) + 1;
+                        labels[key] = labels[key] || name;
+                    }
+                });
+            });
+
+            return Object.keys(counts)
+                .map(function (key) { return { skill: labels[key], count: counts[key] }; })
+                .sort(function (a, b) { return b.count - a.count; })
+                .slice(0, 6);
+        };
+
         return {
+            totals:
+            {
+                jobs: state.jobs.length,
+                applicants: applications.length,
+                shortlisted: shortlisted,
+                selected: applications.filter(function (application) { return application.status === 'Selected'; }).length,
+                averageScore: average(scores)
+            },
+            funnel: Object.keys(TRANSITIONS).map(function (status) { return { status: status, count: byStage[status] || 0 }; }),
+            distribution:
+            [
+                { label: '0-39', count: band(0, 39) },
+                { label: '40-59', count: band(40, 59) },
+                { label: '60-79', count: band(60, 79) },
+                { label: '80-100', count: band(80, 100) }
+            ],
+            topSkills: tally(function (application)
+            {
+                return ((application.score_json && application.score_json.matched_skills) || []).map(function (item) { return item.skill; });
+            }),
+            topGaps: tally(function (application)
+            {
+                return ((application.score_json && application.score_json.gaps) || []).map(function (item) { return item.skill; });
+            }),
+            byJob: state.jobs.map(function (job)
+            {
+                const mine = scored.filter(function (application) { return application.jobId === job.id; });
+                return { title: job.title, applicants: MockApi.applicantCount(job.id), averageScore: average(mine.map(effective)) };
+            }),
             active_jobs: state.jobs.filter(function (job) { return job.status === 'open'; }).length,
             total_applications: applications.length,
             shortlisted_count: shortlisted,
@@ -2472,6 +2538,14 @@ const MockApi =
             }
 
             return MockApi.apply(user, body);
+        }
+
+        match = route.match(/^\/api\/applications\/(\d+)$/);
+
+        if (method === 'GET' && match)
+        {
+            MockApi.requireUser(user, 'recruiter');
+            return MockApi.applicantView(MockApi.requireApplication(match[1]));
         }
 
         match = route.match(/^\/api\/applications\/(\d+)\/assess$/);

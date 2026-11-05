@@ -95,8 +95,9 @@
                                 <label for="iv-type">Interview type</label>
                                 <select id="iv-type">
                                     <option value="technical">Technical</option>
-                                    <option value="hr">HR</option>
-                                    <option value="panel">Panel</option>
+                                    <option value="behavioural">Behavioural</option>
+                                    <option value="culture">Culture fit</option>
+                                    <option value="hr">HR round</option>
                                 </select>
                             </div>
                             <div>
@@ -169,7 +170,7 @@
     <script>
         const user = guardPage('recruiter');
         const applicantId = Dash.intParam('id', 0);
-        const jobId = Dash.intParam('jobId', 0);
+        let jobId = Dash.intParam('jobId', 0);
         const TABS = ['assessment', 'questions', 'fairness', 'interview', 'decision'];
 
         const TRANSITIONS =
@@ -954,18 +955,8 @@
         {
             try
             {
-                const list = await Api.get('/api/jobs/' + jobId + '/applicants');
-                const found = list.filter(function (item)
-                {
-                    return item.id === applicantId;
-                })[0];
-
-                if (found)
-                {
-                    applicant = found;
-                }
-
-                historyList = await Api.get('/api/applications/' + applicantId + '/history');
+                applicant = await Api.get('/api/applications/' + applicantId);
+                historyList = applicant.history || await Api.get('/api/applications/' + applicantId + '/history');
             }
             catch (error)
             {
@@ -1137,20 +1128,10 @@
 
             try
             {
-                applicant = await Api.patch('/api/applications/' + applicantId + '/status', { status: 'Rejected' });
+                const result = await Api.post('/api/applications/' + applicantId + '/decision', { decision: 'Rejected', reason: reason });
+                applicant = result.application;
                 historyList = applicant.history || historyList;
                 rejectOpen = false;
-
-                try
-                {
-                    const note = await Api.post('/api/applications/' + applicantId + '/notes', { text: 'Rejection reason: ' + reason });
-                    notes.push(note);
-                }
-                catch (noteError)
-                {
-                    showToast('The application was rejected, but the reason could not be saved as a note.', 'info');
-                }
-
                 renderAll();
                 showToast('Application rejected. The decision is on the audit trail.', 'success');
             }
@@ -1221,16 +1202,10 @@
 
         async function load()
         {
-            if (!jobId)
-            {
-                fatal('No job was specified, so this applicant could not be loaded.', 'jobs.html', 'Back to jobs', null);
-                return;
-            }
-
             if (!applicantId)
             {
                 fatal('No applicant was specified. Open an applicant from the list to see the full assessment.',
-                    'applicants.html?jobId=' + jobId, 'Back to applicants', null);
+                    'jobs.html', 'Back to jobs', null);
                 return;
             }
 
@@ -1238,24 +1213,9 @@
 
             try
             {
-                const results = await Promise.all([
-                    Api.get('/api/jobs/' + jobId),
-                    Api.get('/api/jobs/' + jobId + '/applicants')
-                ]);
-
-                job = results[0];
-
-                applicant = results[1].filter(function (item)
-                {
-                    return item.id === applicantId;
-                })[0] || null;
-
-                if (!applicant)
-                {
-                    fatal('This applicant could not be found for ' + job.title + '. The application may have been removed.',
-                        'applicants.html?jobId=' + jobId, 'Back to applicants', null);
-                    return;
-                }
+                applicant = await Api.get('/api/applications/' + applicantId);
+                jobId = applicant.jobId;
+                job = await Api.get('/api/jobs/' + jobId);
 
                 if (applicant.status === 'AI Assessment Available')
                 {
@@ -1287,7 +1247,7 @@
             }
             catch (error)
             {
-                fatal(error.message, 'applicants.html?jobId=' + jobId, 'Back to applicants', load);
+                fatal(error.message, jobId ? 'applicants.html?jobId=' + jobId : 'jobs.html', jobId ? 'Back to applicants' : 'Back to jobs', load);
             }
         }
 
