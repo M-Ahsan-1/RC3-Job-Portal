@@ -1,16 +1,23 @@
-// A9: analytics for the logged-in recruiter, only for their own jobs.
+// A9: analytics for the logged in recruiter, only for their own jobs.
 //   GET /api/analytics
-// Returns { totals, funnel, distribution, topSkills, topGaps, byJob } (the shape analytics.html reads).
+// One response carries both key sets from docs/API.md, so recruiter.html and analytics.html call the same route:
+//   overview page:  active_jobs, total_applications, shortlisted_count, pending_reviews, upcoming_interviews,
+//                   applications_by_job, applications_by_stage, shortlist_rate, avg_processing_time, common_skill_gaps
+//   analytics page: totals, funnel, distribution, topSkills, topGaps, byJob
 // The score used everywhere is the override score when there is one, otherwise the AI score.
 const express = require('express');
 const db = require('../db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
-const FUNNEL_ORDER = ['Applied', 'Shortlisted', 'Selected', 'Rejected'];
+const FUNNEL_ORDER = ['Submitted', 'Parsed', 'AI Assessment Available', 'Recruiter Review', 'Shortlisted', 'Interview', 'Selected', 'Rejected'];
+const SHORTLISTED_OR_LATER = ['Shortlisted', 'Interview', 'Selected'];
+const NEEDS_REVIEW = ['AI Assessment Available', 'Recruiter Review'];
+const FINISHED = ['Selected', 'Rejected'];
 const BANDS = [['0-39', 0, 39], ['40-59', 40, 59], ['60-79', 60, 79], ['80-100', 80, 100]];
 const TOP = 6;
 const MAX_ROWS = 20000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function asObject(value)
 {
@@ -45,6 +52,16 @@ function average(numbers)
     return numbers.length ? Math.round(numbers.reduce(function (sum, n) { return sum + n; }, 0) / numbers.length) : 0;
 }
 
+// average days from applying to a final decision, one decimal. 0 when nothing has been decided yet
+function averageDays(rows)
+{
+    const spans = rows.filter(function (r) { return FINISHED.indexOf(r.status) !== -1 && r.created && r.updated; })
+        .map(function (r) { return (new Date(r.updated).getTime() - new Date(r.created).getTime()) / DAY_MS; })
+        .filter(function (days) { return !isNaN(days) && days >= 0; });
+
+    return spans.length ? Math.round(spans.reduce(function (sum, d) { return sum + d; }, 0) / spans.length * 10) / 10 : 0;
+}
+
 function tally(rows, pick)
 {
     const counts = {};
@@ -70,28 +87,47 @@ function tally(rows, pick)
         .sort(function (a, b) { return b.count - a.count || a.skill.localeCompare(b.skill); }).slice(0, TOP);
 }
 
-function build(jobs, rows)
+function build(jobs, rows, upcoming)
 {
     const scored = rows.filter(function (r) { return r.score !== null; });
     const count = function (status) { return rows.filter(function (r) { return r.status === status; }).length; };
+    const countIn = function (list) { return rows.filter(function (r) { return list.indexOf(r.status) !== -1; }).length; };
     const extra = [];
 
     rows.forEach(function (r) { if (FUNNEL_ORDER.indexOf(r.status) === -1 && extra.indexOf(r.status) === -1) { extra.push(r.status); } });
 
+    const funnel = FUNNEL_ORDER.concat(extra).map(function (status) { return { status: status, count: count(status) }; });
+    const topGaps = tally(rows, function (r) { return skillNames(r.json.missing_skills || r.json.skill_gaps || r.json.gaps); });
+    // someone who moved on to Interview or Selected was shortlisted too, so they stay in this number
+    const shortlisted = countIn(SHORTLISTED_OR_LATER);
+
     return {
+        // overview page
+        active_jobs: jobs.filter(function (j) { return String(j.status || 'open').toLowerCase() !== 'closed'; }).length,
+        total_applications: rows.length,
+        shortlisted_count: shortlisted,
+        pending_reviews: countIn(NEEDS_REVIEW),
+        upcoming_interviews: upcoming,
+        applications_by_job: jobs.map(function (job) { return { job: job.title, count: rows.filter(function (r) { return String(r.job_id) === String(job.id); }).length }; }),
+        applications_by_stage: funnel,
+        shortlist_rate: rows.length ? Math.round(shortlisted / rows.length * 100) : 0,
+        avg_processing_time: averageDays(rows),
+        common_skill_gaps: topGaps,
+
+        // analytics page
         totals:
         {
             jobs: jobs.length,
             applicants: rows.length,
-            shortlisted: count('Shortlisted'),
+            shortlisted: shortlisted,
             selected: count('Selected'),
             averageScore: average(scored.map(function (r) { return r.score; })),
             unscored: rows.length - scored.length
         },
-        funnel: FUNNEL_ORDER.concat(extra).map(function (status) { return { status: status, count: count(status) }; }),
+        funnel: funnel,
         distribution: BANDS.map(function (b) { return { label: b[0], count: scored.filter(function (r) { return r.score >= b[1] && r.score <= b[2]; }).length }; }),
         topSkills: tally(rows, function (r) { return skillNames(r.json.matched_skills); }),
-        topGaps: tally(rows, function (r) { return skillNames(r.json.missing_skills || r.json.skill_gaps || r.json.gaps); }),
+        topGaps: topGaps,
         byJob: jobs.map(function (job)
         {
             const mine = rows.filter(function (r) { return String(r.job_id) === String(job.id); });
@@ -104,18 +140,19 @@ router.get('/analytics', requireAuth, requireRole('recruiter'), async function (
 {
     try
     {
-        const [jobs] = await db.query('SELECT id, title FROM jobs WHERE recruiter_id = ? ORDER BY id', [req.user.id]);
+        const [jobs] = await db.query('SELECT id, title, status FROM jobs WHERE recruiter_id = ? ORDER BY id', [req.user.id]);
         const [applications] = await db.query(
-            'SELECT a.job_id, a.status, COALESCE(a.override_score, a.score) AS effective_score, a.score_json FROM applications a JOIN jobs j ON j.id = a.job_id WHERE j.recruiter_id = ? LIMIT ' + MAX_ROWS,
+            'SELECT a.job_id, a.status, a.created_at, a.updated_at, COALESCE(a.override_score, a.score) AS effective_score, a.score_json FROM applications a JOIN jobs j ON j.id = a.job_id WHERE j.recruiter_id = ? LIMIT ' + MAX_ROWS,
             [req.user.id]);
+        const [upcoming] = await db.query('SELECT COUNT(*) AS total FROM interviews WHERE recruiter_id = ? AND status = ? AND scheduled_at > ?', [req.user.id, 'scheduled', new Date()]);
 
         const rows = applications.map(function (a)
         {
             const value = a.effective_score === null || a.effective_score === undefined ? null : Number(a.effective_score);
-            return { job_id: a.job_id, status: a.status, score: value === null || isNaN(value) ? null : value, json: asObject(a.score_json) };
+            return { job_id: a.job_id, status: a.status, created: a.created_at, updated: a.updated_at, score: value === null || isNaN(value) ? null : value, json: asObject(a.score_json) };
         });
 
-        return res.json(build(jobs, rows));
+        return res.json(build(jobs, rows, Number(upcoming[0] && upcoming[0].total) || 0));
     }
     catch (error)
     {

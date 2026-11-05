@@ -14,15 +14,21 @@ function resetDb()
     tables.jobs = [{ id: 1, status: 'open', recruiter_id: 10, title: 'Backend Developer', description: 'API work', required_skills: JSON.stringify(['Node.js', 'Docker']) },
                    { id: 2, status: 'closed', recruiter_id: 10, title: 'Old job', description: '', required_skills: '[]' }];
     tables.applications = [];
+    tables.history = [];
+    tables.notifications = [];
 }
 
 jest.mock('../src/db', () => ({
     query: jest.fn(async (sql, params) =>
     {
         const t = global.__tables;
-        if (sql.startsWith('SELECT id, status FROM jobs')) { return [t.jobs.filter(j => j.id === params[0])]; }
+        if (sql.startsWith('SELECT id, title, status FROM jobs')) { return [t.jobs.filter(j => j.id === params[0])]; }
         if (sql.startsWith('SELECT id FROM applications WHERE job_id')) { return [t.applications.filter(a => a.job_id === params[0] && a.candidate_id === params[1])]; }
         if (sql.startsWith('INSERT INTO applications')) { const row = { id: t.applications.length + 1, job_id: params[0], candidate_id: params[1], resume_path: params[2], status: params[3], pipeline_status: params[4], pipeline_error: null }; t.applications.push(row); return [{ insertId: row.id }]; }
+        if (sql.startsWith('INSERT INTO application_history')) { t.history.push({ application_id: params[0], from: params[1], to: params[2], changed_by: params[3] }); return [{}]; }
+        if (sql.startsWith('INSERT INTO notifications')) { t.notifications.push({ user_id: params[0], message: params[1] }); return [{}]; }
+        if (sql.startsWith('SELECT status, pipeline_status FROM applications')) { return [t.applications.filter(a => a.id === params[0])]; }
+        if (sql.startsWith('UPDATE applications SET status = ?')) { t.applications.find(x => x.id === params[1]).status = params[0]; return [{}]; }
         if (sql.startsWith('SELECT a.id, a.resume_path')) { const a = t.applications.find(x => x.id === params[0]); if (!a) { return [[]]; } const j = t.jobs.find(x => x.id === a.job_id); return [[{ id: a.id, resume_path: a.resume_path, job_id: j.id, title: j.title, description: j.description, required_skills: j.required_skills }]]; }
         if (sql.startsWith('SELECT a.id, a.candidate_id')) { const a = t.applications.find(x => x.id === params[0]); if (!a) { return [[]]; } const j = t.jobs.find(x => x.id === a.job_id); return [[{ id: a.id, candidate_id: a.candidate_id, pipeline_status: a.pipeline_status, pipeline_error: a.pipeline_error, recruiter_id: j.recruiter_id }]]; }
         if (sql.startsWith('UPDATE applications SET pipeline_status = ?, pipeline_error = ? WHERE')) { const a = t.applications.find(x => x.id === params[2]); a.pipeline_status = params[0]; a.pipeline_error = params[1]; return [{}]; }
@@ -55,9 +61,10 @@ const candidate = (id) => JSON.stringify({ id: id, role: 'candidate' });
 const recruiter = (id) => JSON.stringify({ id: id, role: 'recruiter' });
 const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\n');
 
+// jobId goes in as a form field and the file after it, same as the apply page sends it
 function apply(user, jobId, file, name, type)
 {
-    return request(app).post('/api/jobs/' + jobId + '/apply').set('x-test-user', user).attach('resume', file, { filename: name || 'cv.pdf', contentType: type || 'application/pdf' });
+    return request(app).post('/api/applications').set('x-test-user', user).field('jobId', String(jobId)).attach('resume', file, { filename: name || 'cv.pdf', contentType: type || 'application/pdf' });
 }
 
 beforeEach(() =>
@@ -71,17 +78,44 @@ afterEach(async () => { await router.idle(); });
 
 describe('apply and pipeline', () =>
 {
-    test('saves the application and scores it in the background', async () =>
+    test('returns the candidate view and the job title', async () =>
     {
         const res = await apply(candidate(5), 1, pdf);
         expect(res.status).toBe(201);
-        expect(res.body.pipelineStatus).toBe('queued');
+        expect(res.body.jobTitle).toBe('Backend Developer');
+        expect(res.body.application).toMatchObject({ id: 1, jobId: 1, jobTitle: 'Backend Developer', status: 'Submitted' });
+        expect(res.body.application.timeline).toHaveLength(1);
+        expect(res.body.application.timeline[0].status).toBe('Submitted');
+        expect(tables.applications[0].candidate_id).toBe(5);
+    });
+
+    test('scores in the background and walks the status to AI Assessment Available', async () =>
+    {
+        await apply(candidate(5), 1, pdf);
         await router.idle();
         const a = tables.applications[0];
         expect(a.pipeline_status).toBe('done');
+        expect(a.status).toBe('AI Assessment Available');
         expect(a.score).toBe(82);
         expect(a.score_json.missing_skills).toEqual(['Docker']);
         expect(matcher.scoreApplication.mock.calls[0][0].job.required_skills).toEqual(['Node.js', 'Docker']);
+    });
+
+    test('every status change lands in the history, the first one is written by the candidate', async () =>
+    {
+        await apply(candidate(5), 1, pdf);
+        await router.idle();
+        expect(tables.history).toEqual([
+            { application_id: 1, from: null, to: 'Submitted', changed_by: 5 },
+            { application_id: 1, from: 'Submitted', to: 'Parsed', changed_by: null },
+            { application_id: 1, from: 'Parsed', to: 'AI Assessment Available', changed_by: null }
+        ]);
+    });
+
+    test('the candidate gets a received notification', async () =>
+    {
+        await apply(candidate(5), 1, pdf);
+        expect(tables.notifications).toEqual([{ user_id: 5, message: 'Your application for Backend Developer was received.' }]);
     });
 
     test('clamps scores to 0-100', async () =>
@@ -92,7 +126,7 @@ describe('apply and pipeline', () =>
         expect(tables.applications[0].score).toBe(100);
     });
 
-    test('a parser failure is saved, not thrown', async () =>
+    test('a parser failure is saved, not thrown, and the status stays Submitted', async () =>
     {
         parser.parseResume.mockRejectedValue(new Error('Gemini quota exceeded'));
         const res = await apply(candidate(5), 1, pdf);
@@ -100,6 +134,8 @@ describe('apply and pipeline', () =>
         await router.idle();
         expect(tables.applications[0].pipeline_status).toBe('failed');
         expect(tables.applications[0].pipeline_error).toMatch(/quota/);
+        expect(tables.applications[0].status).toBe('Submitted');
+        expect(tables.history).toHaveLength(1);
     });
 
     test('a score that is not a number fails the pipeline', async () =>
@@ -117,6 +153,24 @@ describe('apply and pipeline', () =>
         await router.idle();
         expect(tables.applications[0].pipeline_status).toBe('failed');
         expect(tables.applications[0].pipeline_error).toMatch(/too long/);
+    });
+
+    test('a broken history or notification table does not stop the application', async () =>
+    {
+        const db = require('../src/db');
+        const real = db.query.getMockImplementation();
+        db.query.mockImplementation(async (sql, p) =>
+        {
+            if (sql.startsWith('INSERT INTO application_history') || sql.startsWith('INSERT INTO notifications')) { throw new Error('no such table'); }
+            return real(sql, p);
+        });
+        const quiet = jest.spyOn(console, 'error').mockImplementation(() => { });
+        const res = await apply(candidate(5), 1, pdf);
+        expect(res.status).toBe(201);
+        expect(tables.applications).toHaveLength(1);
+        await router.idle();
+        db.query.mockImplementation(real);
+        quiet.mockRestore();
     });
 });
 
@@ -140,19 +194,30 @@ describe('upload validation', () =>
         expect(fs.readdirSync(process.env.UPLOAD_DIR).length).toBe(before);
     });
 
-    test('rejects a file over the size limit', async () =>
+    test('rejects a file over the size limit with 413', async () =>
     {
         const big = Buffer.concat([pdf, Buffer.alloc(2 * 1024 * 1024)]);
         const res = await apply(candidate(5), 1, big);
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(413);
         expect(res.body.error).toMatch(/larger than 1 MB/);
     });
 
     test('rejects a missing file', async () =>
     {
-        const res = await request(app).post('/api/jobs/1/apply').set('x-test-user', candidate(5));
+        const res = await request(app).post('/api/applications').set('x-test-user', candidate(5)).field('jobId', '1');
         expect(res.status).toBe(400);
         expect(res.body.error).toMatch(/Attach your resume/);
+    });
+
+    test('rejects a missing or bad job id and deletes the file', async () =>
+    {
+        const before = fs.readdirSync(process.env.UPLOAD_DIR).length;
+        const none = await request(app).post('/api/applications').set('x-test-user', candidate(5)).attach('resume', pdf, { filename: 'cv.pdf', contentType: 'application/pdf' });
+        expect(none.status).toBe(400);
+        expect(none.body.error).toMatch(/job id/);
+        expect((await apply(candidate(5), 'abc', pdf)).status).toBe(400);
+        await new Promise(r => setTimeout(r, 50));
+        expect(fs.readdirSync(process.env.UPLOAD_DIR).length).toBe(before);
     });
 });
 
@@ -175,8 +240,14 @@ describe('rules', () =>
     test('recruiters cannot apply and anonymous users are rejected', async () =>
     {
         expect((await apply(recruiter(10), 1, pdf)).status).toBe(403);
-        const anon = await request(app).post('/api/jobs/1/apply').attach('resume', pdf, { filename: 'cv.pdf', contentType: 'application/pdf' });
+        const anon = await request(app).post('/api/applications').field('jobId', '1').attach('resume', pdf, { filename: 'cv.pdf', contentType: 'application/pdf' });
         expect(anon.status).toBe(401);
+    });
+
+    test('the old per job apply route is gone', async () =>
+    {
+        const res = await request(app).post('/api/jobs/1/apply').set('x-test-user', candidate(5)).attach('resume', pdf, { filename: 'cv.pdf', contentType: 'application/pdf' });
+        expect(res.status).toBe(404);
     });
 });
 
@@ -209,6 +280,16 @@ describe('status and reprocess', () =>
         expect(res.status).toBe(202);
         await router.idle();
         expect(tables.applications[0].score).toBe(40);
+    });
+
+    test('reprocess does not drag a later status back', async () =>
+    {
+        tables.applications[0].status = 'Recruiter Review';
+        const before = tables.history.length;
+        await request(app).post('/api/applications/1/reprocess').set('x-test-user', recruiter(10));
+        await router.idle();
+        expect(tables.applications[0].status).toBe('Recruiter Review');
+        expect(tables.history).toHaveLength(before);
     });
 
     test('reprocess is refused while a run is in progress', async () =>
