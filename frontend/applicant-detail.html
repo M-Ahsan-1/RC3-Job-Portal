@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applicant detail - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        .big-score{font-size:2.6rem;font-weight:700;line-height:1;color:var(--ac)}
+        .skill-tags .badge{margin:0 6px 6px 0}
+        .status-actions{display:flex;gap:8px;flex-wrap:wrap}
+        .status-actions .btn[aria-pressed="true"]{box-shadow:0 0 0 3px rgba(79,70,229,.25)}
+        .note{border-bottom:1px solid var(--border);padding:10px 0}
+        .note:last-child{border-bottom:0}
+        .note p{white-space:pre-wrap}
+        .timeline{list-style:none}
+        .timeline li{border-left:3px solid var(--border);padding:2px 0 14px 14px;margin-left:4px}
+        .timeline li:last-child{padding-bottom:0}
+        .explanation{white-space:pre-wrap;max-width:70ch}
+    </style>
+</head>
+<body class="theme-recruiter">
+    <div id="content" class="d-content">
+        <section class="d-panel" aria-label="Applicant summary">
+            <div class="d-panel-head">
+                <div>
+                    <h3 id="name">Applicant</h3>
+                    <p class="sub" id="meta"></p>
+                </div>
+                <div class="row">
+                    <a class="btn btn-secondary btn-sm" id="back-link" href="jobs.html">Back to applicants</a>
+                </div>
+            </div>
+            <div id="error-box" class="form-error hidden" role="alert"></div>
+            <div id="summary"></div>
+        </section>
+
+        <div class="grid-2">
+            <section class="d-panel" aria-label="Score breakdown">
+                <div class="d-panel-head"><div><h3>Score breakdown</h3><p class="sub">How the overall score was built</p></div></div>
+                <div id="breakdown"></div>
+                <h4 style="margin:18px 0 8px">Explanation</h4>
+                <div id="explanation"></div>
+            </section>
+
+            <section class="d-panel" aria-label="Skills">
+                <div class="d-panel-head"><div><h3>Skills</h3><p class="sub">Matched against the job requirements</p></div></div>
+                <h4 style="margin-bottom:8px">Matched skills</h4>
+                <div id="matched" class="skill-tags"></div>
+                <h4 style="margin:14px 0 8px">Skill gaps</h4>
+                <div id="gaps" class="skill-tags"></div>
+            </section>
+        </div>
+
+        <section class="d-panel" aria-label="Application status">
+            <div class="d-panel-head"><div><h3>Application status</h3><p class="sub">Every change is recorded in the audit trail</p></div></div>
+            <div id="status-error" class="form-error hidden" role="alert"></div>
+            <div id="status-actions" class="status-actions"></div>
+        </section>
+
+        <div class="grid-2">
+            <section class="d-panel" aria-label="Notes">
+                <div class="d-panel-head"><div><h3>Recruiter notes</h3><p class="sub">Only recruiters can see these</p></div></div>
+                <form id="note-form" novalidate>
+                    <div id="note-error" class="form-error hidden" role="alert"></div>
+                    <div class="form-group"><label for="note-text">Add a note</label><textarea id="note-text" placeholder="What stood out about this applicant?"></textarea></div>
+                    <button class="btn btn-sm" id="note-save" type="submit">Save note</button>
+                </form>
+                <div id="notes" style="margin-top:16px"></div>
+            </section>
+
+            <section class="d-panel" aria-label="Audit trail">
+                <div class="d-panel-head"><div><h3>Audit trail</h3><p class="sub">Newest first</p></div></div>
+                <div id="history"></div>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-applicants.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        const user = guardPage('recruiter');
+        const applicationId = new URLSearchParams(window.location.search).get('id');
+        const STATUSES = ['Applied', 'Shortlisted', 'Selected', 'Rejected'];
+        let application = null;
+
+        function el(id)
+        {
+            return document.getElementById(id);
+        }
+
+        function showBox(id, message)
+        {
+            el(id).textContent = message || '';
+            el(id).classList.toggle('hidden', !message);
+        }
+
+        function effective(item)
+        {
+            const has = item.overrideScore !== null && item.overrideScore !== undefined;
+            return has ? item.overrideScore : item.score;
+        }
+
+        function statusClass(status)
+        {
+            if (status === 'Shortlisted' || status === 'Selected')
+            {
+                return 'ok';
+            }
+
+            return status === 'Rejected' ? 'bad' : 'info';
+        }
+
+        function skillName(item)
+        {
+            return typeof item === 'string' ? item : (item && (item.skill || item.name)) || '';
+        }
+
+        function formatDate(value)
+        {
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? '' : date.toLocaleString();
+        }
+
+        function renderSummary()
+        {
+            const overridden = application.overrideScore !== null && application.overrideScore !== undefined;
+
+            el('name').textContent = application.candidateName || 'Applicant';
+            el('meta').textContent = application.email || '';
+
+            el('summary').innerHTML =
+                '<div class="row" style="gap:28px">' +
+                '<div><div class="big-score">' + effective(application) + '</div><p class="muted">Overall score out of 100</p></div>' +
+                '<div><span class="d-badge ' + statusClass(application.status) + '">' + Dash.esc(application.status) + '</span>' +
+                (overridden ? '<p class="muted" style="margin-top:6px">Overridden from ' + application.score + '. Reason: ' + Dash.esc(application.overrideReason || 'none given') + '</p>' : '') +
+                '</div></div>';
+        }
+
+        function renderBreakdown()
+        {
+            const data = (application.score_json || {}).breakdown;
+            let rows = [];
+
+            if (Array.isArray(data))
+            {
+                rows = data.map(function (item) { return { label: item.label || item.name, value: Number(item.score) }; });
+            }
+            else if (data && typeof data === 'object')
+            {
+                rows = Object.keys(data).map(function (key) { return { label: key.replace(/_/g, ' '), value: Number(data[key]) }; });
+            }
+
+            if (!rows.length)
+            {
+                el('breakdown').innerHTML = Dash.empty('bar-chart-3', 'No score breakdown was saved for this applicant.');
+            }
+            else
+            {
+                el('breakdown').innerHTML = rows.map(function (row)
+                {
+                    const value = Math.max(0, Math.min(100, row.value || 0));
+
+                    return '<div class="score-row"><div class="score-label"><span>' + Dash.esc(row.label) + '</span><b>' + value + '</b></div>' +
+                        '<div class="score-bar" role="progressbar" aria-valuenow="' + value + '" aria-valuemin="0" aria-valuemax="100" aria-label="' + Dash.esc(row.label) + '"><div class="score-fill" style="width:' + value + '%"></div></div></div>';
+                }).join('');
+            }
+
+            const text = (application.score_json || {}).explanation;
+            el('explanation').innerHTML = text ? '<p class="explanation">' + Dash.esc(text) + '</p>' : '<p class="muted">No explanation was saved for this score.</p>';
+        }
+
+        function renderSkills()
+        {
+            const json = application.score_json || {};
+            const matched = (json.matched_skills || []).map(skillName).filter(Boolean);
+            const gaps = (json.missing_skills || json.skill_gaps || json.gaps || []).map(skillName).filter(Boolean);
+
+            el('matched').innerHTML = matched.length
+                ? matched.map(function (name) { return '<span class="badge badge-green">' + Dash.esc(name) + '</span>'; }).join('')
+                : '<p class="muted">No matched skills.</p>';
+
+            el('gaps').innerHTML = gaps.length
+                ? gaps.map(function (name) { return '<span class="badge badge-red">' + Dash.esc(name) + '</span>'; }).join('')
+                : '<p class="muted">No skill gaps found.</p>';
+        }
+
+        function renderStatusButtons()
+        {
+            el('status-actions').innerHTML = STATUSES.map(function (status)
+            {
+                const current = status === application.status;
+                const style = status === 'Rejected' ? 'btn-danger' : (status === 'Applied' ? 'btn-secondary' : 'btn-success');
+
+                return '<button type="button" class="btn ' + style + '" data-status="' + Dash.esc(status) + '" aria-pressed="' + current + '"' + (current ? ' disabled' : '') + '>' + Dash.esc(status) + '</button>';
+            }).join('');
+        }
+
+        function renderNotes(notes)
+        {
+            if (!notes.length)
+            {
+                el('notes').innerHTML = '<p class="muted">No notes yet.</p>';
+                return;
+            }
+
+            el('notes').innerHTML = notes.slice().reverse().map(function (note)
+            {
+                return '<div class="note"><p>' + Dash.esc(note.text) + '</p><p class="muted">' + Dash.esc(note.author || 'Recruiter') + ', ' + Dash.esc(formatDate(note.createdAt)) + '</p></div>';
+            }).join('');
+        }
+
+        function renderHistory(events)
+        {
+            if (!events.length)
+            {
+                el('history').innerHTML = Dash.empty('history', 'Nothing has happened to this application yet.');
+                Dash.icons();
+                return;
+            }
+
+            el('history').innerHTML = '<ul class="timeline">' + events.slice().reverse().map(function (event)
+            {
+                return '<li><b>' + Dash.esc(event.action || 'Updated') + '</b>' +
+                    (event.detail ? '<br>' + Dash.esc(event.detail) : '') +
+                    '<br><span class="muted">' + Dash.esc(event.by || 'System') + ', ' + Dash.esc(formatDate(event.createdAt)) + '</span></li>';
+            }).join('') + '</ul>';
+            Dash.icons();
+        }
+
+        async function loadNotes()
+        {
+            renderNotes(await Api.get('/api/applications/' + encodeURIComponent(applicationId) + '/notes'));
+        }
+
+        async function loadHistory()
+        {
+            renderHistory(await Api.get('/api/applications/' + encodeURIComponent(applicationId) + '/history'));
+        }
+
+        async function load()
+        {
+            if (!applicationId)
+            {
+                showBox('error-box', 'Open an applicant from the applicants list.');
+                return;
+            }
+
+            showBox('error-box', '');
+            el('summary').innerHTML = Dash.skeletons(2);
+
+            try
+            {
+                application = await Api.get('/api/applications/' + encodeURIComponent(applicationId));
+
+                if (application.jobId !== undefined)
+                {
+                    el('back-link').href = 'applicants.html?jobId=' + encodeURIComponent(application.jobId);
+                }
+
+                renderSummary();
+                renderBreakdown();
+                renderSkills();
+                renderStatusButtons();
+                await Promise.all([loadNotes(), loadHistory()]);
+                Dash.icons();
+            }
+            catch (error)
+            {
+                el('summary').innerHTML = '';
+                showBox('error-box', error.message);
+            }
+        }
+
+        async function changeStatus(status, button)
+        {
+            showBox('status-error', '');
+            button.disabled = true;
+            button.classList.add('loading');
+
+            try
+            {
+                await Api.patch('/api/applications/' + encodeURIComponent(applicationId) + '/status', { status: status });
+                application.status = status;
+                renderSummary();
+                renderStatusButtons();
+                await loadHistory();
+                showToast('Status changed to ' + status + '.', 'success');
+            }
+            catch (error)
+            {
+                showBox('status-error', error.message);
+                button.disabled = false;
+                button.classList.remove('loading');
+            }
+        }
+
+        async function saveNote(event)
+        {
+            event.preventDefault();
+            const text = el('note-text').value.trim();
+            showBox('note-error', '');
+
+            if (text.length < 2)
+            {
+                showBox('note-error', 'Write a note before saving.');
+                return;
+            }
+
+            el('note-save').disabled = true;
+            el('note-save').classList.add('loading');
+
+            try
+            {
+                await Api.post('/api/applications/' + encodeURIComponent(applicationId) + '/notes', { text: text });
+                el('note-text').value = '';
+                await Promise.all([loadNotes(), loadHistory()]);
+                showToast('Note saved.', 'success');
+            }
+            catch (error)
+            {
+                showBox('note-error', error.message);
+            }
+
+            el('note-save').disabled = false;
+            el('note-save').classList.remove('loading');
+        }
+
+        if (user)
+        {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'sparkles',
+                title: 'Applicant detail',
+                subtitle: 'Score, skills, status and notes',
+                search: true,
+                items:
+                [
+                    { label: 'Overview', href: 'recruiter.html', icon: 'layout-dashboard' },
+                    { label: 'Jobs', href: 'jobs.html', icon: 'briefcase' },
+                    { label: 'Interviews', href: 'interviews.html', icon: 'calendar-clock' },
+                    { label: 'Talent Search', href: 'search.html', icon: 'search' }
+                ],
+                onBell: function ()
+                {
+                    showToast('You have no new notifications.', 'info');
+                }
+            });
+
+            document.querySelectorAll('.d-nav a').forEach(function (link)
+            {
+                link.classList.toggle('on', link.getAttribute('href') === 'jobs.html');
+            });
+
+            el('status-actions').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-status]');
+
+                if (button)
+                {
+                    changeStatus(button.getAttribute('data-status'), button);
+                }
+            });
+
+            el('note-form').addEventListener('submit', saveNote);
+
+            load();
+        }
+    </script>
+</body>
+</html>
