@@ -3,131 +3,399 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compare applicants - RC3 Job Portal</title>
+    <title>Compare Applicants - RC3 Job Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <style>
-        th.name{text-transform:none;font-size:.95rem;color:var(--text)}
-        td.best{background:var(--success-light);font-weight:700}
-        td .badge{margin:0 6px 6px 0}
-        td.label,th.label{width:170px;color:var(--muted);font-weight:600}
+        #compare
+        {
+            margin-bottom: 16px;
+        }
+
+        .c-head
+        {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .c-email
+        {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin: 2px 0 10px;
+            word-break: break-all;
+        }
+
+        .c-job
+        {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82rem;
+            color: #475569;
+            margin-bottom: 10px;
+        }
+
+        .c-job svg
+        {
+            width: 14px;
+            height: 14px;
+            flex: none;
+            color: #94a3b8;
+        }
+
+        .c-status
+        {
+            margin-bottom: 16px;
+        }
+
+        .c-total
+        {
+            padding: 14px 16px;
+        }
+
+        .c-total .d-total-num
+        {
+            font-size: 2rem;
+        }
+
+        .c-explain
+        {
+            font-size: 0.85rem;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .c-claims
+        {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid #eef0f6;
+            font-size: 0.82rem;
+            color: #475569;
+        }
+
+        .c-claims svg
+        {
+            width: 15px;
+            height: 15px;
+            flex: none;
+            color: #b45309;
+        }
+
+        .c-claims a
+        {
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 1000px)
+        {
+            .d-compare
+            {
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+        }
     </style>
 </head>
 <body class="theme-recruiter">
     <div id="content" class="d-content">
-        <section class="d-panel" aria-label="Compare applicants">
+        <section class="d-panel" aria-label="Comparison controls">
             <div class="d-panel-head">
-                <div><h3>Compare applicants</h3><p class="sub">The highest value in each row is shaded green</p></div>
-                <a class="btn btn-secondary btn-sm" id="back" href="search.html">Back</a>
+                <div>
+                    <h3>Side-by-side comparison</h3>
+                    <p class="sub" id="compare-sub">Compare 2 or 3 applicants on evidence, scores and gaps</p>
+                </div>
+                <div class="row">
+                    <a class="btn btn-secondary btn-sm" href="search.html"><i data-lucide="arrow-left"></i>Back to search</a>
+                    <a class="btn btn-secondary btn-sm hidden" id="applicants-link" href="jobs.html"><i data-lucide="users"></i>Back to applicants</a>
+                </div>
             </div>
-            <div id="error-box" class="form-error hidden" role="alert"></div>
-            <div id="table"></div>
+        </section>
+
+        <div id="notice"></div>
+        <div class="d-compare" id="compare"></div>
+
+        <section class="d-panel hidden" id="missing-panel" aria-label="Missing information">
+            <div class="d-panel-head">
+                <div>
+                    <h3>What sets each applicant apart</h3>
+                    <p class="sub">Matched skills an applicant evidences that not all of the others do</p>
+                </div>
+            </div>
+            <div id="missing"></div>
         </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
     <script src="js/mock.js"></script>
-    <script src="js/mock-applicants.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/mock-extra.js"></script>
     <script src="js/dashboard.js"></script>
-    <script src="js/recruiter-nav.js"></script>
     <script>
-        const user = mountRecruiterShell('Compare', 'Side by side', 'jobs.html');
+        const user = guardPage('recruiter');
 
-        function el(id) { return document.getElementById(id); }
-
-        function names(list)
+        function parseIds(raw)
         {
-            return (list || []).map(function (i) { return typeof i === 'string' ? i : (i && (i.skill || i.name)) || ''; }).filter(Boolean);
-        }
-
-        function effective(a)
-        {
-            return a.overrideScore !== null && a.overrideScore !== undefined ? a.overrideScore : a.score;
-        }
-
-        function breakdown(a)
-        {
-            const data = (a.score_json || {}).breakdown;
-            const map = {};
-
-            if (Array.isArray(data))
+            return String(raw || '').split(',').map(function (part)
             {
-                data.forEach(function (i) { map[i.label || i.name] = Number(i.score); });
+                return Number(part.trim());
+            }).filter(function (id)
+            {
+                return id > 0;
+            });
+        }
+
+        function detailHref(applicant)
+        {
+            return 'applicant-detail.html?id=' + encodeURIComponent(applicant.id) + '&jobId=' + encodeURIComponent(applicant.jobId);
+        }
+
+        function percent(value)
+        {
+            return Math.round((Number(value) || 0) * 100) + '%';
+        }
+
+        function scoreOf(applicant)
+        {
+            const score = applicant.effectiveScore;
+            return score === null || score === undefined ? null : Number(score);
+        }
+
+        function leaderId(applicants)
+        {
+            let best = null;
+            let bestScore = -1;
+
+            for (let i = 0; i < applicants.length; i++)
+            {
+                const score = scoreOf(applicants[i]);
+
+                if (score !== null && score > bestScore)
+                {
+                    bestScore = score;
+                    best = applicants[i].id;
+                }
             }
-            else if (data && typeof data === 'object')
+
+            return best;
+        }
+
+        function columnHtml(applicant, jobTitle, isLeader)
+        {
+            const json = applicant.score_json;
+
+            let html = '<div class="d-compare-col' + (isLeader ? ' leader' : '') + '">';
+            html += '<div class="c-head"><h4>' + Dash.esc(applicant.candidateName) + '</h4>' + (isLeader ? Dash.badge('Highest score', 'ok') : '') + '</div>';
+            html += '<p class="c-email">' + Dash.esc(applicant.email) + '</p>';
+            html += '<p class="c-job"><i data-lucide="briefcase"></i>' + Dash.esc(jobTitle || 'Unknown role') + '</p>';
+            html += '<div class="c-status">' + Dash.badge(applicant.status, Dash.statusTone(applicant.status)) + '</div>';
+
+            if (!json)
             {
-                Object.keys(data).forEach(function (k) { map[k.replace(/_/g, ' ')] = Number(data[k]); });
+                html += '<div class="d-total c-total"><span class="d-total-num">–</span><div><b>Not assessed yet</b><p>Scores and evidence appear once the resume has been assessed.</p></div></div>';
+                html += Dash.callout('info', '', '<p>This application has no AI assessment yet, so there is no score, skill evidence or explanation to compare.</p>');
+                html += '<div class="c-claims"><span>No assessment data to review.</span><a href="' + detailHref(applicant) + '">Open applicant</a></div>';
+                return html + '</div>';
             }
 
-            return map;
+            const breakdown = json.breakdown || {};
+            const overridden = applicant.overrideScore !== null && applicant.overrideScore !== undefined;
+            const score = scoreOf(applicant);
+
+            html += '<div class="d-total c-total"><span class="d-total-num">' + (score === null ? '–' : score) + '</span><div><b>Effective score</b><p>' + (overridden ? 'Recruiter override of ' + Number(applicant.score) : 'Out of 100 from the AI assessment') + '</p></div></div>';
+            html += '<div class="d-group-title">Score breakdown</div>';
+            html += Dash.scoreBar('Skills', breakdown.skills) +
+                Dash.scoreBar('Experience', breakdown.experience) +
+                Dash.scoreBar('Projects', breakdown.projects) +
+                Dash.scoreBar('Qualifications', breakdown.qualifications);
+
+            const matched = json.matched_skills || [];
+            html += '<div class="d-group-title">Matched skills</div>';
+            html += matched.length
+                ? '<div class="d-chips">' + matched.map(function (skill)
+                {
+                    return '<span class="d-chip ok">' + Dash.esc(skill.skill) + ' · ' + percent(skill.similarity) + '</span>';
+                }).join('') + '</div>'
+                : '<p class="muted">No matched skills evidenced.</p>';
+
+            const gaps = json.gaps || [];
+            html += '<div class="d-group-title">Skill gaps</div>';
+            html += gaps.length
+                ? '<div class="d-chips">' + gaps.map(function (gap)
+                {
+                    const absent = gap.label === 'confirmed_absent';
+                    return '<span class="d-chip ' + (absent ? 'bad' : 'warn') + '">' + Dash.esc(gap.skill) + ' · ' + (absent ? 'Confirmed absent' : 'No evidence') + '</span>';
+                }).join('') + '</div>'
+                : '<p class="muted">No gaps found for this role.</p>';
+
+            html += '<div class="d-group-title">AI explanation</div>';
+            html += '<p class="c-explain">' + Dash.esc(json.explanation || 'No explanation was saved for this assessment.') + '</p>';
+
+            const claims = (json.unsupported_claims || []).length;
+            html += '<div class="c-claims"><i data-lucide="flag"></i><span>' + claims + (claims === 1 ? ' unsupported claim' : ' unsupported claims') + '</span><a href="' + detailHref(applicant) + '&tab=fairness">Fairness &amp; evidence</a></div>';
+
+            return html + '</div>';
         }
 
-        function numberRow(label, people, pick)
+        function renderMissing(missing)
         {
-            const values = people.map(pick);
-            const best = Math.max.apply(null, values.filter(function (v) { return typeof v === 'number' && !isNaN(v); }));
-
-            return '<tr><td class="label">' + Dash.esc(label) + '</td>' + values.map(function (v)
+            const panel = document.getElementById('missing-panel');
+            const box = document.getElementById('missing');
+            const rows = (missing || []).filter(function (entry)
             {
-                const ok = typeof v === 'number' && !isNaN(v);
-                return '<td' + (ok && v === best && values.length > 1 ? ' class="best"' : '') + '>' + (ok ? v : '-') + '</td>';
-            }).join('') + '</tr>';
+                return (entry.unique_skills || []).length > 0;
+            });
+
+            if (!rows.length)
+            {
+                box.innerHTML = Dash.empty('scale', 'Nothing sets these applicants apart — they evidence the same matched skills.');
+                panel.classList.remove('hidden');
+                return;
+            }
+
+            box.innerHTML = rows.map(function (entry)
+            {
+                return '<div class="d-item"><div class="main"><b>' + Dash.esc(entry.candidateName) + '</b><span>Skills the others do not evidence</span></div>' +
+                    '<div class="d-chips">' + (entry.unique_skills || []).map(function (skill)
+                    {
+                        return '<span class="d-chip info">' + Dash.esc(skill) + '</span>';
+                    }).join('') + '</div></div>';
+            }).join('');
+
+            panel.classList.remove('hidden');
         }
 
-        function render(people)
+        async function fetchJobTitles(applicants)
         {
-            const keys = [];
-            people.forEach(function (p) { Object.keys(breakdown(p)).forEach(function (k) { if (keys.indexOf(k) === -1) { keys.push(k); } }); });
+            const jobIds = [];
 
-            let html = '<div class="table-wrap"><table><thead><tr><th class="label"></th>' + people.map(function (p)
+            applicants.forEach(function (applicant)
             {
-                return '<th class="name"><a href="applicant-detail.html?id=' + encodeURIComponent(p.id) + '">' + Dash.esc(p.candidateName) + '</a><br><span class="muted">' + Dash.esc(p.jobTitle || '') + '</span></th>';
-            }).join('') + '</tr></thead><tbody>';
+                if (applicant.jobId !== null && applicant.jobId !== undefined && jobIds.indexOf(applicant.jobId) === -1)
+                {
+                    jobIds.push(applicant.jobId);
+                }
+            });
 
-            html += numberRow('Overall score', people, effective);
-            keys.forEach(function (k) { html += numberRow(k, people, function (p) { return breakdown(p)[k]; }); });
-            html += '<tr><td class="label">Status</td>' + people.map(function (p) { return '<td>' + Dash.esc(p.status) + '</td>'; }).join('') + '</tr>';
-            html += '<tr><td class="label">Matched skills</td>' + people.map(function (p) { return '<td>' + (names((p.score_json || {}).matched_skills).map(function (s) { return '<span class="badge badge-green">' + Dash.esc(s) + '</span>'; }).join('') || '<span class="muted">None</span>') + '</td>'; }).join('') + '</tr>';
-            html += '<tr><td class="label">Skill gaps</td>' + people.map(function (p)
+            const titles = {};
+
+            await Promise.all(jobIds.map(async function (jobId)
             {
-                const json = p.score_json || {};
-                return '<td>' + (names(json.missing_skills || json.skill_gaps || json.gaps).map(function (s) { return '<span class="badge badge-red">' + Dash.esc(s) + '</span>'; }).join('') || '<span class="muted">None</span>') + '</td>';
-            }).join('') + '</tr>';
+                try
+                {
+                    const job = await Api.get('/api/jobs/' + encodeURIComponent(jobId));
+                    titles[jobId] = job.title;
+                }
+                catch (error)
+                {
+                    titles[jobId] = '';
+                }
+            }));
 
-            el('table').innerHTML = html + '</tbody></table></div>';
+            return titles;
+        }
+
+        function renderComparison(data, titles)
+        {
+            const applicants = data.applicants || [];
+            const box = document.getElementById('compare');
+            const leader = leaderId(applicants);
+
+            box.style.gridTemplateColumns = 'repeat(' + applicants.length + ', minmax(0,1fr))';
+            box.innerHTML = applicants.map(function (applicant)
+            {
+                return columnHtml(applicant, titles[applicant.jobId], applicant.id === leader);
+            }).join('');
+
+            const shared = applicants.length > 1 && applicants.every(function (applicant)
+            {
+                return applicant.jobId === applicants[0].jobId;
+            });
+
+            const link = document.getElementById('applicants-link');
+
+            if (shared)
+            {
+                link.href = 'applicants.html?jobId=' + encodeURIComponent(applicants[0].jobId);
+                link.classList.remove('hidden');
+            }
+            else
+            {
+                link.classList.add('hidden');
+            }
+
+            const sharedTitle = shared ? titles[applicants[0].jobId] : '';
+            document.getElementById('compare-sub').textContent = shared && sharedTitle
+                ? 'Comparing ' + applicants.length + ' applicants for ' + sharedTitle
+                : 'Comparing ' + applicants.length + ' applicants';
+
+            renderMissing(data.missing_information);
         }
 
         async function load()
         {
-            const ids = (new URLSearchParams(window.location.search).get('ids') || '').split(',').filter(Boolean).slice(0, 3);
+            const ids = parseIds(Dash.param('ids'));
+            const notice = document.getElementById('notice');
+            const box = document.getElementById('compare');
+
+            document.getElementById('missing-panel').classList.add('hidden');
 
             if (ids.length < 2)
             {
-                el('error-box').textContent = 'Select at least 2 applicants to compare.';
-                el('error-box').classList.remove('hidden');
+                box.innerHTML = '';
+                box.style.gridTemplateColumns = '';
+                notice.innerHTML = Dash.empty('users', 'Select 2 or 3 applicants first, then compare them side by side here.', '<a class="btn btn-sm" href="jobs.html">Browse jobs and applicants</a>');
+                Dash.icons();
                 return;
             }
 
-            el('table').innerHTML = Dash.skeletons(3);
+            notice.innerHTML = '';
+            box.style.gridTemplateColumns = 'repeat(' + ids.length + ', minmax(0,1fr))';
+            box.innerHTML = Dash.skeletons(ids.length);
 
             try
             {
-                render(await Promise.all(ids.map(function (id) { return Api.get('/api/applications/' + encodeURIComponent(id)); })));
+                const data = await Api.get('/api/compare?ids=' + encodeURIComponent(ids.join(',')));
+                const titles = await fetchJobTitles(data.applicants || []);
+                renderComparison(data, titles);
+                showToast('Comparison ready.', 'success');
             }
             catch (error)
             {
-                el('table').innerHTML = '';
-                el('error-box').textContent = error.message;
-                el('error-box').classList.remove('hidden');
+                box.innerHTML = '';
+                box.style.gridTemplateColumns = '';
+                Dash.failInto(notice, error.message, error.status === 400 || error.status === 404 ? null : load);
             }
+
+            Dash.icons();
         }
 
         if (user)
         {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'search',
+                title: 'Compare Applicants',
+                subtitle: 'Side-by-side evidence, scores and gaps',
+                search: true,
+                items: Dash.RECRUITER_NAV,
+                active: 'search.html',
+                onBell: function ()
+                {
+                    showToast('You have no new notifications.', 'info');
+                }
+            });
+
             load();
         }
     </script>

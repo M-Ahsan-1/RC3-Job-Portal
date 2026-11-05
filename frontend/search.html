@@ -3,173 +3,312 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Talent search - RC3 Job Portal</title>
+    <title>Talent Search - RC3 Job Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <style>
-        .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
-        .filters .form-group{margin:0}
-        .filters input[type=text],.filters input[type=number],.filters select{width:190px}
-        td input[type=checkbox]{width:18px;height:18px}
+        #search-form .d-field
+        {
+            flex: 1 1 320px;
+        }
+
+        #search-form input
+        {
+            width: 100%;
+        }
+
+        #examples
+        {
+            align-items: center;
+        }
+
+        button.d-chip
+        {
+            font-family: inherit;
+            border: none;
+            cursor: pointer;
+        }
+
+        button.d-chip:hover
+        {
+            background: #dfe3ef;
+        }
+
+        .s-result
+        {
+            border: 1px solid #e6e8f0;
+            border-radius: 14px;
+            background: #fff;
+            padding: 18px 20px;
+            margin-bottom: 14px;
+            transition: border-color 0.15s;
+        }
+
+        .s-result:last-child
+        {
+            margin-bottom: 0;
+        }
+
+        .s-result:hover
+        {
+            border-color: var(--ac);
+        }
+
+        .s-result-head
+        {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .s-result-head .main
+        {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .s-result-head .main b
+        {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .s-result-head .main span
+        {
+            font-size: 0.82rem;
+            color: #64748b;
+        }
+
+        .s-result .d-excerpt
+        {
+            margin-bottom: 8px;
+        }
+
+        .s-result .d-excerpt:last-of-type
+        {
+            margin-bottom: 0;
+        }
+
+        .s-result-foot
+        {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 14px;
+        }
+
+        @media (max-width: 480px)
+        {
+            #search-btn
+            {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body class="theme-recruiter">
     <div id="content" class="d-content">
         <section class="d-panel" aria-label="Talent search">
+            <form id="search-form" class="d-toolbar" novalidate>
+                <div class="d-field">
+                    <label for="query">Describe the talent you need</label>
+                    <input type="text" id="query" placeholder="e.g. Python Django REST APIs" autocomplete="off" aria-describedby="query-error">
+                </div>
+                <button class="btn" id="search-btn" type="submit"><i data-lucide="search"></i>Search</button>
+            </form>
+            <div id="query-error" class="error-text hidden" role="alert"></div>
+            <div class="d-chips" id="examples">
+                <span class="muted">Try</span>
+                <button class="d-chip" type="button" data-query="Python Django">Python Django</button>
+                <button class="d-chip" type="button" data-query="React TypeScript">React TypeScript</button>
+                <button class="d-chip" type="button" data-query="SQL Excel">SQL Excel</button>
+            </div>
+        </section>
+
+        <div class="d-callout">
+            <i data-lucide="sparkles"></i>
+            <div>
+                <b>How semantic search works</b>
+                Matches are ranked by the evidence found in resume text, not just profile keywords, and a human reviews every match before a hiring decision.
+            </div>
+        </div>
+
+        <section class="d-panel" aria-label="Search results">
             <div class="d-panel-head">
-                <div><h3>Talent search</h3><p class="sub" id="count">Search every applicant across all jobs</p></div>
-                <button class="btn btn-sm" id="compare-btn" type="button" disabled>Compare selected</button>
+                <div>
+                    <h3>Results</h3>
+                    <p class="sub" id="result-count">Only applications that have been assessed appear here</p>
+                </div>
             </div>
-            <div id="error-box" class="form-error hidden" role="alert"></div>
-            <div class="filters">
-                <div class="form-group"><label for="q">Name, email or skill</label><input type="text" id="q" placeholder="for example Hamza"></div>
-                <div class="form-group"><label for="skills">Must have skills</label><input type="text" id="skills" placeholder="Node.js, Docker"></div>
-                <div class="form-group"><label for="min">Minimum score</label><input type="number" id="min" min="0" max="100" placeholder="0"></div>
-                <div class="form-group"><label for="status">Status</label><select id="status"><option value="">Any status</option><option>Applied</option><option>Shortlisted</option><option>Selected</option><option>Rejected</option></select></div>
-                <button class="btn btn-secondary btn-sm" id="clear" type="button">Clear filters</button>
-            </div>
-            <div id="list"></div>
+            <div id="results"></div>
         </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
     <script src="js/mock.js"></script>
-    <script src="js/mock-applicants.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/mock-extra.js"></script>
     <script src="js/dashboard.js"></script>
-    <script src="js/recruiter-nav.js"></script>
     <script>
-        const user = mountRecruiterShell('Talent search', 'Find the right people fast', 'search.html');
-        const selected = new Set();
-        let results = [];
-        let timer = null;
-        let requestNo = 0;
+        const user = guardPage('recruiter');
 
-        function el(id) { return document.getElementById(id); }
-
-        function highlight(text, term)
+        function showQueryError(message)
         {
-            const safe = Dash.esc(text);
+            const box = document.getElementById('query-error');
+            box.textContent = message || '';
+            box.classList.toggle('hidden', !message);
+        }
 
-            if (!term)
+        function showInitialResults()
+        {
+            document.getElementById('result-count').textContent = 'Only applications that have been assessed appear here';
+            document.getElementById('results').innerHTML = Dash.empty('search', 'Describe the talent you need and search across every assessed application.');
+        }
+
+        function highlight(excerpt, term)
+        {
+            const safeText = Dash.esc(excerpt);
+            const safeTerm = Dash.esc(term);
+
+            if (!safeTerm)
             {
-                return safe;
+                return safeText;
             }
 
-            const i = safe.toLowerCase().indexOf(Dash.esc(term).toLowerCase());
-            return i === -1 ? safe : safe.slice(0, i) + '<mark>' + safe.slice(i, i + Dash.esc(term).length) + '</mark>' + safe.slice(i + Dash.esc(term).length);
+            const pattern = new RegExp(safeTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+
+            return safeText.replace(pattern, function (match)
+            {
+                return '<mark>' + match + '</mark>';
+            });
         }
 
-        function effective(a)
+        function resultCard(item)
         {
-            return a.overrideScore !== null && a.overrideScore !== undefined ? a.overrideScore : a.score;
+            const score = Number(item.score) || 0;
+            const match = Math.round((Number(item.similarity) || 0) * 100);
+            const href = 'applicant-detail.html?id=' + encodeURIComponent(item.applicationId) + '&jobId=' + encodeURIComponent(item.jobId);
+
+            return '<article class="s-result">' +
+                '<div class="s-result-head">' +
+                    '<div class="main"><b>' + Dash.esc(item.candidateName) + '</b><span>Applied to ' + Dash.esc(item.jobTitle) + '</span></div>' +
+                    '<span class="d-chip info">' + match + '% match</span>' +
+                    Dash.badge('Score ' + score, Dash.scoreTone(score)) +
+                    Dash.badge(item.status, Dash.statusTone(item.status)) +
+                '</div>' +
+                (item.excerpts || []).map(function (excerpt)
+                {
+                    return '<div class="d-excerpt"><b>' + Dash.esc(excerpt.skill) + '</b> — ' + highlight(excerpt.excerpt, excerpt.term) + '</div>';
+                }).join('') +
+                '<div class="s-result-foot"><a class="btn btn-secondary btn-sm" href="' + href + '">View applicant<i data-lucide="arrow-right"></i></a></div>' +
+            '</article>';
         }
 
-        function render()
+        function renderResults(data)
         {
-            const term = el('q').value.trim();
-            el('count').textContent = results.length + (results.length === 1 ? ' applicant found' : ' applicants found');
+            const results = data.results || [];
+            const countLine = document.getElementById('result-count');
 
             if (!results.length)
             {
-                el('list').innerHTML = Dash.empty('search', 'No applicants match. Remove a skill or lower the minimum score.');
-                Dash.icons();
+                countLine.textContent = 'No candidates match';
+                document.getElementById('results').innerHTML = Dash.empty('search', 'No assessed applications match "' + (data.query || '') + '". Try different wording, fewer terms or a broader skill name.');
                 return;
             }
 
-            el('list').innerHTML = '<div class="table-wrap"><table><thead><tr><th>Compare</th><th>Applicant</th><th>Job</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead><tbody>' +
-                results.map(function (a)
-                {
-                    const badge = a.status === 'Shortlisted' || a.status === 'Selected' ? 'ok' : (a.status === 'Rejected' ? 'bad' : 'info');
-
-                    return '<tr><td><input type="checkbox" data-select="' + Dash.esc(a.id) + '"' + (selected.has(String(a.id)) ? ' checked' : '') + ' aria-label="Select ' + Dash.esc(a.candidateName) + ' for comparison"></td>' +
-                        '<td><b>' + highlight(a.candidateName || '', term) + '</b><br><span class="muted">' + highlight(a.email || '', term) + '</span></td>' +
-                        '<td>' + Dash.esc(a.jobTitle || '') + '</td>' +
-                        '<td><b>' + effective(a) + '</b></td>' +
-                        '<td><span class="d-badge ' + badge + '">' + Dash.esc(a.status) + '</span></td>' +
-                        '<td><a class="btn btn-sm" href="applicant-detail.html?id=' + encodeURIComponent(a.id) + '">View</a></td></tr>';
-                }).join('') + '</tbody></table></div>';
-
-            el('compare-btn').disabled = selected.size < 2;
+            countLine.textContent = results.length + (results.length === 1 ? ' candidate matches' : ' candidates match');
+            document.getElementById('results').innerHTML = results.map(function (item) { return resultCard(item); }).join('');
         }
 
-        async function run()
+        async function runSearch()
         {
-            const params = new URLSearchParams();
-            const values = { q: el('q').value.trim(), skills: el('skills').value.trim(), minScore: el('min').value, status: el('status').value };
+            const input = document.getElementById('query');
+            const button = document.getElementById('search-btn');
+            const results = document.getElementById('results');
+            const query = input.value.trim();
 
-            Object.keys(values).forEach(function (key) { if (values[key]) { params.set(key, values[key]); } });
+            showQueryError('');
 
-            const mine = ++requestNo;
-            el('error-box').classList.add('hidden');
+            if (query.length < 2)
+            {
+                showQueryError('Please describe the talent you are looking for in at least 2 characters.');
+                input.focus();
+                return;
+            }
+
+            Dash.setBusy(button, true);
+            document.getElementById('result-count').textContent = 'Searching...';
+            results.innerHTML = Dash.skeletons(3);
 
             try
             {
-                const rows = await Api.get('/api/search?' + params.toString());
-
-                if (mine === requestNo)
-                {
-                    results = rows;
-                    render();
-                }
+                const data = await Api.post('/api/talent/search', { query: query });
+                renderResults(data);
+                showToast(data.count + (data.count === 1 ? ' candidate found.' : ' candidates found.'), 'success');
             }
             catch (error)
             {
-                el('list').innerHTML = '';
-                el('error-box').textContent = error.message;
-                el('error-box').classList.remove('hidden');
+                if (error.status === 400)
+                {
+                    showQueryError(error.message);
+                    showInitialResults();
+                }
+                else
+                {
+                    document.getElementById('result-count').textContent = 'Search failed';
+                    Dash.failInto(results, error.message, runSearch);
+                }
             }
+
+            Dash.setBusy(button, false);
+            Dash.icons();
         }
 
-        function later()
+        function load()
         {
-            clearTimeout(timer);
-            timer = setTimeout(run, 300);
+            showInitialResults();
+            Dash.icons();
         }
 
         if (user)
         {
-            ['q', 'skills', 'min'].forEach(function (id) { el(id).addEventListener('input', later); });
-            el('status').addEventListener('change', run);
-
-            el('clear').addEventListener('click', function ()
+            document.getElementById('search-form').addEventListener('submit', function (event)
             {
-                ['q', 'skills', 'min', 'status'].forEach(function (id) { el(id).value = ''; });
-                run();
+                event.preventDefault();
+                runSearch();
             });
 
-            el('list').addEventListener('change', function (event)
+            document.getElementById('examples').addEventListener('click', function (event)
             {
-                const box = event.target.closest('[data-select]');
+                const chip = event.target.closest('[data-query]');
 
-                if (!box)
+                if (!chip)
                 {
                     return;
                 }
 
-                const id = box.getAttribute('data-select');
-
-                if (box.checked && selected.size >= 3)
-                {
-                    box.checked = false;
-                    showToast('You can compare up to 3 applicants at a time.', 'info');
-                    return;
-                }
-
-                if (box.checked) { selected.add(id); } else { selected.delete(id); }
-                el('compare-btn').disabled = selected.size < 2;
+                document.getElementById('query').value = chip.getAttribute('data-query');
+                runSearch();
             });
 
-            el('compare-btn').addEventListener('click', function ()
+            Dash.mountShell(
             {
-                window.location.href = 'compare.html?ids=' + Array.from(selected).join(',');
+                user: user,
+                logo: 'search',
+                title: 'Talent Search',
+                subtitle: 'Find candidates by the evidence in their resumes',
+                search: true,
+                items: Dash.RECRUITER_NAV,
+                onBell: function ()
+                {
+                    showToast('You have no new notifications.', 'info');
+                }
             });
 
-            el('list').innerHTML = Dash.skeletons(3);
-            run();
+            load();
         }
     </script>
 </body>

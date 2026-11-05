@@ -3,379 +3,1563 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Applicant detail - RC3 Job Portal</title>
+    <title>Applicant - RC3 Job Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
-    <style>
-        .big-score{font-size:2.6rem;font-weight:700;line-height:1;color:var(--ac)}
-        .skill-tags .badge{margin:0 6px 6px 0}
-        .status-actions{display:flex;gap:8px;flex-wrap:wrap}
-        .status-actions .btn[aria-pressed="true"]{box-shadow:0 0 0 3px rgba(79,70,229,.25)}
-        .note{border-bottom:1px solid var(--border);padding:10px 0}
-        .note:last-child{border-bottom:0}
-        .note p{white-space:pre-wrap}
-        .timeline{list-style:none}
-        .timeline li{border-left:3px solid var(--border);padding:2px 0 14px 14px;margin-left:4px}
-        .timeline li:last-child{padding-bottom:0}
-        .explanation{white-space:pre-wrap;max-width:70ch}
-    </style>
 </head>
 <body class="theme-recruiter">
     <div id="content" class="d-content">
-        <section class="d-panel" aria-label="Applicant summary">
-            <div class="d-panel-head">
-                <div>
-                    <h3 id="name">Applicant</h3>
-                    <p class="sub" id="meta"></p>
+        <div id="fatal" class="d-panel hidden" role="alert"></div>
+
+        <div id="main" class="hidden">
+            <section class="d-panel" aria-label="Applicant">
+                <div class="d-panel-head">
+                    <div>
+                        <h3 id="cand-name">Applicant</h3>
+                        <p class="sub" id="cand-meta"></p>
+                    </div>
+                    <a class="btn btn-secondary btn-sm" id="back-link" href="applicants.html"><i data-lucide="arrow-left"></i>Back to applicants</a>
                 </div>
-                <div class="row">
-                    <a class="btn btn-secondary btn-sm" id="questions-link" href="questions.html">Interview questions</a>
-                    <a class="btn btn-secondary btn-sm" id="interview-link" href="interviews.html">Schedule interview</a>
-                    <a class="btn btn-secondary btn-sm" id="back-link" href="jobs.html">Back to applicants</a>
-                </div>
+                <div class="d-chips" id="head-badges"></div>
+            </section>
+
+            <div class="d-tabs" role="tablist" aria-label="Applicant sections">
+                <button class="d-tab active" id="tab-assessment" type="button" role="tab" aria-selected="true" aria-controls="panel-assessment" data-tab="assessment">Assessment</button>
+                <button class="d-tab" id="tab-questions" type="button" role="tab" aria-selected="false" aria-controls="panel-questions" data-tab="questions">Questions</button>
+                <button class="d-tab" id="tab-fairness" type="button" role="tab" aria-selected="false" aria-controls="panel-fairness" data-tab="fairness">Fairness &amp; evidence</button>
+                <button class="d-tab" id="tab-interview" type="button" role="tab" aria-selected="false" aria-controls="panel-interview" data-tab="interview">Interview</button>
+                <button class="d-tab" id="tab-decision" type="button" role="tab" aria-selected="false" aria-controls="panel-decision" data-tab="decision">Decision &amp; audit</button>
             </div>
-            <div id="error-box" class="form-error hidden" role="alert"></div>
-            <div id="summary"></div>
-        </section>
 
-        <div class="grid-2">
-            <section class="d-panel" aria-label="Score breakdown">
-                <div class="d-panel-head"><div><h3>Score breakdown</h3><p class="sub">How the overall score was built</p></div></div>
-                <div id="breakdown"></div>
-                <h4 style="margin:18px 0 8px">Explanation</h4>
-                <div id="explanation"></div>
+            <section id="panel-assessment" role="tabpanel" aria-labelledby="tab-assessment">
+                <div id="assess-error" class="form-error hidden" role="alert"></div>
+                <div id="assess-body"></div>
             </section>
 
-            <section class="d-panel" aria-label="Skills">
-                <div class="d-panel-head"><div><h3>Skills</h3><p class="sub">Matched against the job requirements</p></div></div>
-                <h4 style="margin-bottom:8px">Matched skills</h4>
-                <div id="matched" class="skill-tags"></div>
-                <h4 style="margin:14px 0 8px">Skill gaps</h4>
-                <div id="gaps" class="skill-tags"></div>
-            </section>
-        </div>
-
-        <section class="d-panel" aria-label="Application status">
-            <div class="d-panel-head"><div><h3>Application status</h3><p class="sub">Every change is recorded in the audit trail</p></div></div>
-            <div id="status-error" class="form-error hidden" role="alert"></div>
-            <div id="status-actions" class="status-actions"></div>
-        </section>
-
-        <div class="grid-2">
-            <section class="d-panel" aria-label="Notes">
-                <div class="d-panel-head"><div><h3>Recruiter notes</h3><p class="sub">Only recruiters can see these</p></div></div>
-                <form id="note-form" novalidate>
-                    <div id="note-error" class="form-error hidden" role="alert"></div>
-                    <div class="form-group"><label for="note-text">Add a note</label><textarea id="note-text" placeholder="What stood out about this applicant?"></textarea></div>
-                    <button class="btn btn-sm" id="note-save" type="submit">Save note</button>
-                </form>
-                <div id="notes" style="margin-top:16px"></div>
+            <section id="panel-questions" role="tabpanel" aria-labelledby="tab-questions" class="hidden">
+                <div class="d-panel">
+                    <div class="d-panel-head">
+                        <div>
+                            <h3>Interview questions</h3>
+                            <p class="sub">Tailored to this applicant's evidence. Edit anything — you decide what gets asked.</p>
+                        </div>
+                        <button class="btn btn-sm" id="gen-questions" type="button"><i data-lucide="sparkles"></i>Generate questions</button>
+                    </div>
+                    <div id="questions-error" class="form-error hidden" role="alert"></div>
+                    <div id="questions-body"></div>
+                </div>
             </section>
 
-            <section class="d-panel" aria-label="Audit trail">
-                <div class="d-panel-head"><div><h3>Audit trail</h3><p class="sub">Newest first</p></div></div>
-                <div id="history"></div>
+            <section id="panel-fairness" role="tabpanel" aria-labelledby="tab-fairness" class="hidden">
+                <div class="d-panel">
+                    <div class="d-panel-head">
+                        <div>
+                            <h3>Fairness test</h3>
+                            <p class="sub">Re-scores the resume with every protected attribute removed</p>
+                        </div>
+                        <button class="btn btn-sm" id="fairness-run" type="button"><i data-lucide="scale"></i>Run fairness test</button>
+                    </div>
+                    <div id="fairness-error" class="form-error hidden" role="alert"></div>
+                    <div id="fairness-body"></div>
+                </div>
+                <div class="d-panel">
+                    <div class="d-panel-head">
+                        <div>
+                            <h3>Unsupported claims</h3>
+                            <p class="sub">Resume claims the AI could not fully evidence</p>
+                        </div>
+                    </div>
+                    <div id="claims-error" class="form-error hidden" role="alert"></div>
+                    <div id="claims-body"></div>
+                </div>
+            </section>
+
+            <section id="panel-interview" role="tabpanel" aria-labelledby="tab-interview" class="hidden">
+                <div class="d-panel">
+                    <div class="d-panel-head">
+                        <div>
+                            <h3>Schedule an interview</h3>
+                            <p class="sub">Clash detection runs before anything is booked</p>
+                        </div>
+                    </div>
+                    <div id="interview-note"></div>
+                    <form id="interview-form" novalidate>
+                        <div class="d-form-grid">
+                            <div>
+                                <label for="iv-interviewer">Interviewer</label>
+                                <input type="text" id="iv-interviewer" placeholder="Who will run the interview?" autocomplete="off">
+                            </div>
+                            <div>
+                                <label for="iv-type">Interview type</label>
+                                <select id="iv-type">
+                                    <option value="technical">Technical</option>
+                                    <option value="hr">HR</option>
+                                    <option value="panel">Panel</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="iv-when">Date and time</label>
+                                <input type="datetime-local" id="iv-when">
+                            </div>
+                            <div>
+                                <label for="iv-duration">Duration (minutes)</label>
+                                <input type="number" id="iv-duration" min="15" max="240" step="5" value="45">
+                                <p class="d-hint">Between 15 and 240 minutes.</p>
+                            </div>
+                        </div>
+                        <div id="interview-error" class="form-error hidden" role="alert"></div>
+                        <div id="interview-conflict"></div>
+                        <div class="d-actions">
+                            <button class="btn" id="iv-submit" type="submit"><i data-lucide="calendar-plus"></i>Schedule interview</button>
+                        </div>
+                    </form>
+                    <div id="interview-result"></div>
+                </div>
+            </section>
+
+            <section id="panel-decision" role="tabpanel" aria-labelledby="tab-decision" class="hidden">
+                <div class="d-panel">
+                    <div class="d-panel-head">
+                        <div>
+                            <h3>Move this application</h3>
+                            <p class="sub">The human decision — every change is written to the audit trail</p>
+                        </div>
+                    </div>
+                    <div id="decision-error" class="form-error hidden" role="alert"></div>
+                    <div id="decision-body"></div>
+                </div>
+                <div class="d-grid cols-2">
+                    <div class="d-panel">
+                        <div class="d-panel-head">
+                            <div>
+                                <h3>Private notes</h3>
+                                <p class="sub">Recruiter-only — candidates never see these</p>
+                            </div>
+                        </div>
+                        <form id="note-form" novalidate>
+                            <div class="form-group">
+                                <label for="note-text">Add a note</label>
+                                <textarea id="note-text" maxlength="1000" placeholder="What stood out? What should the next interviewer probe?"></textarea>
+                            </div>
+                            <div id="note-error" class="form-error hidden" role="alert"></div>
+                            <button class="btn btn-sm" id="note-save" type="submit"><i data-lucide="plus"></i>Save note</button>
+                        </form>
+                        <div id="notes-body"></div>
+                    </div>
+                    <div class="d-panel">
+                        <div class="d-panel-head">
+                            <div>
+                                <h3>Audit trail</h3>
+                                <p class="sub">Every status change, oldest first</p>
+                            </div>
+                        </div>
+                        <div id="history-body"></div>
+                    </div>
+                </div>
             </section>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
     <script src="js/mock.js"></script>
-    <script src="js/mock-applicants.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/mock-extra.js"></script>
     <script src="js/dashboard.js"></script>
     <script>
         const user = guardPage('recruiter');
-        const applicationId = new URLSearchParams(window.location.search).get('id');
-        const STATUSES = ['Applied', 'Shortlisted', 'Selected', 'Rejected'];
-        let application = null;
+        const applicantId = Dash.intParam('id', 0);
+        const jobId = Dash.intParam('jobId', 0);
+        const TABS = ['assessment', 'questions', 'fairness', 'interview', 'decision'];
+
+        const TRANSITIONS =
+        {
+            'Submitted': ['Parsed', 'Rejected'],
+            'Parsed': ['AI Assessment Available', 'Rejected'],
+            'AI Assessment Available': ['Recruiter Review', 'Rejected'],
+            'Recruiter Review': ['Shortlisted', 'Rejected'],
+            'Shortlisted': ['Interview', 'Rejected'],
+            'Interview': ['Selected', 'Rejected'],
+            'Selected': [],
+            'Rejected': []
+        };
+
+        let job = null;
+        let applicant = null;
+        let questions = [];
+        let notes = [];
+        let historyList = [];
+        let fairness = null;
+        let explanation = '';
+        let learning = [];
+        let rejectOpen = false;
+        let editingQuestionId = null;
+        let confirmingDeleteId = null;
+        const openGuidelines = new Set();
 
         function el(id)
         {
             return document.getElementById(id);
         }
 
-        function showBox(id, message)
+        function showError(id, message)
         {
-            el(id).textContent = message || '';
-            el(id).classList.toggle('hidden', !message);
+            const box = el(id);
+            box.textContent = message;
+            box.classList.remove('hidden');
         }
 
-        function effective(item)
+        function hideError(id)
         {
-            const has = item.overrideScore !== null && item.overrideScore !== undefined;
-            return has ? item.overrideScore : item.score;
+            el(id).classList.add('hidden');
         }
 
-        function statusClass(status)
+        function effScore(item)
         {
-            if (status === 'Shortlisted' || status === 'Selected')
+            return item.effectiveScore === null || item.effectiveScore === undefined ? null : item.effectiveScore;
+        }
+
+        function fatal(message, href, linkLabel, retryFn)
+        {
+            el('main').classList.add('hidden');
+
+            const box = el('fatal');
+            box.classList.remove('hidden');
+
+            let actions = '<a class="btn btn-sm" href="' + href + '"><i data-lucide="arrow-left"></i>' + linkLabel + '</a>';
+
+            if (retryFn)
             {
-                return 'ok';
+                actions += ' <button class="btn btn-secondary btn-sm" type="button" id="fatal-retry">Try again</button>';
             }
 
-            return status === 'Rejected' ? 'bad' : 'info';
-        }
+            box.innerHTML = Dash.empty('triangle-alert', message, actions);
 
-        function skillName(item)
-        {
-            return typeof item === 'string' ? item : (item && (item.skill || item.name)) || '';
-        }
-
-        function formatDate(value)
-        {
-            const date = new Date(value);
-            return isNaN(date.getTime()) ? '' : date.toLocaleString();
-        }
-
-        function renderSummary()
-        {
-            const overridden = application.overrideScore !== null && application.overrideScore !== undefined;
-
-            el('name').textContent = application.candidateName || 'Applicant';
-            el('meta').textContent = application.email || '';
-
-            el('summary').innerHTML =
-                '<div class="row" style="gap:28px">' +
-                '<div><div class="big-score">' + effective(application) + '</div><p class="muted">Overall score out of 100</p></div>' +
-                '<div><span class="d-badge ' + statusClass(application.status) + '">' + Dash.esc(application.status) + '</span>' +
-                (overridden ? '<p class="muted" style="margin-top:6px">Overridden from ' + application.score + '. Reason: ' + Dash.esc(application.overrideReason || 'none given') + '</p>' : '') +
-                '</div></div>';
-        }
-
-        function renderBreakdown()
-        {
-            const data = (application.score_json || {}).breakdown;
-            let rows = [];
-
-            if (Array.isArray(data))
+            if (retryFn)
             {
-                rows = data.map(function (item) { return { label: item.label || item.name, value: Number(item.score) }; });
-            }
-            else if (data && typeof data === 'object')
-            {
-                rows = Object.keys(data).map(function (key) { return { label: key.replace(/_/g, ' '), value: Number(data[key]) }; });
+                el('fatal-retry').addEventListener('click', retryFn);
             }
 
-            if (!rows.length)
-            {
-                el('breakdown').innerHTML = Dash.empty('bar-chart-3', 'No score breakdown was saved for this applicant.');
-            }
-            else
-            {
-                el('breakdown').innerHTML = rows.map(function (row)
-                {
-                    const value = Math.max(0, Math.min(100, row.value || 0));
-
-                    return '<div class="score-row"><div class="score-label"><span>' + Dash.esc(row.label) + '</span><b>' + value + '</b></div>' +
-                        '<div class="score-bar" role="progressbar" aria-valuenow="' + value + '" aria-valuemin="0" aria-valuemax="100" aria-label="' + Dash.esc(row.label) + '"><div class="score-fill" style="width:' + value + '%"></div></div></div>';
-                }).join('');
-            }
-
-            const text = (application.score_json || {}).explanation;
-            el('explanation').innerHTML = text ? '<p class="explanation">' + Dash.esc(text) + '</p>' : '<p class="muted">No explanation was saved for this score.</p>';
-        }
-
-        function renderSkills()
-        {
-            const json = application.score_json || {};
-            const matched = (json.matched_skills || []).map(skillName).filter(Boolean);
-            const gaps = (json.missing_skills || json.skill_gaps || json.gaps || []).map(skillName).filter(Boolean);
-
-            el('matched').innerHTML = matched.length
-                ? matched.map(function (name) { return '<span class="badge badge-green">' + Dash.esc(name) + '</span>'; }).join('')
-                : '<p class="muted">No matched skills.</p>';
-
-            el('gaps').innerHTML = gaps.length
-                ? gaps.map(function (name) { return '<span class="badge badge-red">' + Dash.esc(name) + '</span>'; }).join('')
-                : '<p class="muted">No skill gaps found.</p>';
-        }
-
-        function renderStatusButtons()
-        {
-            el('status-actions').innerHTML = STATUSES.map(function (status)
-            {
-                const current = status === application.status;
-                const style = status === 'Rejected' ? 'btn-danger' : (status === 'Applied' ? 'btn-secondary' : 'btn-success');
-
-                return '<button type="button" class="btn ' + style + '" data-status="' + Dash.esc(status) + '" aria-pressed="' + current + '"' + (current ? ' disabled' : '') + '>' + Dash.esc(status) + '</button>';
-            }).join('');
-        }
-
-        function renderNotes(notes)
-        {
-            if (!notes.length)
-            {
-                el('notes').innerHTML = '<p class="muted">No notes yet.</p>';
-                return;
-            }
-
-            el('notes').innerHTML = notes.slice().reverse().map(function (note)
-            {
-                return '<div class="note"><p>' + Dash.esc(note.text) + '</p><p class="muted">' + Dash.esc(note.author || 'Recruiter') + ', ' + Dash.esc(formatDate(note.createdAt)) + '</p></div>';
-            }).join('');
-        }
-
-        function renderHistory(events)
-        {
-            if (!events.length)
-            {
-                el('history').innerHTML = Dash.empty('history', 'Nothing has happened to this application yet.');
-                Dash.icons();
-                return;
-            }
-
-            el('history').innerHTML = '<ul class="timeline">' + events.slice().reverse().map(function (event)
-            {
-                return '<li><b>' + Dash.esc(event.action || 'Updated') + '</b>' +
-                    (event.detail ? '<br>' + Dash.esc(event.detail) : '') +
-                    '<br><span class="muted">' + Dash.esc(event.by || 'System') + ', ' + Dash.esc(formatDate(event.createdAt)) + '</span></li>';
-            }).join('') + '</ul>';
             Dash.icons();
         }
 
-        async function loadNotes()
+        function showSkeletons()
         {
-            renderNotes(await Api.get('/api/applications/' + encodeURIComponent(applicationId) + '/notes'));
+            el('main').classList.remove('hidden');
+            el('assess-body').innerHTML = Dash.skeletons(3);
+            el('questions-body').innerHTML = Dash.skeletons(2);
+            el('fairness-body').innerHTML = Dash.skeletons(1);
+            el('claims-body').innerHTML = Dash.skeletons(1);
+            el('decision-body').innerHTML = Dash.skeletons(1);
+            el('notes-body').innerHTML = Dash.skeletons(1);
+            el('history-body').innerHTML = Dash.skeletons(1);
         }
 
-        async function loadHistory()
+        function setTab(name)
         {
-            renderHistory(await Api.get('/api/applications/' + encodeURIComponent(applicationId) + '/history'));
-        }
-
-        async function load()
-        {
-            if (!applicationId)
+            TABS.forEach(function (tab)
             {
-                showBox('error-box', 'Open an applicant from the applicants list.');
+                const on = tab === name;
+                el('tab-' + tab).classList.toggle('active', on);
+                el('tab-' + tab).setAttribute('aria-selected', on ? 'true' : 'false');
+                el('panel-' + tab).classList.toggle('hidden', !on);
+            });
+        }
+
+        function renderHeader()
+        {
+            el('cand-name').textContent = applicant.candidateName;
+            el('cand-meta').textContent = ['Applied for ' + job.title, applicant.email, applicant.phone].filter(Boolean).join(' · ');
+            el('back-link').href = 'applicants.html?jobId=' + jobId;
+
+            const score = effScore(applicant);
+            const overridden = applicant.overrideScore !== null && applicant.overrideScore !== undefined;
+            let chips = Dash.badge(applicant.status, Dash.statusTone(applicant.status));
+
+            if (score === null)
+            {
+                chips += Dash.badge('Not assessed', 'neutral');
+            }
+            else
+            {
+                chips += Dash.badge('Score ' + score, Dash.scoreTone(score));
+
+                if (overridden)
+                {
+                    chips += Dash.badge('Overridden', 'warn');
+
+                    if (applicant.score !== null && applicant.score !== undefined)
+                    {
+                        chips += '<s class="muted">AI score ' + Dash.esc(applicant.score) + '</s>';
+                    }
+                }
+            }
+
+            chips += '<span class="d-chip"><i data-lucide="file-text"></i>' + Dash.esc(applicant.resumeFileName || 'No resume file') + '</span>';
+            chips += '<span class="d-chip"><i data-lucide="calendar-clock"></i>Applied ' + Dash.esc(Dash.timeAgo(applicant.appliedAt)) + '</span>';
+
+            el('head-badges').innerHTML = chips;
+        }
+
+        function renderAssessment()
+        {
+            const body = el('assess-body');
+
+            if (!applicant.score_json)
+            {
+                body.innerHTML =
+                    Dash.callout('info', 'No AI assessment yet',
+                        '<p>This resume has not been parsed and scored yet. The score breakdown, resume evidence, question generator and fairness test all unlock once an assessment exists.</p>') +
+                    Dash.empty('file-text', 'Nothing to review here until this application has been assessed.');
                 return;
             }
 
-            showBox('error-box', '');
-            el('summary').innerHTML = Dash.skeletons(2);
+            const sj = applicant.score_json;
+            const breakdown = sj.breakdown || {};
+            const matched = sj.matched_skills || [];
+            const gaps = sj.gaps || [];
+            const score = effScore(applicant);
+            const overridden = applicant.overrideScore !== null && applicant.overrideScore !== undefined;
+
+            let left = '<div>';
+
+            left += '<section class="d-panel" aria-label="Match score">' +
+                '<div class="d-panel-head"><div><h3>Match score</h3><p class="sub">Skills 40% · experience 25% · projects 20% · qualifications 15%</p></div></div>' +
+                '<div class="d-total"><span class="d-total-num">' + (score === null ? '—' : Dash.esc(score)) + '</span><div><b>Overall score out of 100</b>' +
+                '<p>' + (overridden
+                    ? 'Recruiter override in place. Original AI score: ' + Dash.esc(applicant.score === null ? '—' : applicant.score) + '. Reason: ' + Dash.esc(applicant.overrideReason || 'None given.')
+                    : 'AI-assessed match against the requirements of ' + Dash.esc(job.title) + '.') + '</p>' +
+                '</div></div>' +
+                Dash.scoreBar('Skills', breakdown.skills) +
+                Dash.scoreBar('Experience', breakdown.experience) +
+                Dash.scoreBar('Projects', breakdown.projects) +
+                Dash.scoreBar('Qualifications', breakdown.qualifications) +
+                '</section>';
+
+            left += '<section class="d-panel" aria-label="Matched skills and gaps">' +
+                '<div class="d-panel-head"><div><h3>Matched skills and resume evidence</h3><p class="sub">Excerpts the AI matched against the job requirements</p></div></div>';
+
+            if (!matched.length)
+            {
+                left += '<p class="muted">No matching skills were found in this resume.</p>';
+            }
+            else
+            {
+                left += matched.map(function (item)
+                {
+                    const pct = Math.round((Number(item.similarity) || 0) * 100);
+
+                    return '<div class="d-skill"><div class="d-skill-head"><b>' + Dash.esc(item.skill) + '</b>' +
+                        (item.verified
+                            ? '<span class="d-chip ok"><i data-lucide="badge-check"></i>Verified</span>'
+                            : '<span class="d-chip warn"><i data-lucide="flag"></i>Unverified</span>') +
+                        '<span class="d-sim">' + pct + '% similarity</span></div>' +
+                        '<div class="d-excerpt">' + Dash.esc(item.excerpt || 'No excerpt was captured for this skill.') + '</div></div>';
+                }).join('');
+            }
+
+            left += '<div class="d-group-title">Skill gaps</div>';
+
+            if (!gaps.length)
+            {
+                left += '<p class="muted">No skill gaps were flagged for this applicant.</p>';
+            }
+            else
+            {
+                left += '<div class="d-chips">' + gaps.map(function (gap, index)
+                {
+                    if (gap.label === 'confirmed_absent')
+                    {
+                        return '<span class="d-chip bad"><i data-lucide="x"></i>' + Dash.esc(gap.skill) + ' — Confirmed absent</span>';
+                    }
+
+                    return '<span class="d-chip warn"><i data-lucide="triangle-alert"></i>' + Dash.esc(gap.skill) + ' — No evidence' +
+                        '<button type="button" data-gap="' + index + '" title="Confirm this skill is absent and re-score">Confirm absent</button></span>';
+                }).join('') + '</div>';
+            }
+
+            left += '</section></div>';
+
+            let right = '<div>';
+
+            right += '<section class="d-panel" aria-label="AI explanation">' +
+                '<div class="d-panel-head"><div><h3>AI explanation</h3><p class="sub">In plain language, why this score</p></div>' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-act="explain"><i data-lucide="refresh-cw"></i>Regenerate explanation</button></div>' +
+                '<div class="d-excerpt">' + Dash.esc(explanation || 'No explanation is available for this assessment.') + '</div>' +
+                '</section>';
+
+            right += '<section class="d-panel" aria-label="Learning areas">' +
+                '<div class="d-panel-head"><div><h3>Learning areas</h3><p class="sub">Growth suggestions to discuss with the candidate</p></div>' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-act="learning"><i data-lucide="book-open"></i>Get learning areas</button></div>';
+
+            if (!learning.length)
+            {
+                right += '<p class="muted">No learning areas were identified.</p>';
+            }
+            else
+            {
+                right += '<div class="d-chips">' + learning.map(function (item)
+                {
+                    return '<span class="d-chip info"><i data-lucide="book-open"></i>' + Dash.esc(item) + '</span>';
+                }).join('') + '</div>';
+            }
+
+            right += '</section>';
+
+            right += '<section class="d-panel" aria-label="Verify skills">' +
+                '<div class="d-panel-head"><div><h3>Verify skills</h3><p class="sub">Mark what you have personally verified. The score recalculates on every change.</p></div></div>';
+
+            if (!matched.length)
+            {
+                right += '<p class="muted">There are no matched skills to verify.</p>';
+            }
+            else
+            {
+                right += matched.map(function (item, index)
+                {
+                    const pct = Math.round((Number(item.similarity) || 0) * 100);
+
+                    return '<div class="d-item"><div class="main"><b>' + Dash.esc(item.skill) + '</b><span>' + pct + '% similarity</span></div>' +
+                        '<label class="d-chip ' + (item.verified ? 'ok' : 'warn') + '">' +
+                        '<input type="checkbox" data-verify="' + index + '"' + (item.verified ? ' checked' : '') + '> ' +
+                        (item.verified ? 'Verified' : 'Unverified') + '</label></div>';
+                }).join('');
+            }
+
+            right += '<div class="d-actions">' +
+                '<button class="btn btn-sm" type="button" data-act="rescore"><i data-lucide="calculator"></i>Re-score application</button>' +
+                '<span class="d-hint">Re-runs the scoring engine with your latest edits.</span>' +
+                '</div></section>';
+
+            right += '</div>';
+
+            body.innerHTML = '<div class="d-grid side">' + left + right + '</div>';
+        }
+
+        async function runExplain(button)
+        {
+            hideError('assess-error');
+            Dash.setBusy(button, true);
 
             try
             {
-                application = await Api.get('/api/applications/' + encodeURIComponent(applicationId));
-
-                if (application.jobId !== undefined)
-                {
-                    el('back-link').href = 'applicants.html?jobId=' + encodeURIComponent(application.jobId);
-                }
-
-                el('questions-link').href = 'questions.html?id=' + encodeURIComponent(applicationId);
-                el('interview-link').href = 'interviews.html?applicationId=' + encodeURIComponent(applicationId);
-
-                renderSummary();
-                renderBreakdown();
-                renderSkills();
-                renderStatusButtons();
-                await Promise.all([loadNotes(), loadHistory()]);
+                const result = await Api.post('/api/applications/' + applicantId + '/explain');
+                explanation = result.explanation;
+                renderAssessment();
                 Dash.icons();
+                showToast('Explanation refreshed.', 'success');
             }
             catch (error)
             {
-                el('summary').innerHTML = '';
-                showBox('error-box', error.message);
+                showError('assess-error', error.message);
             }
+
+            Dash.setBusy(button, false);
+        }
+
+        async function runLearning(button)
+        {
+            hideError('assess-error');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                const result = await Api.post('/api/applications/' + applicantId + '/learning-areas');
+                learning = result.learning_areas || [];
+                renderAssessment();
+                Dash.icons();
+                showToast(learning.length ? 'Learning areas updated.' : 'The AI found no learning areas for this applicant.', 'success');
+            }
+            catch (error)
+            {
+                showError('assess-error', error.message);
+            }
+
+            Dash.setBusy(button, false);
+        }
+
+        async function runRescore(button)
+        {
+            hideError('assess-error');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                applicant = await Api.post('/api/applications/' + applicantId + '/assess');
+                renderAll();
+                showToast('Score recalculated: ' + (effScore(applicant) === null ? 'not scored' : effScore(applicant)) + '.', 'success');
+            }
+            catch (error)
+            {
+                showError('assess-error', error.message);
+                Dash.setBusy(button, false);
+            }
+        }
+
+        async function confirmGap(index, button)
+        {
+            const gaps = (applicant.score_json && applicant.score_json.gaps) || [];
+            const gap = gaps[index];
+
+            if (!gap)
+            {
+                return;
+            }
+
+            hideError('assess-error');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                applicant = await Api.patch('/api/applications/' + applicantId + '/skills', { skill: gap.skill, label: 'confirmed_absent' });
+                renderAll();
+                showToast(gap.skill + ' marked as confirmed absent. The score was recalculated: ' + (effScore(applicant) === null ? 'not scored' : effScore(applicant)) + '.', 'success');
+            }
+            catch (error)
+            {
+                showError('assess-error', error.message);
+                Dash.setBusy(button, false);
+            }
+        }
+
+        async function toggleVerified(index, box)
+        {
+            const matched = (applicant.score_json && applicant.score_json.matched_skills) || [];
+            const skill = matched[index];
+
+            if (!skill)
+            {
+                return;
+            }
+
+            const verified = box.checked;
+            hideError('assess-error');
+            box.disabled = true;
+
+            try
+            {
+                applicant = await Api.patch('/api/applications/' + applicantId + '/skills', { skill: skill.skill, verified: verified });
+                renderAll();
+                showToast(skill.skill + (verified ? ' marked as verified. ' : ' marked as unverified. ') +
+                    'New score: ' + (effScore(applicant) === null ? 'not scored' : effScore(applicant)) + '.', 'success');
+            }
+            catch (error)
+            {
+                showError('assess-error', error.message);
+                renderAssessment();
+                Dash.icons();
+            }
+        }
+
+        function questionHtml(item)
+        {
+            const expanded = openGuidelines.has(item.id);
+            const editing = editingQuestionId === item.id;
+            const confirming = confirmingDeleteId === item.id;
+
+            let html = '<div class="d-q" data-q="' + item.id + '">' +
+                '<div class="d-q-head"><p>' + Dash.esc(item.text) + '</p>' +
+                '<div class="d-q-actions">' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-act="toggle" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-label="Toggle answer guideline" title="Answer guideline"><i data-lucide="' + (expanded ? 'chevron-up' : 'chevron-down') + '"></i></button>' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-act="edit" aria-label="Edit question" title="Edit"><i data-lucide="pencil"></i></button>' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-act="regen" aria-label="Regenerate question" title="Regenerate"><i data-lucide="refresh-cw"></i></button>' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-act="del" aria-label="Delete question" title="Delete"><i data-lucide="trash-2"></i></button>' +
+                '</div></div>';
+
+            if (item.skill)
+            {
+                html += '<div class="d-hint">Focus skill: ' + Dash.esc(item.skill) + '</div>';
+            }
+
+            html += '<div class="d-q-body' + (expanded ? '' : ' hidden') + '"><b>Answer guideline</b><p>' +
+                Dash.esc(item.guideline || 'No guideline was provided for this question.') + '</p></div>';
+
+            if (editing)
+            {
+                html += '<div class="d-q-body">' +
+                    '<div class="form-group"><label for="q-edit-text">Question text</label><textarea id="q-edit-text">' + Dash.esc(item.text) + '</textarea></div>' +
+                    '<div class="form-error hidden" data-q-error role="alert"></div>' +
+                    '<div class="row">' +
+                    '<button class="btn btn-sm" type="button" data-act="save"><i data-lucide="check"></i>Save question</button>' +
+                    '<button class="btn btn-secondary btn-sm" type="button" data-act="cancel-edit">Cancel</button>' +
+                    '</div></div>';
+            }
+
+            if (confirming)
+            {
+                html += '<div class="d-q-body"><p><b>Delete this question?</b> This cannot be undone.</p>' +
+                    '<div class="row">' +
+                    '<button class="btn btn-danger btn-sm" type="button" data-act="confirm-del"><i data-lucide="trash-2"></i>Delete question</button>' +
+                    '<button class="btn btn-secondary btn-sm" type="button" data-act="cancel-del">Keep it</button>' +
+                    '</div></div>';
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderQuestions()
+        {
+            const body = el('questions-body');
+            const generate = el('gen-questions');
+
+            if (!applicant.score_json)
+            {
+                generate.disabled = true;
+                body.innerHTML = Dash.empty('sparkles', 'Questions are generated from the AI assessment. This application has not been assessed yet.');
+                return;
+            }
+
+            generate.disabled = false;
+
+            if (!questions.length)
+            {
+                body.innerHTML = Dash.empty('help-circle', 'No interview questions yet. Generate a set tailored to this applicant.',
+                    '<button class="btn btn-sm" type="button" data-act="generate"><i data-lucide="sparkles"></i>Generate questions</button>');
+                return;
+            }
+
+            const levels = [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['advanced', 'Advanced']];
+            let html = '';
+
+            levels.forEach(function (pair)
+            {
+                const group = questions.filter(function (item)
+                {
+                    return item.level === pair[0];
+                });
+
+                if (group.length)
+                {
+                    html += '<div class="d-group-title">' + pair[1] + '</div>' + group.map(questionHtml).join('');
+                }
+            });
+
+            const other = questions.filter(function (item)
+            {
+                return ['beginner', 'intermediate', 'advanced'].indexOf(item.level) === -1;
+            });
+
+            if (other.length)
+            {
+                html += '<div class="d-group-title">Other</div>' + other.map(questionHtml).join('');
+            }
+
+            body.innerHTML = html;
+        }
+
+        async function generateQuestions(button)
+        {
+            hideError('questions-error');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                questions = await Api.post('/api/applications/' + applicantId + '/questions/generate');
+                renderQuestions();
+                Dash.icons();
+                showToast('Interview questions are ready.', 'success');
+            }
+            catch (error)
+            {
+                showError('questions-error', error.message);
+            }
+
+            Dash.setBusy(button, false);
+        }
+
+        async function saveQuestion(id, button)
+        {
+            const input = el('q-edit-text');
+            const card = button.closest('.d-q');
+            const errorBox = card.querySelector('[data-q-error]');
+            const text = input.value.trim();
+
+            errorBox.classList.add('hidden');
+
+            if (!text)
+            {
+                errorBox.textContent = 'A question cannot be empty. Write the question you want to ask.';
+                errorBox.classList.remove('hidden');
+                return;
+            }
+
+            Dash.setBusy(button, true);
+
+            try
+            {
+                const updated = await Api.put('/api/questions/' + id, { text: text });
+
+                questions = questions.map(function (item)
+                {
+                    return item.id === updated.id ? updated : item;
+                });
+
+                editingQuestionId = null;
+                renderQuestions();
+                Dash.icons();
+                showToast('Question updated.', 'success');
+            }
+            catch (error)
+            {
+                errorBox.textContent = error.message;
+                errorBox.classList.remove('hidden');
+                Dash.setBusy(button, false);
+            }
+        }
+
+        async function deleteQuestion(id, button)
+        {
+            hideError('questions-error');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                await Api.del('/api/questions/' + id);
+
+                questions = questions.filter(function (item)
+                {
+                    return item.id !== id;
+                });
+
+                confirmingDeleteId = null;
+                renderQuestions();
+                Dash.icons();
+                showToast('Question deleted.', 'success');
+            }
+            catch (error)
+            {
+                showError('questions-error', error.message);
+                Dash.setBusy(button, false);
+            }
+        }
+
+        async function regenerateQuestion(id, button)
+        {
+            hideError('questions-error');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                const updated = await Api.post('/api/questions/' + id + '/regenerate');
+
+                questions = questions.map(function (item)
+                {
+                    return item.id === updated.id ? updated : item;
+                });
+
+                renderQuestions();
+                Dash.icons();
+                showToast('Question regenerated.', 'success');
+            }
+            catch (error)
+            {
+                showError('questions-error', error.message);
+                Dash.setBusy(button, false);
+            }
+        }
+
+        function renderFairness()
+        {
+            const body = el('fairness-body');
+            const button = el('fairness-run');
+
+            if (!applicant.score_json)
+            {
+                button.disabled = true;
+                body.innerHTML = Dash.empty('scale', 'The fairness test needs an AI assessment. This application has not been assessed yet.');
+                return;
+            }
+
+            button.disabled = false;
+
+            if (!fairness)
+            {
+                body.innerHTML = Dash.empty('scale', 'No fairness test has been run yet. Run it to re-score this resume with every protected attribute removed.');
+                return;
+            }
+
+            const badge = fairness.unchanged
+                ? '<span class="d-badge ok">Score unchanged by protected attributes</span>'
+                : '<span class="d-badge bad">Score moved by ' + Dash.esc(fairness.difference) + ' points</span>';
+
+            const attributes = (fairness.protected_attributes_excluded || []).map(function (item)
+            {
+                return Dash.esc(item);
+            }).join(', ');
+
+            body.innerHTML =
+                '<div class="d-fair">' +
+                '<div><b>' + Dash.esc(fairness.original_score) + '</b><span>Original score</span></div>' +
+                '<div><b>' + Dash.esc(fairness.anonymised_score) + '</b><span>Anonymised score</span></div>' +
+                '<div><b>' + Dash.esc(fairness.difference) + '</b><span>Difference</span></div>' +
+                '</div>' +
+                '<p class="d-hint">' + badge + '</p>' +
+                Dash.callout('shield', 'Excluded from the re-score',
+                    '<p>' + attributes + '</p><p>' + Dash.esc(fairness.note || '') + '</p>',
+                    fairness.unchanged ? 'ok' : 'bad');
+        }
+
+        function renderClaims()
+        {
+            const body = el('claims-body');
+
+            if (!applicant.score_json)
+            {
+                body.innerHTML = Dash.empty('shield', 'Unsupported-claim flags appear once this application has been assessed.');
+                return;
+            }
+
+            const claims = applicant.score_json.unsupported_claims || [];
+
+            if (!claims.length)
+            {
+                body.innerHTML = Dash.empty('check-circle-2', 'No unsupported claims were flagged in this resume.');
+                return;
+            }
+
+            body.innerHTML =
+                Dash.callout('info', 'These flags are for human review',
+                    '<p>The AI could not find enough evidence for the claims below. It does not accept or reject anything on its own — you decide what each flag means.</p>') +
+                claims.map(function (claim, index)
+                {
+                    return '<div class="d-flag"><i data-lucide="triangle-alert"></i>' +
+                        '<div><b>' + Dash.esc(claim.claim) + '</b>' +
+                        '<p>Resume excerpt: "' + Dash.esc(claim.excerpt) + '"</p>' +
+                        '<p>' + Dash.esc(claim.reason) + '</p></div>' +
+                        '<label><input type="checkbox" data-claim="' + index + '"' + (claim.reviewed ? ' checked' : '') + '> Marked as reviewed</label>' +
+                        '</div>';
+                }).join('');
+        }
+
+        async function reviewClaim(index, box)
+        {
+            const claims = (applicant.score_json && applicant.score_json.unsupported_claims) || [];
+            const claim = claims[index];
+
+            if (!claim)
+            {
+                return;
+            }
+
+            const matched = (applicant.score_json && applicant.score_json.matched_skills) || [];
+
+            if (!matched.length)
+            {
+                showToast('There is no assessed skill to attach this review to.', 'error');
+                renderClaims();
+                Dash.icons();
+                return;
+            }
+
+            const reviewed = box.checked;
+            hideError('claims-error');
+            box.disabled = true;
+
+            try
+            {
+                applicant = await Api.patch('/api/applications/' + applicantId + '/skills',
+                {
+                    skill: matched[0].skill,
+                    verified: matched[0].verified,
+                    claim: claim.claim,
+                    reviewed: reviewed
+                });
+
+                renderAll();
+                showToast(reviewed ? 'Flag marked as reviewed.' : 'Review mark removed.', 'success');
+            }
+            catch (error)
+            {
+                showError('claims-error', error.message);
+                renderClaims();
+                Dash.icons();
+            }
+        }
+
+        function renderInterviewNote()
+        {
+            if (applicant.status === 'Shortlisted')
+            {
+                el('interview-note').innerHTML = Dash.callout('calendar-clock', 'Ready to schedule',
+                    '<p>This application is Shortlisted. Booking a slot moves it to the Interview stage automatically.</p>');
+            }
+            else
+            {
+                el('interview-note').innerHTML = Dash.callout('triangle-alert', 'Scheduling is only meaningful from the Shortlisted status',
+                    '<p>This application is currently "' + Dash.esc(applicant.status) + '". You can still record a slot, but the stage will not change automatically.</p>',
+                    'warn');
+            }
+        }
+
+        function conflictListHtml(conflicts)
+        {
+            return conflicts.map(function (conflict)
+            {
+                const when = Dash.dateTime(conflict.scheduled_at);
+
+                if (conflict.type === 'interviewer')
+                {
+                    return '<p>' + Dash.esc(conflict.name) + ' is already interviewing ' + Dash.esc(conflict.with) +
+                        ' at ' + Dash.esc(when) + ' (' + Dash.esc(conflict.duration_minutes) + ' minutes).</p>';
+                }
+
+                return '<p>' + Dash.esc(conflict.name) + ' already has an interview with ' + Dash.esc(conflict.with) +
+                    ' at ' + Dash.esc(when) + '.</p>';
+            }).join('');
+        }
+
+        function renderInterviewResult(result)
+        {
+            const iv = result.interview;
+
+            let html = Dash.callout('calendar-check', 'Interview scheduled',
+                '<p><b>' + Dash.esc(iv.candidateName) + '</b> · ' + Dash.esc(iv.jobTitle) + '</p>' +
+                '<p>' + Dash.esc(Dash.dateTime(iv.scheduled_at)) + ' · ' + Dash.esc(iv.duration_minutes) + ' minutes · ' + Dash.esc(iv.interview_type) + '</p>' +
+                '<p>Interviewer: ' + Dash.esc(iv.interviewer) + '</p>', 'ok');
+
+            if (result.conflicts && result.conflicts.length)
+            {
+                html += Dash.callout('triangle-alert', 'Booked despite clashes', conflictListHtml(result.conflicts), 'warn');
+            }
+
+            el('interview-result').innerHTML = html;
+        }
+
+        function renderConflict(message)
+        {
+            const box = el('interview-conflict');
+
+            box.innerHTML = Dash.callout('triangle-alert', 'This slot clashes with an existing interview',
+                '<p>' + Dash.esc(message) + '</p>', 'bad') +
+                '<div class="row">' +
+                '<button class="btn btn-danger btn-sm" id="iv-force" type="button"><i data-lucide="calendar-plus"></i>Schedule anyway</button>' +
+                '<button class="btn btn-secondary btn-sm" id="iv-force-cancel" type="button">Choose a different slot</button>' +
+                '</div>';
+
+            el('iv-force').addEventListener('click', function ()
+            {
+                scheduleInterview(true);
+            });
+
+            el('iv-force-cancel').addEventListener('click', function ()
+            {
+                box.innerHTML = '';
+            });
+
+            Dash.icons();
+        }
+
+        async function refreshAfterInterview()
+        {
+            try
+            {
+                const list = await Api.get('/api/jobs/' + jobId + '/applicants');
+                const found = list.filter(function (item)
+                {
+                    return item.id === applicantId;
+                })[0];
+
+                if (found)
+                {
+                    applicant = found;
+                }
+
+                historyList = await Api.get('/api/applications/' + applicantId + '/history');
+            }
+            catch (error)
+            {
+                showToast(error.message, 'error');
+            }
+
+            renderAll();
+        }
+
+        async function scheduleInterview(force)
+        {
+            const interviewer = el('iv-interviewer').value.trim();
+            const when = el('iv-when').value;
+            const duration = Number(el('iv-duration').value);
+            const submit = el('iv-submit');
+
+            hideError('interview-error');
+
+            if (!interviewer)
+            {
+                showError('interview-error', 'Please enter who will run the interview.');
+                return;
+            }
+
+            if (!when || isNaN(new Date(when).getTime()))
+            {
+                showError('interview-error', 'Please pick a valid date and time for the interview.');
+                return;
+            }
+
+            if (!Number.isFinite(duration) || duration < 15 || duration > 240)
+            {
+                showError('interview-error', 'Interview length must be between 15 and 240 minutes.');
+                return;
+            }
+
+            const payload =
+            {
+                application_id: applicantId,
+                interviewer: interviewer,
+                interview_type: el('iv-type').value,
+                scheduled_at: new Date(when).toISOString(),
+                duration_minutes: duration
+            };
+
+            if (force)
+            {
+                payload.force = true;
+            }
+            else
+            {
+                el('interview-conflict').innerHTML = '';
+            }
+
+            const busyButton = force ? el('iv-force') : submit;
+            Dash.setBusy(busyButton, true);
+
+            try
+            {
+                const result = await Api.post('/api/interviews', payload);
+                el('interview-conflict').innerHTML = '';
+                renderInterviewResult(result);
+                Dash.icons();
+                Dash.setBusy(submit, false);
+                showToast('Interview scheduled for ' + Dash.dateTime(result.interview.scheduled_at) + '.', 'success');
+                await refreshAfterInterview();
+            }
+            catch (error)
+            {
+                if (error.status === 409)
+                {
+                    renderConflict(error.message);
+                }
+                else
+                {
+                    showError('interview-error', error.message);
+                }
+
+                Dash.setBusy(busyButton, false);
+            }
+        }
+
+        function renderDecision()
+        {
+            const body = el('decision-body');
+            const allowed = TRANSITIONS[applicant.status] || [];
+            const forward = allowed.filter(function (status)
+            {
+                return status !== 'Rejected';
+            })[0] || null;
+
+            const canShortlist = allowed.indexOf('Shortlisted') !== -1;
+            const canReject = allowed.indexOf('Rejected') !== -1;
+
+            let html = '<div class="row">' +
+                '<button class="btn btn-success" type="button" data-status="Shortlisted"' + (canShortlist ? '' : ' disabled') + '>' +
+                '<i data-lucide="user-check"></i>Shortlist</button>';
+
+            if (forward)
+            {
+                html += '<button class="btn" type="button" data-status="' + Dash.esc(forward) + '">' +
+                    '<i data-lucide="arrow-right"></i>Advance to ' + Dash.esc(forward) + '</button>';
+            }
+            else
+            {
+                html += '<button class="btn" type="button" disabled><i data-lucide="arrow-right"></i>Advance</button>';
+            }
+
+            html += '<button class="btn btn-danger" type="button" data-act="reject-open"' + (canReject ? '' : ' disabled') + '>' +
+                '<i data-lucide="user-x"></i>Reject</button>' +
+                '</div>' +
+                '<p class="d-hint">' + (allowed.length
+                    ? 'Available next steps from "' + Dash.esc(applicant.status) + '": ' + Dash.esc(allowed.join(', ')) + '.'
+                    : '"' + Dash.esc(applicant.status) + '" is a final status — no further transitions are available.') + '</p>';
+
+            if (rejectOpen && canReject)
+            {
+                html += Dash.callout('triangle-alert', 'Reject this application?',
+                    '<p>Rejection is final and is written to the audit trail. Please record why — the reason is required and stays private to recruiters.</p>', 'bad') +
+                    '<div class="form-group"><label for="reject-reason">Reason for rejection (required)</label>' +
+                    '<textarea id="reject-reason" placeholder="For example: no evidence of the required Django experience for a senior role"></textarea></div>' +
+                    '<div class="form-error hidden" id="reject-error" role="alert"></div>' +
+                    '<div class="row">' +
+                    '<button class="btn btn-danger" type="button" data-act="reject-confirm"><i data-lucide="user-x"></i>Confirm rejection</button>' +
+                    '<button class="btn btn-secondary" type="button" data-act="reject-cancel">Cancel</button>' +
+                    '</div>';
+            }
+
+            body.innerHTML = html;
         }
 
         async function changeStatus(status, button)
         {
-            showBox('status-error', '');
-            button.disabled = true;
-            button.classList.add('loading');
+            hideError('decision-error');
+            Dash.setBusy(button, true);
 
             try
             {
-                await Api.patch('/api/applications/' + encodeURIComponent(applicationId) + '/status', { status: status });
-                application.status = status;
-                renderSummary();
-                renderStatusButtons();
-                await loadHistory();
-                showToast('Status changed to ' + status + '.', 'success');
+                applicant = await Api.patch('/api/applications/' + applicantId + '/status', { status: status });
+                historyList = applicant.history || historyList;
+                rejectOpen = false;
+                renderAll();
+                showToast('Application moved to ' + status + '.', 'success');
             }
             catch (error)
             {
-                showBox('status-error', error.message);
-                button.disabled = false;
-                button.classList.remove('loading');
+                showError('decision-error', error.message);
+                Dash.setBusy(button, false);
             }
         }
 
-        async function saveNote(event)
+        async function confirmReject(button)
         {
-            event.preventDefault();
-            const text = el('note-text').value.trim();
-            showBox('note-error', '');
+            const input = el('reject-reason');
+            const errorBox = el('reject-error');
+            const reason = input.value.trim();
 
-            if (text.length < 2)
+            errorBox.classList.add('hidden');
+
+            if (reason.length < 5)
             {
-                showBox('note-error', 'Write a note before saving.');
+                errorBox.textContent = 'Please give a reason of at least a few words. Rejections are audited, so a reason is required.';
+                errorBox.classList.remove('hidden');
                 return;
             }
 
-            el('note-save').disabled = true;
-            el('note-save').classList.add('loading');
+            hideError('decision-error');
+            Dash.setBusy(button, true);
 
             try
             {
-                await Api.post('/api/applications/' + encodeURIComponent(applicationId) + '/notes', { text: text });
-                el('note-text').value = '';
-                await Promise.all([loadNotes(), loadHistory()]);
-                showToast('Note saved.', 'success');
+                applicant = await Api.patch('/api/applications/' + applicantId + '/status', { status: 'Rejected' });
+                historyList = applicant.history || historyList;
+                rejectOpen = false;
+
+                try
+                {
+                    const note = await Api.post('/api/applications/' + applicantId + '/notes', { text: 'Rejection reason: ' + reason });
+                    notes.push(note);
+                }
+                catch (noteError)
+                {
+                    showToast('The application was rejected, but the reason could not be saved as a note.', 'info');
+                }
+
+                renderAll();
+                showToast('Application rejected. The decision is on the audit trail.', 'success');
             }
             catch (error)
             {
-                showBox('note-error', error.message);
+                errorBox.textContent = error.message;
+                errorBox.classList.remove('hidden');
+                Dash.setBusy(button, false);
+            }
+        }
+
+        function renderNotes()
+        {
+            const body = el('notes-body');
+
+            if (!notes.length)
+            {
+                body.innerHTML = '<p class="muted">No private notes yet.</p>';
+                return;
             }
 
-            el('note-save').disabled = false;
-            el('note-save').classList.remove('loading');
+            body.innerHTML = notes.map(function (note)
+            {
+                return '<div class="d-note"><div><p>' + Dash.esc(note.text) + '</p>' +
+                    '<small>' + Dash.esc(note.author) + ' · ' + Dash.esc(Dash.dateTime(note.at)) + '</small></div></div>';
+            }).join('');
+        }
+
+        function renderHistory()
+        {
+            const body = el('history-body');
+
+            if (!historyList.length)
+            {
+                body.innerHTML = Dash.empty('history', 'No status changes have been recorded yet.');
+                return;
+            }
+
+            body.innerHTML = '<div class="d-table-wrap"><table class="d-table"><thead><tr>' +
+                '<th>From</th><th>To</th><th>Changed by</th><th>When</th><th>Reason</th>' +
+                '</tr></thead><tbody>' +
+                historyList.map(function (entry)
+                {
+                    return '<tr>' +
+                        '<td>' + (entry.from ? Dash.esc(entry.from) : '<span class="muted">Start</span>') + '</td>' +
+                        '<td>' + Dash.badge(entry.to, Dash.statusTone(entry.to)) + '</td>' +
+                        '<td>' + Dash.esc(entry.changedBy) + '</td>' +
+                        '<td>' + Dash.esc(Dash.dateTime(entry.at)) + '</td>' +
+                        '<td>' + (entry.reason ? Dash.esc(entry.reason) : '<span class="muted">—</span>') + '</td>' +
+                        '</tr>';
+                }).join('') +
+                '</tbody></table></div>';
+        }
+
+        function renderAll()
+        {
+            renderHeader();
+            renderAssessment();
+            renderQuestions();
+            renderFairness();
+            renderClaims();
+            renderInterviewNote();
+            renderDecision();
+            renderNotes();
+            renderHistory();
+            Dash.icons();
+        }
+
+        async function load()
+        {
+            if (!jobId)
+            {
+                fatal('No job was specified, so this applicant could not be loaded.', 'jobs.html', 'Back to jobs', null);
+                return;
+            }
+
+            if (!applicantId)
+            {
+                fatal('No applicant was specified. Open an applicant from the list to see the full assessment.',
+                    'applicants.html?jobId=' + jobId, 'Back to applicants', null);
+                return;
+            }
+
+            showSkeletons();
+
+            try
+            {
+                const results = await Promise.all([
+                    Api.get('/api/jobs/' + jobId),
+                    Api.get('/api/jobs/' + jobId + '/applicants')
+                ]);
+
+                job = results[0];
+
+                applicant = results[1].filter(function (item)
+                {
+                    return item.id === applicantId;
+                })[0] || null;
+
+                if (!applicant)
+                {
+                    fatal('This applicant could not be found for ' + job.title + '. The application may have been removed.',
+                        'applicants.html?jobId=' + jobId, 'Back to applicants', null);
+                    return;
+                }
+
+                if (applicant.status === 'AI Assessment Available')
+                {
+                    try
+                    {
+                        applicant = await Api.patch('/api/applications/' + applicantId + '/status', { status: 'Recruiter Review' });
+                    }
+                    catch (error)
+                    {
+                        showToast(error.message, 'error');
+                    }
+                }
+
+                const extra = await Promise.all([
+                    Api.get('/api/applications/' + applicantId + '/questions'),
+                    Api.get('/api/applications/' + applicantId + '/notes'),
+                    Api.get('/api/applications/' + applicantId + '/history')
+                ]);
+
+                questions = extra[0];
+                notes = extra[1];
+                historyList = extra[2];
+                explanation = (applicant.score_json && applicant.score_json.explanation) || '';
+                learning = (applicant.score_json && applicant.score_json.learning_areas) || [];
+
+                el('fatal').classList.add('hidden');
+                el('main').classList.remove('hidden');
+                renderAll();
+            }
+            catch (error)
+            {
+                fatal(error.message, 'applicants.html?jobId=' + jobId, 'Back to applicants', load);
+            }
         }
 
         if (user)
         {
+            document.querySelector('.d-tabs').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-tab]');
+
+                if (button)
+                {
+                    setTab(button.getAttribute('data-tab'));
+                }
+            });
+
+            el('panel-assessment').addEventListener('click', function (event)
+            {
+                const gapButton = event.target.closest('[data-gap]');
+
+                if (gapButton)
+                {
+                    confirmGap(Number(gapButton.getAttribute('data-gap')), gapButton);
+                    return;
+                }
+
+                const button = event.target.closest('[data-act]');
+
+                if (!button)
+                {
+                    return;
+                }
+
+                const action = button.getAttribute('data-act');
+
+                if (action === 'explain')
+                {
+                    runExplain(button);
+                }
+                else if (action === 'learning')
+                {
+                    runLearning(button);
+                }
+                else if (action === 'rescore')
+                {
+                    runRescore(button);
+                }
+            });
+
+            el('panel-assessment').addEventListener('change', function (event)
+            {
+                const box = event.target.closest('[data-verify]');
+
+                if (box)
+                {
+                    toggleVerified(Number(box.getAttribute('data-verify')), box);
+                }
+            });
+
+            el('gen-questions').addEventListener('click', function ()
+            {
+                generateQuestions(el('gen-questions'));
+            });
+
+            el('questions-body').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('button[data-act]');
+
+                if (!button)
+                {
+                    return;
+                }
+
+                const action = button.getAttribute('data-act');
+
+                if (action === 'generate')
+                {
+                    generateQuestions(el('gen-questions'));
+                    return;
+                }
+
+                const card = button.closest('.d-q');
+
+                if (!card)
+                {
+                    return;
+                }
+
+                const id = Number(card.getAttribute('data-q'));
+
+                if (action === 'toggle')
+                {
+                    if (openGuidelines.has(id))
+                    {
+                        openGuidelines.delete(id);
+                    }
+                    else
+                    {
+                        openGuidelines.add(id);
+                    }
+
+                    renderQuestions();
+                    Dash.icons();
+                }
+                else if (action === 'edit')
+                {
+                    editingQuestionId = editingQuestionId === id ? null : id;
+                    confirmingDeleteId = null;
+                    renderQuestions();
+                    Dash.icons();
+                }
+                else if (action === 'cancel-edit')
+                {
+                    editingQuestionId = null;
+                    renderQuestions();
+                    Dash.icons();
+                }
+                else if (action === 'save')
+                {
+                    saveQuestion(id, button);
+                }
+                else if (action === 'del')
+                {
+                    confirmingDeleteId = confirmingDeleteId === id ? null : id;
+                    editingQuestionId = null;
+                    renderQuestions();
+                    Dash.icons();
+                }
+                else if (action === 'cancel-del')
+                {
+                    confirmingDeleteId = null;
+                    renderQuestions();
+                    Dash.icons();
+                }
+                else if (action === 'confirm-del')
+                {
+                    deleteQuestion(id, button);
+                }
+                else if (action === 'regen')
+                {
+                    regenerateQuestion(id, button);
+                }
+            });
+
+            el('fairness-run').addEventListener('click', async function ()
+            {
+                const button = el('fairness-run');
+                hideError('fairness-error');
+                Dash.setBusy(button, true);
+
+                try
+                {
+                    fairness = await Api.post('/api/applications/' + applicantId + '/fairness-test');
+                    renderFairness();
+                    Dash.icons();
+                    showToast(fairness.unchanged
+                        ? 'Fairness test passed — the score did not change.'
+                        : 'Fairness test found a difference of ' + fairness.difference + ' points. Review the result.',
+                        fairness.unchanged ? 'success' : 'info');
+                }
+                catch (error)
+                {
+                    showError('fairness-error', error.message);
+                }
+
+                Dash.setBusy(button, false);
+            });
+
+            el('claims-body').addEventListener('change', function (event)
+            {
+                const box = event.target.closest('[data-claim]');
+
+                if (box)
+                {
+                    reviewClaim(Number(box.getAttribute('data-claim')), box);
+                }
+            });
+
+            el('interview-form').addEventListener('submit', function (event)
+            {
+                event.preventDefault();
+                scheduleInterview(false);
+            });
+
+            el('decision-body').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('button');
+
+                if (!button || button.disabled)
+                {
+                    return;
+                }
+
+                const status = button.getAttribute('data-status');
+                const action = button.getAttribute('data-act');
+
+                if (status)
+                {
+                    changeStatus(status, button);
+                }
+                else if (action === 'reject-open')
+                {
+                    rejectOpen = true;
+                    renderDecision();
+                    Dash.icons();
+                }
+                else if (action === 'reject-cancel')
+                {
+                    rejectOpen = false;
+                    renderDecision();
+                    Dash.icons();
+                }
+                else if (action === 'reject-confirm')
+                {
+                    confirmReject(button);
+                }
+            });
+
+            el('note-form').addEventListener('submit', async function (event)
+            {
+                event.preventDefault();
+
+                const input = el('note-text');
+                const button = el('note-save');
+                const text = input.value.trim();
+
+                hideError('note-error');
+
+                if (!text)
+                {
+                    showError('note-error', 'Please write a note before saving it.');
+                    return;
+                }
+
+                if (text.length > 1000)
+                {
+                    showError('note-error', 'Notes are limited to 1000 characters. Please shorten it a little.');
+                    return;
+                }
+
+                Dash.setBusy(button, true);
+
+                try
+                {
+                    const note = await Api.post('/api/applications/' + applicantId + '/notes', { text: text });
+                    notes.push(note);
+                    input.value = '';
+                    renderNotes();
+                    Dash.icons();
+                    showToast('Note saved. Only recruiters can see it.', 'success');
+                }
+                catch (error)
+                {
+                    showError('note-error', error.message);
+                }
+
+                Dash.setBusy(button, false);
+            });
+
             Dash.mountShell(
             {
                 user: user,
                 logo: 'sparkles',
-                title: 'Applicant detail',
-                subtitle: 'Score, skills, status and notes',
+                title: 'Applicant',
+                subtitle: 'Assessment, questions and the human decision',
                 search: true,
-                items:
-                [
-                    { label: 'Overview', href: 'recruiter.html', icon: 'layout-dashboard' },
-                    { label: 'Jobs', href: 'jobs.html', icon: 'briefcase' },
-                    { label: 'Interviews', href: 'interviews.html', icon: 'calendar-clock' },
-                    { label: 'Talent Search', href: 'search.html', icon: 'search' }
-                ],
+                items: Dash.RECRUITER_NAV,
+                active: 'jobs.html',
                 onBell: function ()
                 {
                     showToast('You have no new notifications.', 'info');
                 }
             });
-
-            document.querySelectorAll('.d-nav a').forEach(function (link)
-            {
-                link.classList.toggle('on', link.getAttribute('href') === 'jobs.html');
-            });
-
-            el('status-actions').addEventListener('click', function (event)
-            {
-                const button = event.target.closest('[data-status]');
-
-                if (button)
-                {
-                    changeStatus(button.getAttribute('data-status'), button);
-                }
-            });
-
-            el('note-form').addEventListener('submit', saveNote);
 
             load();
         }
