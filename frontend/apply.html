@@ -8,124 +8,230 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
-    <style>
-        .drop{border:2px dashed #cdd2e3;border-radius:14px;padding:26px;text-align:center;background:#fafaff}
-        .drop.has{border-color:var(--ac);background:var(--soft)}
-        .bar{height:8px;border-radius:9px;background:#eceef6;overflow:hidden;margin-top:14px}
-        .bar u{display:block;height:100%;width:40%;border-radius:9px;background:linear-gradient(90deg,var(--ac),var(--ac2));animation:slide 1.1s infinite ease-in-out}
-        @keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}
-    </style>
 </head>
 <body class="theme-candidate">
     <div id="content" class="d-content">
-        <section class="d-panel" aria-label="Apply for a job">
-            <h3 id="job-title">Loading job...</h3>
-            <p class="sub" id="job-meta"></p>
-            <div id="form-error" class="form-error hidden" role="alert"></div>
-            <form id="apply-form" novalidate class="hidden">
-                <div class="drop" id="drop">
-                    <p><b id="file-name">Choose your resume</b></p>
-                    <p class="muted" id="file-hint">PDF only, up to 5 MB</p>
-                    <input type="file" id="resume" accept="application/pdf,.pdf" aria-label="Resume PDF" style="margin-top:12px">
+        <section class="d-panel" id="job-panel" aria-label="Job details"></section>
+
+        <section class="d-panel hidden" id="apply-panel" aria-label="Submit your application">
+            <h3>Apply for this role</h3>
+            <p class="sub">Attach your resume as a PDF and send your application</p>
+
+            <div id="success-box" class="hidden"></div>
+
+            <form id="apply-form" novalidate>
+                <div class="d-drop" id="drop" role="button" tabindex="0" aria-label="Choose your resume PDF file">
+                    <i data-lucide="file-up"></i>
+                    <b id="drop-title">Click to choose your resume</b>
+                    <span id="drop-hint">PDF only, up to 5 MB. Drag and drop works too.</span>
                 </div>
-                <div class="error-text" id="resume-error"></div>
-                <div class="bar hidden" id="progress" role="progressbar" aria-label="Uploading resume"><u></u></div>
-                <div class="row" style="margin-top:16px">
-                    <button type="submit" class="btn" id="submit-btn">Submit application</button>
-                    <a class="btn btn-secondary" href="candidate.html#jobs">Cancel</a>
+                <input type="file" id="resume-input" class="d-sr" accept=".pdf" aria-label="Resume PDF file">
+                <p class="error-text" id="file-error" role="alert"></p>
+
+                <div id="progress-wrap" class="hidden" role="status" aria-live="polite" style="margin-top:14px">
+                    <p class="d-hint" id="progress-label" style="margin-bottom:6px">Uploading your resume…</p>
+                    <div class="d-progress" aria-hidden="true"><u id="progress-fill"></u></div>
                 </div>
+
+                <div class="d-actions">
+                    <button type="submit" class="btn" id="submit-btn"><i data-lucide="send" style="width:16px;height:16px"></i>Submit application</button>
+                    <a class="btn btn-secondary" href="candidate.html#jobs">Back to jobs</a>
+                </div>
+                <p class="error-text" id="submit-error" role="alert"></p>
             </form>
+
+            <div class="d-callout" style="margin-top:18px;margin-bottom:0">
+                <i data-lucide="users"></i>
+                <div>
+                    <b>What happens next</b>
+                    <p>After you apply, your resume is read carefully and a real person on the hiring team reviews every application. We will send you an update as soon as there is news, and you can follow your progress at any time.</p>
+                </div>
+            </div>
         </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
     <script src="js/mock.js"></script>
-    <script src="js/mock-candidate.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
     <script>
         const user = guardPage('candidate');
-        const jobId = new URLSearchParams(window.location.search).get('jobId');
+        const jobId = Dash.intParam('jobId', 0);
         const MAX_BYTES = 5 * 1024 * 1024;
+        let rampTimer = null;
 
         function el(id)
         {
             return document.getElementById(id);
         }
 
-        function showError(message)
+        function formatSize(bytes)
         {
-            el('form-error').textContent = message;
-            el('form-error').classList.toggle('hidden', !message);
+            if (bytes >= 1024 * 1024)
+            {
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
+            return Math.max(1, Math.round(bytes / 1024)) + ' KB';
         }
 
         function fileProblem(file)
         {
             if (!file)
             {
-                return 'Please choose your resume PDF.';
+                return 'Please choose your resume before submitting your application.';
             }
 
-            if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name))
+            if (!/\.pdf$/i.test(file.name))
             {
-                return 'Only PDF files are accepted. Please export your resume as a PDF.';
+                return 'We can only accept PDF resumes. Please save or export your resume as a PDF and choose it again.';
             }
 
             if (file.size > MAX_BYTES)
             {
-                return 'This file is larger than 5 MB. Please upload a smaller PDF.';
+                return 'That file is larger than our 5 MB limit. A simpler export or removing a photo usually makes it smaller.';
             }
 
             return '';
         }
 
-        function onFileChange()
+        function onFilePicked(files)
         {
-            const file = el('resume').files[0];
+            const file = files && files.length ? files[0] : null;
             const problem = file ? fileProblem(file) : '';
-            el('resume-error').textContent = problem;
-            el('drop').classList.toggle('has', Boolean(file) && !problem);
-            el('file-name').textContent = file ? file.name : 'Choose your resume';
-            el('file-hint').textContent = file ? (file.size / 1024 / 1024).toFixed(2) + ' MB' : 'PDF only, up to 5 MB';
-        }
+            el('file-error').textContent = problem;
+            el('submit-error').textContent = '';
 
-        async function loadJob()
-        {
-            if (!jobId)
+            if (!file)
             {
-                el('job-title').textContent = 'No job selected';
-                showError('Open a job from your dashboard and choose Apply now.');
+                el('drop-title').textContent = 'Click to choose your resume';
+                el('drop-hint').textContent = 'PDF only, up to 5 MB. Drag and drop works too.';
                 return;
             }
 
-            try
+            el('drop-title').textContent = file.name;
+
+            if (problem)
             {
-                const job = await Api.get('/api/jobs/' + encodeURIComponent(jobId));
-                el('job-title').textContent = job.title;
-                el('job-meta').textContent = [job.department, job.location, job.type].filter(Boolean).join(', ');
-
-                if (job.status !== 'open')
-                {
-                    showError('This job is closed and no longer accepts applications.');
-                    return;
-                }
-
-                el('apply-form').classList.remove('hidden');
+                el('drop-hint').textContent = 'This file cannot be used yet. Please see the message below.';
+                return;
             }
-            catch (error)
+
+            el('drop-hint').textContent = 'PDF, ' + formatSize(file.size) + '. Click to choose a different file.';
+        }
+
+        function startProgress()
+        {
+            el('progress-wrap').classList.remove('hidden');
+            el('progress-label').textContent = 'Uploading your resume… this bar shows activity, not an exact percentage.';
+
+            let width = 10;
+            el('progress-fill').style.width = width + '%';
+
+            rampTimer = setInterval(function ()
             {
-                el('job-title').textContent = 'Job unavailable';
-                showError(error.message);
+                width = Math.min(90, width + (90 - width) * 0.2);
+                el('progress-fill').style.width = Math.round(width) + '%';
+            }, 200);
+        }
+
+        function stopProgress()
+        {
+            if (rampTimer)
+            {
+                clearInterval(rampTimer);
+                rampTimer = null;
             }
         }
 
-        async function submit(event)
+        function resetProgress()
+        {
+            stopProgress();
+            el('progress-fill').style.width = '0';
+            el('progress-wrap').classList.add('hidden');
+        }
+
+        function skillChips(job)
+        {
+            return (job.skills || []).map(function (item)
+            {
+                const required = item.requirement === 'required';
+                return '<span class="d-chip ' + (required ? 'info' : '') + '">' + Dash.esc(item.skill) + ' &middot; ' + (required ? 'Required' : 'Preferred') + '</span>';
+            }).join('');
+        }
+
+        function renderJob(job)
+        {
+            const tags = [job.department, job.location, job.type].filter(Boolean).map(function (tag)
+            {
+                return '<span class="d-badge info">' + Dash.esc(tag) + '</span>';
+            }).join('');
+
+            const closed = job.status === 'open' ? '' : Dash.callout('lock', 'This role is closed',
+                '<p>We are no longer accepting applications for this position. Have a look at the other open roles, we would love to see you apply to one of them.</p>' +
+                '<a href="candidate.html" style="display:inline-block;margin-top:8px">Back to my dashboard</a>', 'warn');
+
+            const experience = Number(job.experienceYears) > 0 ? Dash.esc(job.experienceYears) + '+ years' : 'Flexible';
+            const chips = skillChips(job);
+
+            el('job-panel').innerHTML = closed +
+                '<h3>' + Dash.esc(job.title) + '</h3>' +
+                (tags ? '<div class="d-meta" style="margin-top:8px">' + tags + '</div>' : '') +
+                '<div class="d-metrics" style="margin-top:16px">' +
+                    '<div class="d-metric"><b>' + Dash.esc(job.salary || 'Not disclosed') + '</b><span>Salary</span></div>' +
+                    '<div class="d-metric"><b>' + experience + '</b><span>Experience required</span></div>' +
+                '</div>' +
+                '<p style="margin-top:14px;font-size:.9rem;color:#475569;line-height:1.65">' + Dash.esc(job.description || 'No description provided yet.') + '</p>' +
+                (job.qualifications ? '<p style="margin-top:10px;font-size:.86rem;color:#475569"><b>Qualifications:</b> ' + Dash.esc(job.qualifications) + '</p>' : '') +
+                (chips ? '<div class="d-group-title">Skills we are looking for</div><div class="d-chips">' + chips + '</div>' : '');
+        }
+
+        async function load()
+        {
+            el('apply-panel').classList.add('hidden');
+
+            if (!jobId)
+            {
+                el('job-panel').innerHTML = Dash.empty('briefcase', 'We could not tell which job you want to apply to. Please open the job from your dashboard and choose Apply now.', '<a class="btn btn-sm" href="candidate.html#jobs">Browse open jobs</a>');
+                Dash.icons();
+                return;
+            }
+
+            el('job-panel').innerHTML = Dash.skeletons(1);
+
+            try
+            {
+                const job = await Api.get('/api/jobs/' + jobId);
+                renderJob(job);
+
+                if (job.status === 'open')
+                {
+                    el('apply-panel').classList.remove('hidden');
+                }
+            }
+            catch (error)
+            {
+                if (error.status === 404)
+                {
+                    el('job-panel').innerHTML = Dash.empty('briefcase', 'This job is no longer available. It may have been filled or removed.', '<a class="btn btn-sm" href="candidate.html">Back to my dashboard</a>');
+                }
+                else
+                {
+                    Dash.failInto(el('job-panel'), error.message, load);
+                }
+            }
+
+            Dash.icons();
+        }
+
+        async function submitApplication(event)
         {
             event.preventDefault();
-            showError('');
-            const file = el('resume').files[0];
+            el('submit-error').textContent = '';
+
+            const file = el('resume-input').files[0] || null;
             const problem = fileProblem(file);
-            el('resume-error').textContent = problem;
+            el('file-error').textContent = problem;
 
             if (problem)
             {
@@ -133,28 +239,31 @@
             }
 
             const data = new FormData();
-            data.append('jobId', jobId);
+            data.append('jobId', String(jobId));
             data.append('resume', file);
 
-            el('submit-btn').disabled = true;
-            el('submit-btn').classList.add('loading');
-            el('progress').classList.remove('hidden');
+            Dash.setBusy(el('submit-btn'), true);
+            startProgress();
 
             try
             {
-                await Api.upload('/api/applications', data);
-                showToast('Application submitted. Good luck!', 'success');
-                setTimeout(function ()
-                {
-                    window.location.href = 'my-applications.html';
-                }, 800);
+                const result = await Api.upload('/api/applications', data);
+                stopProgress();
+                el('progress-fill').style.width = '100%';
+                el('progress-label').textContent = 'Upload complete.';
+                el('apply-form').classList.add('hidden');
+                el('success-box').innerHTML = Dash.callout('circle-check', 'Application received',
+                    '<p>Thank you. Your application for ' + Dash.esc(result.jobTitle) + ' has been received, and a real person on our hiring team will review it. You can follow every step from your applications page.</p>' +
+                    '<a class="btn btn-sm" href="my-applications.html" style="margin-top:10px">Track my applications</a>', 'ok');
+                el('success-box').classList.remove('hidden');
+                showToast('Your application was submitted. Good luck!', 'success');
+                Dash.icons();
             }
             catch (error)
             {
-                showError(error.message);
-                el('submit-btn').disabled = false;
-                el('submit-btn').classList.remove('loading');
-                el('progress').classList.add('hidden');
+                resetProgress();
+                el('submit-error').textContent = error.message;
+                Dash.setBusy(el('submit-btn'), false);
             }
         }
 
@@ -165,30 +274,59 @@
                 user: user,
                 logo: 'rocket',
                 title: 'Apply',
-                subtitle: 'Upload your resume',
+                subtitle: 'One step closer to your next role',
                 search: false,
-                items:
-                [
-                    { label: 'Overview', href: 'candidate.html', icon: 'layout-dashboard' },
-                    { label: 'Browse Jobs', href: 'candidate.html#jobs', icon: 'search' },
-                    { label: 'My Applications', href: 'my-applications.html', icon: 'file-text' },
-                    { label: 'My Profile', href: 'profile.html', icon: 'user' },
-                    { label: 'Notifications', href: 'candidate.html#notifications', icon: 'bell' }
-                ],
+                active: 'candidate.html',
+                items: Dash.CANDIDATE_NAV,
                 onBell: function ()
                 {
                     window.location.href = 'candidate.html#notifications';
                 }
             });
 
-            document.querySelectorAll('.d-nav a').forEach(function (link)
+            const drop = el('drop');
+            const input = el('resume-input');
+
+            drop.addEventListener('click', function ()
             {
-                link.classList.toggle('on', link.getAttribute('href') === 'candidate.html#jobs');
+                input.click();
             });
 
-            el('resume').addEventListener('change', onFileChange);
-            el('apply-form').addEventListener('submit', submit);
-            loadJob();
+            drop.addEventListener('keydown', function (event)
+            {
+                if (event.key === 'Enter' || event.key === ' ')
+                {
+                    event.preventDefault();
+                    input.click();
+                }
+            });
+
+            drop.addEventListener('dragover', function (event)
+            {
+                event.preventDefault();
+                drop.classList.add('over');
+            });
+
+            drop.addEventListener('dragleave', function ()
+            {
+                drop.classList.remove('over');
+            });
+
+            drop.addEventListener('drop', function (event)
+            {
+                event.preventDefault();
+                drop.classList.remove('over');
+                input.files = event.dataTransfer.files;
+                onFilePicked(event.dataTransfer.files);
+            });
+
+            input.addEventListener('change', function ()
+            {
+                onFilePicked(input.files);
+            });
+
+            el('apply-form').addEventListener('submit', submitApplication);
+            load();
         }
     </script>
 </body>

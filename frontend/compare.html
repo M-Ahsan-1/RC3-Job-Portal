@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare applicants - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        th.name{text-transform:none;font-size:.95rem;color:var(--text)}
+        td.best{background:var(--success-light);font-weight:700}
+        td .badge{margin:0 6px 6px 0}
+        td.label,th.label{width:170px;color:var(--muted);font-weight:600}
+    </style>
+</head>
+<body class="theme-recruiter">
+    <div id="content" class="d-content">
+        <section class="d-panel" aria-label="Compare applicants">
+            <div class="d-panel-head">
+                <div><h3>Compare applicants</h3><p class="sub">The highest value in each row is shaded green</p></div>
+                <a class="btn btn-secondary btn-sm" id="back" href="search.html">Back</a>
+            </div>
+            <div id="error-box" class="form-error hidden" role="alert"></div>
+            <div id="table"></div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-applicants.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/mock-extra.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/recruiter-nav.js"></script>
+    <script>
+        const user = mountRecruiterShell('Compare', 'Side by side', 'jobs.html');
+
+        function el(id) { return document.getElementById(id); }
+
+        function names(list)
+        {
+            return (list || []).map(function (i) { return typeof i === 'string' ? i : (i && (i.skill || i.name)) || ''; }).filter(Boolean);
+        }
+
+        function effective(a)
+        {
+            return a.overrideScore !== null && a.overrideScore !== undefined ? a.overrideScore : a.score;
+        }
+
+        function breakdown(a)
+        {
+            const data = (a.score_json || {}).breakdown;
+            const map = {};
+
+            if (Array.isArray(data))
+            {
+                data.forEach(function (i) { map[i.label || i.name] = Number(i.score); });
+            }
+            else if (data && typeof data === 'object')
+            {
+                Object.keys(data).forEach(function (k) { map[k.replace(/_/g, ' ')] = Number(data[k]); });
+            }
+
+            return map;
+        }
+
+        function numberRow(label, people, pick)
+        {
+            const values = people.map(pick);
+            const best = Math.max.apply(null, values.filter(function (v) { return typeof v === 'number' && !isNaN(v); }));
+
+            return '<tr><td class="label">' + Dash.esc(label) + '</td>' + values.map(function (v)
+            {
+                const ok = typeof v === 'number' && !isNaN(v);
+                return '<td' + (ok && v === best && values.length > 1 ? ' class="best"' : '') + '>' + (ok ? v : '-') + '</td>';
+            }).join('') + '</tr>';
+        }
+
+        function render(people)
+        {
+            const keys = [];
+            people.forEach(function (p) { Object.keys(breakdown(p)).forEach(function (k) { if (keys.indexOf(k) === -1) { keys.push(k); } }); });
+
+            let html = '<div class="table-wrap"><table><thead><tr><th class="label"></th>' + people.map(function (p)
+            {
+                return '<th class="name"><a href="applicant-detail.html?id=' + encodeURIComponent(p.id) + '">' + Dash.esc(p.candidateName) + '</a><br><span class="muted">' + Dash.esc(p.jobTitle || '') + '</span></th>';
+            }).join('') + '</tr></thead><tbody>';
+
+            html += numberRow('Overall score', people, effective);
+            keys.forEach(function (k) { html += numberRow(k, people, function (p) { return breakdown(p)[k]; }); });
+            html += '<tr><td class="label">Status</td>' + people.map(function (p) { return '<td>' + Dash.esc(p.status) + '</td>'; }).join('') + '</tr>';
+            html += '<tr><td class="label">Matched skills</td>' + people.map(function (p) { return '<td>' + (names((p.score_json || {}).matched_skills).map(function (s) { return '<span class="badge badge-green">' + Dash.esc(s) + '</span>'; }).join('') || '<span class="muted">None</span>') + '</td>'; }).join('') + '</tr>';
+            html += '<tr><td class="label">Skill gaps</td>' + people.map(function (p)
+            {
+                const json = p.score_json || {};
+                return '<td>' + (names(json.missing_skills || json.skill_gaps || json.gaps).map(function (s) { return '<span class="badge badge-red">' + Dash.esc(s) + '</span>'; }).join('') || '<span class="muted">None</span>') + '</td>';
+            }).join('') + '</tr>';
+
+            el('table').innerHTML = html + '</tbody></table></div>';
+        }
+
+        async function load()
+        {
+            const ids = (new URLSearchParams(window.location.search).get('ids') || '').split(',').filter(Boolean).slice(0, 3);
+
+            if (ids.length < 2)
+            {
+                el('error-box').textContent = 'Select at least 2 applicants to compare.';
+                el('error-box').classList.remove('hidden');
+                return;
+            }
+
+            el('table').innerHTML = Dash.skeletons(3);
+
+            try
+            {
+                render(await Promise.all(ids.map(function (id) { return Api.get('/api/applications/' + encodeURIComponent(id)); })));
+            }
+            catch (error)
+            {
+                el('table').innerHTML = '';
+                el('error-box').textContent = error.message;
+                el('error-box').classList.remove('hidden');
+            }
+        }
+
+        if (user)
+        {
+            load();
+        }
+    </script>
+</body>
+</html>

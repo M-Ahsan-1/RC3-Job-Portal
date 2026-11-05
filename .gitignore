@@ -1,4 +1,21 @@
+# dependencies
 node_modules/
+
+# environment and secrets
 .env
-.DS_Store
+.env.*
+!.env.example
+
+# uploads and generated files
+uploads/
 *.log
+npm-debug.log*
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# test output
+coverage/

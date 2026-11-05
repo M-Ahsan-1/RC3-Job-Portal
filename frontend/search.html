@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talent search - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+        .filters .form-group{margin:0}
+        .filters input[type=text],.filters input[type=number],.filters select{width:190px}
+        td input[type=checkbox]{width:18px;height:18px}
+    </style>
+</head>
+<body class="theme-recruiter">
+    <div id="content" class="d-content">
+        <section class="d-panel" aria-label="Talent search">
+            <div class="d-panel-head">
+                <div><h3>Talent search</h3><p class="sub" id="count">Search every applicant across all jobs</p></div>
+                <button class="btn btn-sm" id="compare-btn" type="button" disabled>Compare selected</button>
+            </div>
+            <div id="error-box" class="form-error hidden" role="alert"></div>
+            <div class="filters">
+                <div class="form-group"><label for="q">Name, email or skill</label><input type="text" id="q" placeholder="for example Hamza"></div>
+                <div class="form-group"><label for="skills">Must have skills</label><input type="text" id="skills" placeholder="Node.js, Docker"></div>
+                <div class="form-group"><label for="min">Minimum score</label><input type="number" id="min" min="0" max="100" placeholder="0"></div>
+                <div class="form-group"><label for="status">Status</label><select id="status"><option value="">Any status</option><option>Applied</option><option>Shortlisted</option><option>Selected</option><option>Rejected</option></select></div>
+                <button class="btn btn-secondary btn-sm" id="clear" type="button">Clear filters</button>
+            </div>
+            <div id="list"></div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-applicants.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/mock-extra.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/recruiter-nav.js"></script>
+    <script>
+        const user = mountRecruiterShell('Talent search', 'Find the right people fast', 'search.html');
+        const selected = new Set();
+        let results = [];
+        let timer = null;
+        let requestNo = 0;
+
+        function el(id) { return document.getElementById(id); }
+
+        function highlight(text, term)
+        {
+            const safe = Dash.esc(text);
+
+            if (!term)
+            {
+                return safe;
+            }
+
+            const i = safe.toLowerCase().indexOf(Dash.esc(term).toLowerCase());
+            return i === -1 ? safe : safe.slice(0, i) + '<mark>' + safe.slice(i, i + Dash.esc(term).length) + '</mark>' + safe.slice(i + Dash.esc(term).length);
+        }
+
+        function effective(a)
+        {
+            return a.overrideScore !== null && a.overrideScore !== undefined ? a.overrideScore : a.score;
+        }
+
+        function render()
+        {
+            const term = el('q').value.trim();
+            el('count').textContent = results.length + (results.length === 1 ? ' applicant found' : ' applicants found');
+
+            if (!results.length)
+            {
+                el('list').innerHTML = Dash.empty('search', 'No applicants match. Remove a skill or lower the minimum score.');
+                Dash.icons();
+                return;
+            }
+
+            el('list').innerHTML = '<div class="table-wrap"><table><thead><tr><th>Compare</th><th>Applicant</th><th>Job</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead><tbody>' +
+                results.map(function (a)
+                {
+                    const badge = a.status === 'Shortlisted' || a.status === 'Selected' ? 'ok' : (a.status === 'Rejected' ? 'bad' : 'info');
+
+                    return '<tr><td><input type="checkbox" data-select="' + Dash.esc(a.id) + '"' + (selected.has(String(a.id)) ? ' checked' : '') + ' aria-label="Select ' + Dash.esc(a.candidateName) + ' for comparison"></td>' +
+                        '<td><b>' + highlight(a.candidateName || '', term) + '</b><br><span class="muted">' + highlight(a.email || '', term) + '</span></td>' +
+                        '<td>' + Dash.esc(a.jobTitle || '') + '</td>' +
+                        '<td><b>' + effective(a) + '</b></td>' +
+                        '<td><span class="d-badge ' + badge + '">' + Dash.esc(a.status) + '</span></td>' +
+                        '<td><a class="btn btn-sm" href="applicant-detail.html?id=' + encodeURIComponent(a.id) + '">View</a></td></tr>';
+                }).join('') + '</tbody></table></div>';
+
+            el('compare-btn').disabled = selected.size < 2;
+        }
+
+        async function run()
+        {
+            const params = new URLSearchParams();
+            const values = { q: el('q').value.trim(), skills: el('skills').value.trim(), minScore: el('min').value, status: el('status').value };
+
+            Object.keys(values).forEach(function (key) { if (values[key]) { params.set(key, values[key]); } });
+
+            const mine = ++requestNo;
+            el('error-box').classList.add('hidden');
+
+            try
+            {
+                const rows = await Api.get('/api/search?' + params.toString());
+
+                if (mine === requestNo)
+                {
+                    results = rows;
+                    render();
+                }
+            }
+            catch (error)
+            {
+                el('list').innerHTML = '';
+                el('error-box').textContent = error.message;
+                el('error-box').classList.remove('hidden');
+            }
+        }
+
+        function later()
+        {
+            clearTimeout(timer);
+            timer = setTimeout(run, 300);
+        }
+
+        if (user)
+        {
+            ['q', 'skills', 'min'].forEach(function (id) { el(id).addEventListener('input', later); });
+            el('status').addEventListener('change', run);
+
+            el('clear').addEventListener('click', function ()
+            {
+                ['q', 'skills', 'min', 'status'].forEach(function (id) { el(id).value = ''; });
+                run();
+            });
+
+            el('list').addEventListener('change', function (event)
+            {
+                const box = event.target.closest('[data-select]');
+
+                if (!box)
+                {
+                    return;
+                }
+
+                const id = box.getAttribute('data-select');
+
+                if (box.checked && selected.size >= 3)
+                {
+                    box.checked = false;
+                    showToast('You can compare up to 3 applicants at a time.', 'info');
+                    return;
+                }
+
+                if (box.checked) { selected.add(id); } else { selected.delete(id); }
+                el('compare-btn').disabled = selected.size < 2;
+            });
+
+            el('compare-btn').addEventListener('click', function ()
+            {
+                window.location.href = 'compare.html?ids=' + Array.from(selected).join(',');
+            });
+
+            el('list').innerHTML = Dash.skeletons(3);
+            run();
+        }
+    </script>
+</body>
+</html>

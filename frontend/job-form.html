@@ -9,49 +9,131 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <style>
-        .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
-        .sk-row{display:grid;grid-template-columns:1fr 150px 150px 38px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #eef0f6}
-        .sk-add{display:flex;gap:10px;margin-top:12px}
-        @media(max-width:700px){.f-grid{grid-template-columns:1fr}.sk-row{grid-template-columns:1fr 1fr 38px}.sk-row b{grid-column:1/-1}}
+        .req
+        {
+            color: #dc2626;
+        }
+
+        .sk-row
+        {
+            display: grid;
+            grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) 38px;
+            gap: 10px;
+            align-items: center;
+            padding: 9px 0;
+            border-top: 1px solid #eef0f6;
+        }
+
+        .sk-row:first-child
+        {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        .sk-row .d-icon-btn
+        {
+            color: #94a3b8;
+        }
+
+        .sk-row .d-icon-btn:hover
+        {
+            background: #fdf3f3;
+            color: #b91c1c;
+        }
+
+        @media (max-width: 768px)
+        {
+            .sk-row
+            {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 38px;
+            }
+
+            .sk-row input[data-field="skill"]
+            {
+                grid-column: 1 / -1;
+            }
+        }
     </style>
 </head>
 <body class="theme-recruiter">
     <div id="content" class="d-content">
+        <div id="load-box"></div>
+
         <form id="job-form" novalidate>
             <div id="form-error" class="form-error hidden" role="alert"></div>
 
             <section class="d-panel" aria-label="Job details">
-                <h3>Job details</h3>
-                <p class="sub">Tell candidates what the role is about</p>
-                <div class="f-grid">
-                    <div class="form-group"><label for="title">Job title</label><input type="text" id="title" placeholder="Backend Developer"><div class="error-text" id="title-error"></div></div>
-                    <div class="form-group"><label for="department">Department</label><input type="text" id="department" placeholder="Engineering"><div class="error-text" id="department-error"></div></div>
-                    <div class="form-group"><label for="location">Location</label><input type="text" id="location" placeholder="Lahore, Pakistan"><div class="error-text" id="location-error"></div></div>
-                    <div class="form-group"><label for="type">Employment type</label>
-                        <select id="type"><option value="Full-time">Full-time</option><option value="Part-time">Part-time</option><option value="Contract">Contract</option><option value="Internship">Internship</option></select>
-                    </div>
-                    <div class="form-group"><label for="salary">Salary range (optional)</label><input type="text" id="salary" placeholder="PKR 250,000 - 350,000"></div>
-                    <div class="form-group"><label for="experienceYears">Years of experience</label><input type="number" id="experienceYears" min="0" max="40" value="0"><div class="error-text" id="experienceYears-error"></div></div>
-                </div>
-                <div class="form-group"><label for="qualifications">Qualifications</label><input type="text" id="qualifications" placeholder="BS in Computer Science or equivalent"><div class="error-text" id="qualifications-error"></div></div>
-                <div class="form-group"><label for="description">Description</label><textarea id="description" placeholder="Describe the role, responsibilities and the tools your team uses."></textarea><div class="error-text" id="description-error"></div></div>
-            </section>
-
-            <section class="d-panel" aria-label="Required skills">
                 <div class="d-panel-head">
-                    <div><h3>Skills</h3><p class="sub">Let AI read the description, then edit the list before saving</p></div>
-                    <button type="button" class="btn btn-secondary btn-sm" id="extract-btn"><i data-lucide="sparkles"></i>Extract requirements with AI</button>
+                    <div><h3>Job details</h3><p class="sub">Everything candidates see on the posting</p></div>
                 </div>
-                <div id="extract-error" class="form-error hidden" role="alert"></div>
-                <div id="skill-list"></div>
-                <div class="sk-add">
-                    <input type="text" id="new-skill" placeholder="Add a skill, for example Docker" aria-label="New skill name">
-                    <button type="button" class="btn btn-secondary" id="add-skill">Add skill</button>
+                <div class="d-form-grid">
+                    <div>
+                        <label for="title">Job title <span class="req">*</span></label>
+                        <input type="text" id="title" placeholder="Backend Developer" required>
+                        <div class="error-text" id="title-error"></div>
+                    </div>
+                    <div>
+                        <label for="department">Department</label>
+                        <input type="text" id="department" placeholder="Engineering">
+                    </div>
+                    <div>
+                        <label for="location">Location</label>
+                        <input type="text" id="location" placeholder="Lahore, Pakistan">
+                    </div>
+                    <div>
+                        <label for="type">Employment type</label>
+                        <select id="type">
+                            <option value="Full-time">Full-time</option>
+                            <option value="Part-time">Part-time</option>
+                            <option value="Contract">Contract</option>
+                            <option value="Internship">Internship</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="salary">Salary</label>
+                        <input type="text" id="salary" placeholder="PKR 250,000 - 350,000">
+                        <p class="d-hint">A range works best, for example PKR 250,000 - 350,000 per month.</p>
+                    </div>
+                    <div>
+                        <label for="experienceYears">Years of experience</label>
+                        <input type="number" id="experienceYears" min="0" max="50" placeholder="3">
+                        <div class="error-text" id="experienceYears-error"></div>
+                    </div>
+                    <div class="full">
+                        <label for="qualifications">Qualifications</label>
+                        <input type="text" id="qualifications" placeholder="BS in Computer Science or equivalent experience">
+                    </div>
+                    <div class="full">
+                        <label for="description">Description <span class="req">*</span></label>
+                        <textarea id="description" rows="6" placeholder="Describe the role, the responsibilities and the tools your team uses." required></textarea>
+                        <div class="error-text" id="description-error"></div>
+                        <p class="d-hint">At least 30 characters. Naming concrete tools and technologies helps the AI find the right skills.</p>
+                    </div>
                 </div>
-                <div class="error-text" id="skills-error"></div>
             </section>
 
-            <div class="row">
+            <section class="d-panel" aria-label="Skills and requirements">
+                <div class="d-panel-head">
+                    <div><h3>Skills and requirements</h3><p class="sub">What you list here drives how the AI scores applicants</p></div>
+                    <button type="button" class="btn btn-sm" id="extract-btn"><i data-lucide="sparkles"></i>Extract requirements with AI</button>
+                </div>
+                <p class="error-text" id="extract-error"></p>
+                <div class="d-callout">
+                    <i data-lucide="scale"></i>
+                    <div>
+                        <b>Skills set the AI scoring weights</b>
+                        Required skills weigh more than preferred ones, and high-importance skills count most when applicants are scored. Set them deliberately.
+                    </div>
+                </div>
+                <div id="skill-list"></div>
+                <div class="row" style="margin-top:12px">
+                    <button type="button" class="btn btn-secondary btn-sm" id="add-skill-btn"><i data-lucide="plus"></i>Add skill</button>
+                </div>
+                <p class="error-text" id="skills-error"></p>
+                <p class="d-hint">AI extraction is a suggestion, not a decision. Edit, remove or add skills before saving — the final list is yours.</p>
+            </section>
+
+            <div class="d-actions">
                 <button type="submit" class="btn" id="save-btn">Save job</button>
                 <a class="btn btn-secondary" href="jobs.html">Cancel</a>
             </div>
@@ -60,13 +142,20 @@
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
     <script src="js/mock.js"></script>
-    <script src="js/mock-jobs.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
     <script>
         const user = guardPage('recruiter');
-        const jobId = new URLSearchParams(window.location.search).get('id');
-        const TEXT_FIELDS = ['title', 'department', 'location', 'type', 'salary', 'description', 'qualifications'];
+        const jobId = Dash.intParam('id', 0);
+        const form = document.getElementById('job-form');
+        const loadBox = document.getElementById('load-box');
+        const formError = document.getElementById('form-error');
+        const extractError = document.getElementById('extract-error');
+        const skillsError = document.getElementById('skills-error');
+        const skillList = document.getElementById('skill-list');
+        const extractBtn = document.getElementById('extract-btn');
+        const addSkillBtn = document.getElementById('add-skill-btn');
+        const saveBtn = document.getElementById('save-btn');
         let skills = [];
 
         function el(id)
@@ -74,166 +163,256 @@
             return document.getElementById(id);
         }
 
-        function showBox(id, message)
+        function attrEsc(value)
         {
-            el(id).textContent = message;
-            el(id).classList.toggle('hidden', !message);
+            return Dash.esc(value).replace(/"/g, '&quot;');
         }
 
-        function setError(id, message)
-        {
-            el(id + '-error').textContent = message;
-            const input = el(id);
-
-            if (input)
-            {
-                input.classList.toggle('invalid', Boolean(message));
-            }
-        }
-
-        function option(value, current, label)
+        function optionHtml(value, current, label)
         {
             return '<option value="' + value + '"' + (value === current ? ' selected' : '') + '>' + label + '</option>';
         }
 
+        function setSkillsError(message)
+        {
+            skillsError.textContent = message || '';
+        }
+
+        function setExtractError(message)
+        {
+            extractError.textContent = message || '';
+        }
+
+        function showFormError(message)
+        {
+            formError.textContent = message;
+            formError.classList.remove('hidden');
+        }
+
+        function hideFormError()
+        {
+            formError.textContent = '';
+            formError.classList.add('hidden');
+        }
+
+        function fieldError(id, message)
+        {
+            el(id + '-error').textContent = message || '';
+            el(id).classList.toggle('invalid', Boolean(message));
+        }
+
+        function titleProblem()
+        {
+            const message = el('title').value.trim() ? '' : 'Please enter a job title.';
+            fieldError('title', message);
+            return message ? { id: 'title', message: message } : null;
+        }
+
+        function descriptionProblem()
+        {
+            const value = el('description').value.trim();
+            let message = '';
+
+            if (!value)
+            {
+                message = 'Please add a job description so candidates know what the role involves.';
+            }
+            else if (value.length < 30)
+            {
+                message = 'The description must be at least 30 characters. You have ' + value.length + ' so far.';
+            }
+
+            fieldError('description', message);
+            return message ? { id: 'description', message: message } : null;
+        }
+
+        function yearsProblem()
+        {
+            const raw = el('experienceYears').value.trim();
+            const years = Number(raw);
+            let message = '';
+
+            if (raw !== '' && (!Number.isFinite(years) || years < 0 || years > 50))
+            {
+                message = 'Years of experience must be a number between 0 and 50.';
+            }
+
+            fieldError('experienceYears', message);
+            return message ? { id: 'experienceYears', message: message } : null;
+        }
+
+        function duplicateProblem()
+        {
+            const seen = {};
+
+            for (let i = 0; i < skills.length; i++)
+            {
+                const name = skills[i].skill.trim();
+                const key = name.toLowerCase();
+
+                if (name && seen[key])
+                {
+                    const message = 'The skill "' + name + '" is listed twice. Remove or rename the duplicate before saving.';
+                    setSkillsError(message);
+                    return { skillIndex: i, message: message };
+                }
+
+                if (name)
+                {
+                    seen[key] = true;
+                }
+            }
+
+            setSkillsError('');
+            return null;
+        }
+
+        function validateAll()
+        {
+            return [titleProblem(), descriptionProblem(), yearsProblem(), duplicateProblem()].filter(Boolean);
+        }
+
+        function focusProblem(problem)
+        {
+            if (problem.skillIndex !== undefined)
+            {
+                const inputs = skillList.querySelectorAll('input[data-field="skill"]');
+
+                if (inputs[problem.skillIndex])
+                {
+                    inputs[problem.skillIndex].focus();
+                }
+
+                return;
+            }
+
+            el(problem.id).focus();
+        }
+
         function renderSkills()
         {
-            const box = el('skill-list');
-
             if (!skills.length)
             {
-                box.innerHTML = Dash.empty('sparkles', 'No skills yet. Use the AI button or add skills by hand.');
+                skillList.innerHTML = Dash.empty('sparkles', 'No skills yet. Add them yourself, or extract them from the description with AI.');
                 Dash.icons();
                 return;
             }
 
-            box.innerHTML = skills.map(function (item, index)
+            skillList.innerHTML = skills.map(function (item, index)
             {
-                return '<div class="sk-row"><b>' + Dash.esc(item.skill) + '</b>' +
-                    '<select data-index="' + index + '" data-field="requirement" aria-label="Requirement for ' + Dash.esc(item.skill) + '">' + option('required', item.requirement, 'Required') + option('preferred', item.requirement, 'Preferred') + '</select>' +
-                    '<select data-index="' + index + '" data-field="importance" aria-label="Importance of ' + Dash.esc(item.skill) + '">' + option('high', item.importance, 'High importance') + option('medium', item.importance, 'Medium importance') + option('low', item.importance, 'Low importance') + '</select>' +
-                    '<button type="button" class="btn btn-secondary btn-sm" data-remove="' + index + '" aria-label="Remove ' + Dash.esc(item.skill) + '">&times;</button></div>';
+                return '<div class="sk-row">' +
+                    '<input type="text" value="' + attrEsc(item.skill) + '" data-index="' + index + '" data-field="skill" placeholder="Skill name" aria-label="Skill name">' +
+                    '<select data-index="' + index + '" data-field="requirement" aria-label="Requirement level">' +
+                        optionHtml('required', item.requirement, 'Required') +
+                        optionHtml('preferred', item.requirement, 'Preferred') +
+                    '</select>' +
+                    '<select data-index="' + index + '" data-field="importance" aria-label="Importance level">' +
+                        optionHtml('high', item.importance, 'High importance') +
+                        optionHtml('medium', item.importance, 'Medium importance') +
+                        optionHtml('low', item.importance, 'Low importance') +
+                    '</select>' +
+                    '<button type="button" class="d-icon-btn" data-remove="' + index + '" aria-label="Remove skill" title="Remove skill"><i data-lucide="trash-2"></i></button>' +
+                    '</div>';
             }).join('');
-        }
 
-        function addSkill(item)
-        {
-            const name = String(item.skill || '').trim();
-
-            if (!name)
-            {
-                return false;
-            }
-
-            const exists = skills.some(function (current)
-            {
-                return current.skill.toLowerCase() === name.toLowerCase();
-            });
-
-            if (exists)
-            {
-                return false;
-            }
-
-            skills.push({ skill: name, requirement: item.requirement || 'required', importance: item.importance || 'medium' });
-            return true;
-        }
-
-        async function extractSkills()
-        {
-            const button = el('extract-btn');
-            showBox('extract-error', '');
-
-            if (el('description').value.trim().length < 20)
-            {
-                showBox('extract-error', 'Write a job description first (at least 20 characters), then try again.');
-                return;
-            }
-
-            button.disabled = true;
-            button.classList.add('loading');
-
-            try
-            {
-                const data = await Api.post('/api/jobs/extract-requirements', { description: el('description').value.trim() });
-                const found = Array.isArray(data) ? data : (data.skills || []);
-                let added = 0;
-
-                found.forEach(function (item)
-                {
-                    if (addSkill(item))
-                    {
-                        added++;
-                    }
-                });
-
-                renderSkills();
-                setError('skills', '');
-                showToast(added ? added + ' skills added. Review them before saving.' : 'No new skills found. You can add them by hand.', added ? 'success' : 'info');
-            }
-            catch (error)
-            {
-                showBox('extract-error', error.message + ' You can still add skills by hand.');
-            }
-
-            button.disabled = false;
-            button.classList.remove('loading');
             Dash.icons();
         }
 
-        function validate()
+        function liveValidate(validator)
         {
-            let valid = true;
-            const required = { title: 'Please enter a job title.', department: 'Please enter the department.', location: 'Please enter the location.', qualifications: 'Please enter the qualifications.', description: 'Please add a job description.' };
-
-            Object.keys(required).forEach(function (id)
+            return function ()
             {
-                const empty = !el(id).value.trim();
-                setError(id, empty ? required[id] : '');
-                valid = valid && !empty;
-            });
+                validator();
 
-            const years = Number(el('experienceYears').value);
-            const badYears = el('experienceYears').value === '' || isNaN(years) || years < 0;
-            setError('experienceYears', badYears ? 'Enter years of experience as 0 or more.' : '');
-            valid = valid && !badYears;
-
-            el('skills-error').textContent = skills.length ? '' : 'Add at least one skill before saving.';
-            return valid && skills.length > 0;
+                if (!formError.classList.contains('hidden') && !validateAll().length)
+                {
+                    hideFormError();
+                }
+            };
         }
 
         function collect()
         {
-            const job = { experienceYears: Number(el('experienceYears').value), skills: skills };
+            const rawYears = el('experienceYears').value.trim();
 
-            TEXT_FIELDS.forEach(function (id)
+            const payload =
             {
-                job[id] = el(id).value.trim();
-            });
+                title: el('title').value.trim(),
+                department: el('department').value.trim(),
+                location: el('location').value.trim(),
+                type: el('type').value,
+                salary: el('salary').value.trim(),
+                description: el('description').value.trim(),
+                experienceYears: rawYears === '' ? 0 : Number(rawYears),
+                qualifications: el('qualifications').value.trim(),
+                skills: skills
+                    .filter(function (item) { return item.skill.trim() !== ''; })
+                    .map(function (item) { return { skill: item.skill.trim(), requirement: item.requirement, importance: item.importance }; })
+            };
 
-            return job;
+            return payload;
+        }
+
+        async function extractRequirements()
+        {
+            const description = el('description').value.trim();
+            setExtractError('');
+
+            if (!description)
+            {
+                setExtractError('Write the job description first. The AI reads it to find the skills you need.');
+                el('description').focus();
+                return;
+            }
+
+            Dash.setBusy(extractBtn, true);
+
+            try
+            {
+                const data = await Api.post('/api/jobs/extract-requirements',
+                {
+                    title: el('title').value.trim(),
+                    description: description
+                });
+
+                skills = (data.skills || []).map(function (item)
+                {
+                    return { skill: item.skill, requirement: item.requirement, importance: item.importance };
+                });
+
+                renderSkills();
+                setSkillsError('');
+                showToast(skills.length + (skills.length === 1 ? ' requirement' : ' requirements') + ' found. Edit them if needed before saving.', 'success');
+            }
+            catch (error)
+            {
+                setExtractError(error.message);
+            }
+
+            Dash.setBusy(extractBtn, false);
         }
 
         async function save(event)
         {
             event.preventDefault();
-            showBox('form-error', '');
+            hideFormError();
 
-            if (!validate())
+            const problems = validateAll();
+
+            if (problems.length)
             {
-                showBox('form-error', 'Please fix the highlighted fields and try again.');
+                showFormError(problems[0].message);
+                focusProblem(problems[0]);
                 return;
             }
 
-            const button = el('save-btn');
-            button.disabled = true;
-            button.classList.add('loading');
+            Dash.setBusy(saveBtn, true);
 
             try
             {
                 if (jobId)
                 {
-                    await Api.put('/api/jobs/' + encodeURIComponent(jobId), collect());
+                    await Api.put('/api/jobs/' + jobId, collect());
                 }
                 else
                 {
@@ -241,126 +420,156 @@
                 }
 
                 showToast(jobId ? 'Job updated.' : 'Job posted.', 'success');
-                setTimeout(function ()
-                {
-                    window.location.href = 'jobs.html';
-                }, 700);
+                window.location.href = 'jobs.html';
             }
             catch (error)
             {
-                showBox('form-error', error.message);
-                button.disabled = false;
-                button.classList.remove('loading');
+                Dash.setBusy(saveBtn, false);
+                showFormError(error.message);
             }
+        }
+
+        function prefill(job)
+        {
+            el('title').value = job.title || '';
+            el('department').value = job.department || '';
+            el('location').value = job.location || '';
+            el('type').value = job.type || 'Full-time';
+            el('salary').value = job.salary || '';
+            el('experienceYears').value = job.experienceYears === undefined || job.experienceYears === null ? '' : job.experienceYears;
+            el('qualifications').value = job.qualifications || '';
+            el('description').value = job.description || '';
+            skills = (job.skills || []).map(function (item)
+            {
+                return { skill: item.skill || '', requirement: item.requirement || 'required', importance: item.importance || 'medium' };
+            });
+            renderSkills();
         }
 
         async function loadJob()
         {
+            form.classList.add('hidden');
+            loadBox.innerHTML = Dash.skeletons(2);
+
             try
             {
-                const job = await Api.get('/api/jobs/' + encodeURIComponent(jobId));
-                TEXT_FIELDS.forEach(function (id)
-                {
-                    el(id).value = job[id] || '';
-                });
-                el('experienceYears').value = job.experienceYears === undefined ? 0 : job.experienceYears;
-                skills = (job.skills || []).map(function (item) { return Object.assign({}, item); });
-                renderSkills();
+                const job = await Api.get('/api/jobs/' + jobId);
+                prefill(job);
+                loadBox.innerHTML = '';
+                form.classList.remove('hidden');
             }
             catch (error)
             {
-                showBox('form-error', error.message);
+                Dash.failInto(loadBox, error.message, loadJob);
+
+                const empty = loadBox.querySelector('.d-empty');
+
+                if (empty)
+                {
+                    const back = document.createElement('a');
+                    back.className = 'btn btn-secondary btn-sm';
+                    back.href = 'jobs.html';
+                    back.textContent = 'Back to jobs';
+                    empty.appendChild(back);
+                }
+            }
+
+            Dash.icons();
+        }
+
+        function load()
+        {
+            saveBtn.textContent = jobId ? 'Save changes' : 'Post job';
+
+            if (jobId)
+            {
+                loadJob();
+            }
+            else
+            {
+                renderSkills();
             }
         }
 
         if (user)
         {
-            Dash.mountShell(
+            form.addEventListener('submit', save);
+            extractBtn.addEventListener('click', extractRequirements);
+
+            addSkillBtn.addEventListener('click', function ()
             {
-                user: user,
-                logo: 'sparkles',
-                title: jobId ? 'Edit job' : 'Post a job',
-                subtitle: 'Add details, then let AI suggest skills',
-                search: true,
-                items:
-                [
-                    { label: 'Overview', href: 'recruiter.html', icon: 'layout-dashboard' },
-                    { label: 'Jobs', href: 'jobs.html', icon: 'briefcase' },
-                    { label: 'Interviews', href: 'interviews.html', icon: 'calendar-clock' },
-                    { label: 'Talent Search', href: 'search.html', icon: 'search' }
-                ],
-                onBell: function ()
+                skills.push({ skill: '', requirement: 'required', importance: 'medium' });
+                renderSkills();
+
+                const inputs = skillList.querySelectorAll('input[data-field="skill"]');
+
+                if (inputs.length)
                 {
-                    showToast('You have no new notifications.', 'info');
+                    inputs[inputs.length - 1].focus();
                 }
             });
 
-            document.querySelectorAll('.d-nav a').forEach(function (link)
+            skillList.addEventListener('input', function (event)
             {
-                link.classList.toggle('on', link.getAttribute('href') === 'jobs.html');
+                const target = event.target;
+
+                if (target.getAttribute('data-field') !== 'skill')
+                {
+                    return;
+                }
+
+                const index = Number(target.getAttribute('data-index'));
+
+                if (skills[index])
+                {
+                    skills[index].skill = target.value;
+                    liveValidate(duplicateProblem)();
+                }
             });
 
-            el('skill-list').addEventListener('change', function (event)
+            skillList.addEventListener('change', function (event)
             {
                 const field = event.target.getAttribute('data-field');
+                const index = Number(event.target.getAttribute('data-index'));
 
-                if (field)
+                if ((field === 'requirement' || field === 'importance') && skills[index])
                 {
-                    skills[Number(event.target.getAttribute('data-index'))][field] = event.target.value;
+                    skills[index][field] = event.target.value;
                 }
             });
 
-            el('skill-list').addEventListener('click', function (event)
+            skillList.addEventListener('click', function (event)
             {
                 const button = event.target.closest('[data-remove]');
 
                 if (button)
                 {
                     skills.splice(Number(button.getAttribute('data-remove')), 1);
+                    liveValidate(duplicateProblem)();
                     renderSkills();
-                    Dash.icons();
                 }
             });
 
-            function addFromInput()
+            el('title').addEventListener('input', liveValidate(titleProblem));
+            el('description').addEventListener('input', liveValidate(descriptionProblem));
+            el('experienceYears').addEventListener('input', liveValidate(yearsProblem));
+
+            Dash.mountShell(
             {
-                const input = el('new-skill');
-
-                if (!input.value.trim())
+                user: user,
+                logo: 'sparkles',
+                title: jobId ? 'Edit job' : 'Post a job',
+                subtitle: jobId ? 'Update the details, skills and requirements' : 'Create a posting and let the AI suggest requirements',
+                search: true,
+                items: Dash.RECRUITER_NAV,
+                active: 'jobs.html',
+                onBell: function ()
                 {
-                    el('skills-error').textContent = 'Type a skill name first.';
-                    return;
-                }
-
-                if (!addSkill({ skill: input.value }))
-                {
-                    el('skills-error').textContent = 'That skill is already in the list.';
-                    return;
-                }
-
-                el('skills-error').textContent = '';
-                input.value = '';
-                renderSkills();
-            }
-
-            el('add-skill').addEventListener('click', addFromInput);
-            el('new-skill').addEventListener('keydown', function (event)
-            {
-                if (event.key === 'Enter')
-                {
-                    event.preventDefault();
-                    addFromInput();
+                    showToast('You have no new notifications.', 'info');
                 }
             });
 
-            el('extract-btn').addEventListener('click', extractSkills);
-            el('job-form').addEventListener('submit', save);
-            renderSkills();
-
-            if (jobId)
-            {
-                loadJob();
-            }
+            load();
         }
     </script>
 </body>

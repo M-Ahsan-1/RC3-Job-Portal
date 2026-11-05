@@ -11,108 +11,265 @@
 </head>
 <body class="theme-recruiter">
     <div id="content" class="d-content">
-        <section class="d-panel" aria-label="Jobs">
-            <div class="d-panel-head">
-                <div><h3>All jobs</h3><p class="sub">Open and closed postings</p></div>
-                <a class="btn btn-sm" href="job-form.html"><i data-lucide="plus"></i>Post a job</a>
+        <div class="page-header">
+            <div>
+                <h2>Job postings</h2>
+                <p class="muted">Create roles, review applicants and control which postings are live</p>
             </div>
-            <div id="error-box" class="form-error hidden" role="alert"></div>
+            <a class="btn" href="job-form.html"><i data-lucide="plus"></i>Post a job</a>
+        </div>
+
+        <section class="d-panel" aria-label="All jobs">
+            <div class="d-toolbar">
+                <div class="d-field">
+                    <label for="filter-text">Filter</label>
+                    <input type="text" id="filter-text" placeholder="Title, department or location">
+                </div>
+                <div class="d-field">
+                    <label for="filter-status">Status</label>
+                    <select id="filter-status">
+                        <option value="all">All</option>
+                        <option value="open">Open</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+            </div>
+
+            <p class="sub" id="summary"></p>
+            <div id="confirm-box"></div>
             <div id="jobs-list"></div>
         </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
     <script src="js/mock.js"></script>
-    <script src="js/mock-jobs.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
     <script>
         const user = guardPage('recruiter');
-        const list = document.getElementById('jobs-list');
-        const errorBox = document.getElementById('error-box');
+        const jobsList = document.getElementById('jobs-list');
+        const confirmBox = document.getElementById('confirm-box');
+        const summary = document.getElementById('summary');
+        const filterText = document.getElementById('filter-text');
+        const filterStatus = document.getElementById('filter-status');
+        let jobs = [];
+        let pendingCloseId = 0;
 
-        function showError(message)
+        function findJob(jobId)
         {
-            errorBox.textContent = message;
-            errorBox.classList.remove('hidden');
+            for (let i = 0; i < jobs.length; i++)
+            {
+                if (jobs[i].id === Number(jobId))
+                {
+                    return jobs[i];
+                }
+            }
+
+            return null;
+        }
+
+        function applyFilters()
+        {
+            const term = filterText.value.trim().toLowerCase();
+            const status = filterStatus.value;
+
+            return jobs.filter(function (job)
+            {
+                if (status !== 'all' && job.status !== status)
+                {
+                    return false;
+                }
+
+                if (!term)
+                {
+                    return true;
+                }
+
+                return [job.title, job.department, job.location].join(' ').toLowerCase().indexOf(term) !== -1;
+            });
         }
 
         function rowHtml(job)
         {
             const open = job.status === 'open';
             const id = encodeURIComponent(job.id);
-            const place = [job.department, job.location].filter(Boolean).map(Dash.esc).join(', ');
+            const place = [job.department, job.location].filter(Boolean).map(Dash.esc).join(' · ');
+            const years = Number(job.experienceYears) || 0;
 
             return '<tr>' +
-                '<td><b>' + Dash.esc(job.title) + '</b><br><span class="muted">' + place + '</span></td>' +
+                '<td><strong>' + Dash.esc(job.title) + '</strong><br><span class="muted">' + place + '</span></td>' +
                 '<td>' + Dash.esc(job.type || '-') + '</td>' +
-                '<td><span class="d-badge ' + (open ? 'ok' : '') + '">' + (open ? 'Open' : 'Closed') + '</span></td>' +
-                '<td>' + (job.applicantCount || 0) + '</td>' +
+                '<td>' + Dash.esc(job.salary || '-') + '</td>' +
+                '<td class="num">' + Dash.esc(years + (years === 1 ? ' yr' : ' yrs')) + '</td>' +
+                '<td>' + Dash.badge(open ? 'Open' : 'Closed', open ? 'ok' : 'neutral') + '</td>' +
+                '<td class="num">' + (Number(job.applicantCount) || 0) + '</td>' +
                 '<td><div class="row">' +
-                    '<a class="btn btn-secondary btn-sm" href="applicants.html?jobId=' + id + '">Applicants</a>' +
-                    '<a class="btn btn-secondary btn-sm" href="job-form.html?id=' + id + '">Edit</a>' +
+                    '<a class="btn btn-secondary btn-sm" href="applicants.html?jobId=' + id + '"><i data-lucide="users"></i>Applicants</a>' +
+                    '<a class="btn btn-secondary btn-sm" href="job-form.html?id=' + id + '"><i data-lucide="pencil"></i>Edit</a>' +
                     '<button class="btn btn-sm ' + (open ? 'btn-danger' : 'btn-success') + '" type="button" data-id="' + Dash.esc(job.id) + '" data-action="' + (open ? 'close' : 'reopen') + '">' + (open ? 'Close' : 'Reopen') + '</button>' +
-                '</div></td></tr>';
+                '</div></td>' +
+                '</tr>';
+        }
+
+        async function toggleStatus(jobId, action, button)
+        {
+            Dash.setBusy(button, true);
+
+            try
+            {
+                await Api.patch('/api/jobs/' + encodeURIComponent(jobId) + '/' + action);
+                pendingCloseId = 0;
+                await load();
+                showToast(action === 'close' ? 'Job closed. Candidates can no longer apply.' : 'Job reopened. Candidates can apply again.', 'success');
+            }
+            catch (error)
+            {
+                Dash.setBusy(button, false);
+                showToast(error.message, 'error');
+            }
+        }
+
+        function renderConfirm(job)
+        {
+            const count = Number(job.applicantCount) || 0;
+
+            confirmBox.innerHTML = Dash.callout('triangle-alert', 'Close ' + job.title + '?',
+                '<p>This job already has ' + count + (count === 1 ? ' applicant' : ' applicants') + '. Closing it stops new applications, and you can reopen it at any time.</p>' +
+                '<div class="row" style="margin-top:10px">' +
+                    '<button class="btn btn-danger btn-sm" type="button" id="confirm-close">Yes, close this job</button>' +
+                    '<button class="btn btn-secondary btn-sm" type="button" id="confirm-cancel">Keep it open</button>' +
+                '</div>', 'warn');
+
+            Dash.icons();
+            confirmBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            document.getElementById('confirm-close').addEventListener('click', function ()
+            {
+                toggleStatus(job.id, 'close', this);
+            });
+
+            document.getElementById('confirm-cancel').addEventListener('click', function ()
+            {
+                pendingCloseId = 0;
+                render();
+            });
+        }
+
+        function render()
+        {
+            const pending = pendingCloseId ? findJob(pendingCloseId) : null;
+
+            if (pending)
+            {
+                renderConfirm(pending);
+            }
+            else
+            {
+                pendingCloseId = 0;
+                confirmBox.innerHTML = '';
+            }
+
+            if (!jobs.length)
+            {
+                summary.textContent = '';
+                jobsList.innerHTML = Dash.empty('briefcase', 'You have not posted any jobs yet.', '<a class="btn btn-sm" href="job-form.html"><i data-lucide="plus"></i>Post your first job</a>');
+                Dash.icons();
+                return;
+            }
+
+            const filtered = applyFilters();
+            const openCount = filtered.filter(function (job) { return job.status === 'open'; }).length;
+
+            summary.textContent = filtered.length + (filtered.length === 1 ? ' job' : ' jobs') + ' · ' + openCount + ' open';
+
+            if (!filtered.length)
+            {
+                jobsList.innerHTML = Dash.empty('search', 'No jobs match your filters.', '<button class="btn btn-secondary btn-sm" type="button" id="clear-filters">Clear filters</button>');
+
+                document.getElementById('clear-filters').addEventListener('click', function ()
+                {
+                    filterText.value = '';
+                    filterStatus.value = 'all';
+                    render();
+                });
+
+                Dash.icons();
+                return;
+            }
+
+            jobsList.innerHTML = '<div class="d-table-wrap"><table class="d-table">' +
+                '<thead><tr><th>Job</th><th>Type</th><th>Salary</th><th class="num">Experience</th><th>Status</th><th class="num">Applicants</th><th>Actions</th></tr></thead>' +
+                '<tbody>' + filtered.map(rowHtml).join('') + '</tbody>' +
+                '</table></div>';
+
+            Dash.icons();
         }
 
         async function load()
         {
-            list.innerHTML = Dash.skeletons(3);
-            errorBox.classList.add('hidden');
+            confirmBox.innerHTML = '';
+            summary.textContent = '';
+            jobsList.innerHTML = Dash.skeletons(3);
 
             try
             {
-                const jobs = await Api.get('/api/jobs');
-
-                if (!jobs.length)
-                {
-                    list.innerHTML = Dash.empty('briefcase', 'You have not posted any jobs yet.', '<a class="btn btn-sm" href="job-form.html">Post your first job</a>');
-                }
-                else
-                {
-                    list.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Job</th><th>Type</th><th>Status</th><th>Applicants</th><th>Actions</th></tr></thead><tbody>' +
-                        jobs.map(rowHtml).join('') + '</tbody></table></div>';
-                }
+                jobs = await Api.get('/api/jobs');
+                pendingCloseId = 0;
+                render();
             }
             catch (error)
             {
-                list.innerHTML = '';
-                showError(error.message);
+                jobs = [];
+                Dash.failInto(jobsList, error.message, load);
             }
 
             Dash.icons();
         }
 
-        async function changeStatus(button)
-        {
-            const action = button.getAttribute('data-action');
-            const id = button.getAttribute('data-id');
-
-            if (action === 'close' && !window.confirm('Close this job? Candidates will no longer be able to apply.'))
-            {
-                return;
-            }
-
-            button.disabled = true;
-            button.classList.add('loading');
-            errorBox.classList.add('hidden');
-
-            try
-            {
-                await Api.patch('/api/jobs/' + id + '/' + action);
-                showToast(action === 'close' ? 'Job closed.' : 'Job reopened.', 'success');
-                await load();
-            }
-            catch (error)
-            {
-                showError(error.message);
-                button.disabled = false;
-                button.classList.remove('loading');
-            }
-        }
-
         if (user)
         {
+            filterText.addEventListener('input', function ()
+            {
+                pendingCloseId = 0;
+                render();
+            });
+
+            filterStatus.addEventListener('change', function ()
+            {
+                pendingCloseId = 0;
+                render();
+            });
+
+            jobsList.addEventListener('click', function (event)
+            {
+                const button = event.target.closest('button[data-action]');
+
+                if (!button)
+                {
+                    return;
+                }
+
+                const jobId = Number(button.getAttribute('data-id'));
+                const action = button.getAttribute('data-action');
+
+                if (action === 'reopen')
+                {
+                    toggleStatus(jobId, 'reopen', button);
+                    return;
+                }
+
+                const job = findJob(jobId);
+
+                if (job && (Number(job.applicantCount) || 0) > 0)
+                {
+                    pendingCloseId = jobId;
+                    render();
+                    return;
+                }
+
+                toggleStatus(jobId, 'close', button);
+            });
+
             Dash.mountShell(
             {
                 user: user,
@@ -120,31 +277,10 @@
                 title: 'Jobs',
                 subtitle: 'Manage your job postings',
                 search: true,
-                items:
-                [
-                    { label: 'Overview', href: 'recruiter.html', icon: 'layout-dashboard' },
-                    { label: 'Jobs', href: 'jobs.html', icon: 'briefcase' },
-                    { label: 'Interviews', href: 'interviews.html', icon: 'calendar-clock' },
-                    { label: 'Talent Search', href: 'search.html', icon: 'search' }
-                ],
+                items: Dash.RECRUITER_NAV,
                 onBell: function ()
                 {
                     showToast('You have no new notifications.', 'info');
-                }
-            });
-
-            document.querySelectorAll('.d-nav a').forEach(function (link)
-            {
-                link.classList.toggle('on', link.getAttribute('href') === 'jobs.html');
-            });
-
-            list.addEventListener('click', function (event)
-            {
-                const button = event.target.closest('button[data-action]');
-
-                if (button)
-                {
-                    changeStatus(button);
                 }
             });
 

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        .columns{display:flex;align-items:flex-end;gap:14px;height:170px;padding-top:10px}
+        .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+        .col .bar{width:100%;max-width:70px;background:var(--ac);border-radius:6px 6px 0 0;min-height:2px}
+        .col span{font-size:.82rem;margin-top:6px}
+        .col b{font-size:.9rem}
+    </style>
+</head>
+<body class="theme-recruiter">
+    <div id="content" class="d-content">
+        <div id="error-box" class="form-error hidden" role="alert"></div>
+        <div id="stats" class="stats-grid"></div>
+        <div class="grid-2">
+            <section class="d-panel" aria-label="Hiring funnel">
+                <div class="d-panel-head"><div><h3>Hiring funnel</h3><p class="sub">Applicants by status</p></div></div>
+                <div id="funnel"></div>
+            </section>
+            <section class="d-panel" aria-label="Score distribution">
+                <div class="d-panel-head"><div><h3>Score distribution</h3><p class="sub">Applicants per score band</p></div></div>
+                <div id="distribution"></div>
+            </section>
+        </div>
+        <div class="grid-2">
+            <section class="d-panel" aria-label="Top skills">
+                <div class="d-panel-head"><div><h3>Most common skills</h3><p class="sub">Matched across all applicants</p></div></div>
+                <div id="skills"></div>
+            </section>
+            <section class="d-panel" aria-label="Skill gaps">
+                <div class="d-panel-head"><div><h3>Most common gaps</h3><p class="sub">Required skills applicants are missing</p></div></div>
+                <div id="gaps"></div>
+            </section>
+        </div>
+        <section class="d-panel" aria-label="Jobs">
+            <div class="d-panel-head"><div><h3>Jobs</h3><p class="sub">Applicants and average score per job</p></div></div>
+            <div id="jobs"></div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-applicants.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/mock-extra.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/recruiter-nav.js"></script>
+    <script>
+        const user = mountRecruiterShell('Analytics', 'Hiring numbers at a glance', 'analytics.html');
+
+        function el(id) { return document.getElementById(id); }
+
+        function bars(items, labelKey)
+        {
+            const max = Math.max.apply(null, items.map(function (i) { return i.count; }).concat([1]));
+
+            return items.map(function (i)
+            {
+                return '<div class="score-row"><div class="score-label"><span>' + Dash.esc(i[labelKey]) + '</span><b>' + i.count + '</b></div><div class="score-bar"><div class="score-fill" style="width:' + Math.round(i.count / max * 100) + '%"></div></div></div>';
+            }).join('');
+        }
+
+        function render(data)
+        {
+            const t = data.totals;
+            const cards = [[t.jobs, 'Jobs'], [t.applicants, 'Applicants'], [t.shortlisted, 'Shortlisted'], [t.selected, 'Selected'], [t.averageScore, 'Average score']];
+            el('stats').innerHTML = cards.map(function (c) { return '<div class="stat-card"><div class="stat-value">' + c[0] + '</div><div class="stat-label">' + c[1] + '</div></div>'; }).join('');
+
+            el('funnel').innerHTML = t.applicants ? bars(data.funnel, 'status') : Dash.empty('users', 'No applicants yet.');
+
+            const max = Math.max.apply(null, data.distribution.map(function (d) { return d.count; }).concat([1]));
+            el('distribution').innerHTML = t.applicants ? '<div class="columns">' + data.distribution.map(function (d)
+            {
+                return '<div class="col"><b>' + d.count + '</b><div class="bar" style="height:' + Math.round(d.count / max * 100) + '%" title="' + d.count + ' applicants"></div><span>' + Dash.esc(d.label) + '</span></div>';
+            }).join('') + '</div>' : Dash.empty('bar-chart-3', 'No scores yet.');
+
+            el('skills').innerHTML = data.topSkills.length ? bars(data.topSkills, 'skill') : Dash.empty('sparkles', 'No matched skills yet.');
+            el('gaps').innerHTML = data.topGaps.length ? bars(data.topGaps, 'skill') : Dash.empty('check-circle', 'No skill gaps found.');
+
+            el('jobs').innerHTML = data.byJob.length ? '<div class="table-wrap"><table><thead><tr><th>Job</th><th>Applicants</th><th>Average score</th></tr></thead><tbody>' +
+                data.byJob.map(function (j) { return '<tr><td><b>' + Dash.esc(j.title) + '</b></td><td>' + j.applicants + '</td><td>' + j.averageScore + '</td></tr>'; }).join('') + '</tbody></table></div>' : Dash.empty('briefcase', 'No jobs yet.');
+
+            Dash.icons();
+        }
+
+        async function load()
+        {
+            el('stats').innerHTML = Dash.skeletons(2);
+
+            try
+            {
+                render(await Api.get('/api/analytics'));
+            }
+            catch (error)
+            {
+                el('stats').innerHTML = '';
+                el('error-box').textContent = error.message;
+                el('error-box').classList.remove('hidden');
+            }
+        }
+
+        if (user)
+        {
+            load();
+        }
+    </script>
+</body>
+</html>

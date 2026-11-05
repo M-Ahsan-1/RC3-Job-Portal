@@ -1,0 +1,479 @@
+
+        const user = guardPage('candidate');
+        const GROUP_NAMES = ['education', 'experience', 'projects'];
+        const ADD_BUTTONS = { education: 'add-education', experience: 'add-experience', projects: 'add-project' };
+
+        const GROUPS =
+        {
+            education:
+            {
+                heading: 'Education entry',
+                required: ['qualification', 'institution'],
+                fields:
+                [
+                    { key: 'qualification', label: 'Qualification', placeholder: 'For example BS Computer Science' },
+                    { key: 'institution', label: 'Institution', placeholder: 'For example FAST NUCES Lahore' },
+                    { key: 'from', label: 'From', placeholder: 'For example 2018' },
+                    { key: 'to', label: 'To', placeholder: 'For example 2022' }
+                ]
+            },
+            experience:
+            {
+                heading: 'Experience entry',
+                required: ['role', 'company'],
+                fields:
+                [
+                    { key: 'role', label: 'Role', placeholder: 'For example Backend Developer' },
+                    { key: 'company', label: 'Company', placeholder: 'For example VentureDive' },
+                    { key: 'from', label: 'From', placeholder: 'For example 2022-07' },
+                    { key: 'to', label: 'To', placeholder: 'For example Present' },
+                    { key: 'summary', label: 'Summary', placeholder: 'A sentence or two about what you did there', type: 'textarea', wide: true }
+                ]
+            },
+            projects:
+            {
+                heading: 'Project',
+                required: ['name'],
+                fields:
+                [
+                    { key: 'name', label: 'Project name', placeholder: 'For example Freight API' },
+                    { key: 'summary', label: 'Summary', placeholder: 'What the project does and what you built', type: 'textarea', wide: true }
+                ]
+            }
+        };
+
+        let savedProfile = null;
+        let draft = null;
+        let savedSnapshot = '';
+
+        function el(id)
+        {
+            return document.getElementById(id);
+        }
+
+        function emptyRow(name)
+        {
+            if (name === 'education')
+            {
+                return { qualification: '', institution: '', from: '', to: '' };
+            }
+
+            if (name === 'experience')
+            {
+                return { role: '', company: '', from: '', to: '', summary: '' };
+            }
+
+            return { name: '', summary: '' };
+        }
+
+        function buildDraft(profile)
+        {
+            return {
+                phone: profile.phone || '',
+                headline: profile.headline || '',
+                skills: (profile.skills || []).map(function (skill)
+                {
+                    return { skill: skill.skill || '', verified: skill.verified === true };
+                }),
+                education: (profile.education || []).map(function (row)
+                {
+                    return { qualification: row.qualification || '', institution: row.institution || '', from: row.from || '', to: row.to || '' };
+                }),
+                experience: (profile.experience || []).map(function (row)
+                {
+                    return { role: row.role || '', company: row.company || '', from: row.from || '', to: row.to || '', summary: row.summary || '' };
+                }),
+                projects: (profile.projects || []).map(function (row)
+                {
+                    return { name: row.name || '', summary: row.summary || '' };
+                })
+            };
+        }
+
+        function buildPayload()
+        {
+            return {
+                phone: draft.phone.trim(),
+                headline: draft.headline.trim(),
+                skills: draft.skills.map(function (skill)
+                {
+                    return { skill: skill.skill.trim(), verified: skill.verified };
+                }),
+                education: draft.education.map(function (row)
+                {
+                    return { qualification: row.qualification.trim(), institution: row.institution.trim(), from: row.from.trim(), to: row.to.trim() };
+                }),
+                experience: draft.experience.map(function (row)
+                {
+                    return { role: row.role.trim(), company: row.company.trim(), from: row.from.trim(), to: row.to.trim(), summary: row.summary.trim() };
+                }),
+                projects: draft.projects.map(function (row)
+                {
+                    return { name: row.name.trim(), summary: row.summary.trim() };
+                })
+            };
+        }
+
+        function fieldHtml(field, row)
+        {
+            const value = Dash.esc(row[field.key] || '');
+            const wide = field.wide ? ' class="full"' : '';
+
+            if (field.type === 'textarea')
+            {
+                return '<div' + wide + '><label>' + field.label + '<textarea rows="2" data-field="' + field.key + '" placeholder="' + field.placeholder + '">' + value + '</textarea></label></div>';
+            }
+
+            return '<div' + wide + '><label>' + field.label + '<input type="text" data-field="' + field.key + '" value="' + value + '" placeholder="' + field.placeholder + '"></label></div>';
+        }
+
+        function renderHeader()
+        {
+            el('phone-input').value = draft.phone;
+            el('headline-input').value = draft.headline;
+            el('who-line').innerHTML = '<b>' + Dash.esc(savedProfile.name || '') + '</b> &middot; ' + Dash.esc(savedProfile.email || '');
+
+            if (savedProfile.resumeFileName)
+            {
+                const parsed = savedProfile.parsedAt ? ' on ' + Dash.esc(Dash.dateTime(savedProfile.parsedAt)) : '';
+                el('source-line').innerHTML = 'Read from your resume <b>' + Dash.esc(savedProfile.resumeFileName) + '</b>' + parsed + '.';
+            }
+            else
+            {
+                el('source-line').innerHTML = 'We have not read a resume for you yet. Apply to a role and this page will fill in automatically.';
+            }
+
+            el('saved-line').innerHTML = savedProfile.correctedAt
+                ? 'Your last corrections were sent for review on ' + Dash.esc(Dash.dateTime(savedProfile.correctedAt)) + '.'
+                : '';
+        }
+
+        function renderSkills()
+        {
+            const box = el('skills-rows');
+
+            if (!draft.skills.length)
+            {
+                box.innerHTML = '<p class="d-hint">No skills yet. Add the skills that best describe your work.</p>';
+                return;
+            }
+
+            box.innerHTML = draft.skills.map(function (skill, index)
+            {
+                const indicator = skill.verified === true
+                    ? '<span class="d-chip ok" title="Our team confirmed this skill from your resume"><i data-lucide="badge-check" style="width:13px;height:13px"></i>Confirmed</span>'
+                    : '<span class="d-chip warn" title="Our resume parser could not confirm this skill from your resume text. Please check the spelling or remove it. A person reviews your correction before it is confirmed."><i data-lucide="flag" style="width:13px;height:13px"></i>Needs review</span>';
+
+                return '<div class="row" style="margin-bottom:10px">' +
+                    '<input type="text" data-skill-input="' + index + '" value="' + Dash.esc(skill.skill) + '" placeholder="For example Python" aria-label="Skill ' + (index + 1) + ' name" style="flex:1;min-width:160px">' +
+                    indicator +
+                    '<button type="button" class="btn btn-secondary btn-sm" data-remove-skill="' + index + '" aria-label="Remove skill ' + (index + 1) + '"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function renderGroup(name)
+        {
+            const group = GROUPS[name];
+            const box = el(name + '-rows');
+            const rows = draft[name];
+
+            if (!rows.length)
+            {
+                box.innerHTML = '<p class="d-hint">Nothing added yet. Use the button above to add your first entry.</p>';
+                return;
+            }
+
+            box.innerHTML = rows.map(function (row, index)
+            {
+                const fields = group.fields.map(function (field)
+                {
+                    return fieldHtml(field, row);
+                }).join('');
+
+                return '<div class="d-q" data-row="' + name + '" data-index="' + index + '">' +
+                    '<div class="d-q-head"><p>' + group.heading + ' ' + (index + 1) + '</p>' +
+                    '<div class="d-q-actions"><button type="button" class="btn btn-secondary btn-sm" data-remove="' + name + '" data-index="' + index + '" aria-label="Remove ' + group.heading.toLowerCase() + ' ' + (index + 1) + '"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></div></div>' +
+                    '<div class="d-q-body"><div class="d-form-grid">' + fields + '</div>' +
+                    '<p class="error-text" data-error></p></div></div>';
+            }).join('');
+        }
+
+        function renderAll()
+        {
+            renderHeader();
+            renderSkills();
+            GROUP_NAMES.forEach(function (name)
+            {
+                renderGroup(name);
+            });
+            Dash.icons();
+        }
+
+        function readForm()
+        {
+            draft.phone = el('phone-input').value;
+            draft.headline = el('headline-input').value;
+
+            document.querySelectorAll('[data-skill-input]').forEach(function (input, index)
+            {
+                if (draft.skills[index])
+                {
+                    draft.skills[index].skill = input.value;
+                }
+            });
+
+            GROUP_NAMES.forEach(function (name)
+            {
+                document.querySelectorAll('[data-row="' + name + '"]').forEach(function (rowBox, index)
+                {
+                    const row = draft[name][index];
+
+                    if (!row)
+                    {
+                        return;
+                    }
+
+                    rowBox.querySelectorAll('[data-field]').forEach(function (input)
+                    {
+                        row[input.getAttribute('data-field')] = input.value;
+                    });
+                });
+            });
+        }
+
+        function isDirty()
+        {
+            readForm();
+            return JSON.stringify(draft) !== savedSnapshot;
+        }
+
+        function clearErrors()
+        {
+            el('skills-error').textContent = '';
+            el('save-error').textContent = '';
+
+            document.querySelectorAll('[data-error]').forEach(function (box)
+            {
+                box.textContent = '';
+            });
+        }
+
+        function validate()
+        {
+            clearErrors();
+            let ok = true;
+
+            const blankSkill = draft.skills.some(function (skill)
+            {
+                return !skill.skill.trim();
+            });
+
+            if (blankSkill)
+            {
+                el('skills-error').textContent = 'Every skill needs a name. Please fill in the blank skill or remove that row.';
+                ok = false;
+            }
+
+            GROUP_NAMES.forEach(function (name)
+            {
+                const group = GROUPS[name];
+
+                draft[name].forEach(function (row, index)
+                {
+                    const missing = group.fields.filter(function (field)
+                    {
+                        return group.required.indexOf(field.key) !== -1 && !String(row[field.key] || '').trim();
+                    });
+
+                    if (!missing.length)
+                    {
+                        return;
+                    }
+
+                    const errorBox = document.querySelector('[data-row="' + name + '"][data-index="' + index + '"] [data-error]');
+
+                    if (errorBox)
+                    {
+                        errorBox.textContent = 'Please add ' + missing.map(function (field)
+                        {
+                            return field.label.toLowerCase();
+                        }).join(' and ') + ', or remove this entry if it is blank.';
+                    }
+
+                    ok = false;
+                });
+            });
+
+            return ok;
+        }
+
+        async function load()
+        {
+            el('load-box').innerHTML = Dash.skeletons(3);
+            el('profile-form').classList.add('hidden');
+
+            try
+            {
+                savedProfile = await Api.get('/api/candidate/profile');
+                draft = buildDraft(savedProfile);
+                savedSnapshot = JSON.stringify(draft);
+                el('load-box').innerHTML = '';
+                el('profile-form').classList.remove('hidden');
+                renderAll();
+            }
+            catch (error)
+            {
+                Dash.failInto(el('load-box'), error.message, load);
+            }
+        }
+
+        async function save(event)
+        {
+            event.preventDefault();
+            el('cancel-confirm').classList.add('hidden');
+            readForm();
+
+            if (!validate())
+            {
+                return;
+            }
+
+            Dash.setBusy(el('save-btn'), true);
+
+            try
+            {
+                savedProfile = await Api.put('/api/candidate/profile', buildPayload());
+                draft = buildDraft(savedProfile);
+                savedSnapshot = JSON.stringify(draft);
+                renderAll();
+                showToast('Your corrections were saved and sent for review.', 'success');
+            }
+            catch (error)
+            {
+                el('save-error').textContent = error.message;
+            }
+
+            Dash.setBusy(el('save-btn'), false);
+        }
+
+        function addSkill()
+        {
+            readForm();
+            draft.skills.push({ skill: '', verified: false });
+            renderSkills();
+            Dash.icons();
+
+            const inputs = document.querySelectorAll('[data-skill-input]');
+
+            if (inputs.length)
+            {
+                inputs[inputs.length - 1].focus();
+            }
+        }
+
+        function addRow(name)
+        {
+            readForm();
+            draft[name].push(emptyRow(name));
+            renderGroup(name);
+            Dash.icons();
+
+            const boxes = document.querySelectorAll('[data-row="' + name + '"]');
+            const last = boxes[boxes.length - 1];
+            const firstField = last ? last.querySelector('[data-field]') : null;
+
+            if (firstField)
+            {
+                firstField.focus();
+            }
+        }
+
+        if (user)
+        {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'rocket',
+                title: 'My profile',
+                subtitle: 'Check and correct what we read from your resume',
+                search: false,
+                items: Dash.CANDIDATE_NAV,
+                onBell: function ()
+                {
+                    window.location.href = 'candidate.html#notifications';
+                }
+            });
+
+            el('profile-form').addEventListener('submit', save);
+            el('add-skill').addEventListener('click', addSkill);
+
+            GROUP_NAMES.forEach(function (name)
+            {
+                el(ADD_BUTTONS[name]).addEventListener('click', function ()
+                {
+                    addRow(name);
+                });
+            });
+
+            el('profile-form').addEventListener('click', function (event)
+            {
+                const skillButton = event.target.closest('[data-remove-skill]');
+
+                if (skillButton)
+                {
+                    readForm();
+                    draft.skills.splice(Number(skillButton.getAttribute('data-remove-skill')), 1);
+                    renderSkills();
+                    Dash.icons();
+                    return;
+                }
+
+                const rowButton = event.target.closest('[data-remove]');
+
+                if (rowButton)
+                {
+                    const name = rowButton.getAttribute('data-remove');
+                    readForm();
+                    draft[name].splice(Number(rowButton.getAttribute('data-index')), 1);
+                    renderGroup(name);
+                    Dash.icons();
+                }
+            });
+
+            el('cancel-btn').addEventListener('click', function ()
+            {
+                if (isDirty())
+                {
+                    el('cancel-confirm').classList.remove('hidden');
+                    return;
+                }
+
+                showToast('There are no changes to cancel.', 'info');
+            });
+
+            el('discard-btn').addEventListener('click', function ()
+            {
+                draft = buildDraft(savedProfile);
+                renderAll();
+                el('cancel-confirm').classList.add('hidden');
+                showToast('Your saved profile was restored.', 'info');
+            });
+
+            el('keep-btn').addEventListener('click', function ()
+            {
+                el('cancel-confirm').classList.add('hidden');
+            });
+
+            window.addEventListener('beforeunload', function (event)
+            {
+                if (draft && isDirty())
+                {
+                    event.preventDefault();
+                    event.returnValue = '';
+                }
+            });
+
+            load();
+        }
+    

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview questions - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        .q{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+        .q p{margin-top:6px;max-width:75ch}
+    </style>
+</head>
+<body class="theme-recruiter">
+    <div id="content" class="d-content">
+        <section class="d-panel" aria-label="Interview questions">
+            <div class="d-panel-head">
+                <div><h3 id="title">Interview questions</h3><p class="sub" id="meta">Built from the applicant's matched skills and gaps</p></div>
+                <div class="row">
+                    <a class="btn btn-secondary btn-sm" id="back-link" href="jobs.html">Back to applicant</a>
+                    <a class="btn btn-secondary btn-sm" id="interview-link" href="interviews.html">Schedule interview</a>
+                    <button class="btn btn-secondary btn-sm" id="copy-btn" type="button">Copy all</button>
+                    <button class="btn btn-sm" id="generate-btn" type="button">Regenerate questions</button>
+                </div>
+            </div>
+            <div id="error-box" class="form-error hidden" role="alert"></div>
+            <div id="list"></div>
+        </section>
+
+        <section class="d-panel" aria-label="Add a question">
+            <div class="d-panel-head"><div><h3>Add your own question</h3><p class="sub">Custom questions stay when you regenerate</p></div></div>
+            <form id="add-form" novalidate>
+                <div id="add-error" class="form-error hidden" role="alert"></div>
+                <div class="form-group"><label for="add-text">Question</label><textarea id="add-text" placeholder="What would you like to ask this applicant?"></textarea></div>
+                <button class="btn btn-sm" id="add-save" type="submit">Add question</button>
+            </form>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/mock-applicants.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/mock-extra.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/recruiter-nav.js"></script>
+    <script>
+        const user = mountRecruiterShell('Interview questions', 'Prepare for the conversation', 'jobs.html');
+        const applicationId = new URLSearchParams(window.location.search).get('id');
+        let questions = [];
+
+        function el(id) { return document.getElementById(id); }
+
+        function showBox(id, message)
+        {
+            el(id).textContent = message || '';
+            el(id).classList.toggle('hidden', !message);
+        }
+
+        function render()
+        {
+            if (!questions.length)
+            {
+                el('list').innerHTML = Dash.empty('help-circle', 'No questions yet. Select Regenerate questions to create a set.');
+                Dash.icons();
+                return;
+            }
+
+            const groups = {};
+            questions.forEach(function (q) { (groups[q.category] = groups[q.category] || []).push(q); });
+
+            el('list').innerHTML = Object.keys(groups).map(function (category)
+            {
+                return '<h4 style="margin:14px 0 8px">' + Dash.esc(category) + '</h4>' + groups[category].map(function (q)
+                {
+                    return '<div class="q"><span class="d-badge info">' + Dash.esc(q.category) + '</span><p>' + Dash.esc(q.text) + '</p></div>';
+                }).join('');
+            }).join('');
+        }
+
+        async function load()
+        {
+            if (!applicationId)
+            {
+                showBox('error-box', 'Open this page from an applicant.');
+                return;
+            }
+
+            const base = '/api/applications/' + encodeURIComponent(applicationId);
+            el('list').innerHTML = Dash.skeletons(3);
+            el('back-link').href = 'applicant-detail.html?id=' + encodeURIComponent(applicationId);
+            el('interview-link').href = 'interviews.html?applicationId=' + encodeURIComponent(applicationId);
+
+            try
+            {
+                const results = await Promise.all([Api.get(base), Api.get(base + '/questions')]);
+                el('title').textContent = 'Questions for ' + results[0].candidateName;
+                el('meta').textContent = (results[0].jobTitle ? results[0].jobTitle + '. ' : '') + 'Built from matched skills and gaps';
+                questions = results[1];
+                render();
+            }
+            catch (error)
+            {
+                el('list').innerHTML = '';
+                showBox('error-box', error.message);
+            }
+        }
+
+        async function generate()
+        {
+            const button = el('generate-btn');
+            button.disabled = true;
+            button.classList.add('loading');
+            showBox('error-box', '');
+
+            try
+            {
+                questions = await Api.post('/api/applications/' + encodeURIComponent(applicationId) + '/questions/generate', {});
+                render();
+                showToast('New questions generated.', 'success');
+            }
+            catch (error)
+            {
+                showBox('error-box', error.message);
+            }
+
+            button.disabled = false;
+            button.classList.remove('loading');
+        }
+
+        async function addQuestion(event)
+        {
+            event.preventDefault();
+            showBox('add-error', '');
+            const text = el('add-text').value.trim();
+
+            if (text.length < 5)
+            {
+                showBox('add-error', 'Write the question (at least 5 characters).');
+                return;
+            }
+
+            el('add-save').disabled = true;
+
+            try
+            {
+                questions = await Api.post('/api/applications/' + encodeURIComponent(applicationId) + '/questions', { text: text });
+                el('add-text').value = '';
+                render();
+                showToast('Question added.', 'success');
+            }
+            catch (error)
+            {
+                showBox('add-error', error.message);
+            }
+
+            el('add-save').disabled = false;
+        }
+
+        function copyAll()
+        {
+            const text = questions.map(function (q, i) { return (i + 1) + '. [' + q.category + '] ' + q.text; }).join('\n');
+
+            if (!navigator.clipboard)
+            {
+                showToast('Copy is not available in this browser.', 'error');
+                return;
+            }
+
+            navigator.clipboard.writeText(text).then(function () { showToast('Questions copied.', 'success'); }, function () { showToast('Could not copy the questions.', 'error'); });
+        }
+
+        if (user)
+        {
+            el('generate-btn').addEventListener('click', generate);
+            el('copy-btn').addEventListener('click', copyAll);
+            el('add-form').addEventListener('submit', addQuestion);
+            load();
+        }
+    </script>
+</body>
+</html>

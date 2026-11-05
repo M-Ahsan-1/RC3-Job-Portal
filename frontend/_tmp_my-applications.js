@@ -1,0 +1,161 @@
+
+        const user = guardPage('candidate');
+        const STEPS = ['Submitted', 'Under review', 'Shortlisted', 'Interview', 'Decision'];
+        const STEP_OF = { 'Submitted': 0, 'Parsed': 0, 'AI Assessment Available': 1, 'Recruiter Review': 1, 'Shortlisted': 2, 'Interview': 3, 'Selected': 4, 'Rejected': 4 };
+        const LABEL_OF = { 'Submitted': 'Submitted', 'Parsed': 'Received', 'AI Assessment Available': 'Under review', 'Recruiter Review': 'Under review', 'Shortlisted': 'Shortlisted', 'Interview': 'Interview', 'Selected': 'Selected', 'Rejected': 'Not selected' };
+        let notifications = [];
+
+        function el(id)
+        {
+            return document.getElementById(id);
+        }
+
+        function label(status)
+        {
+            return LABEL_OF[status] || status;
+        }
+
+        function stepsHtml(app)
+        {
+            const step = STEP_OF[app.status] === undefined ? 0 : STEP_OF[app.status];
+            const rejected = app.status === 'Rejected';
+
+            const bars = STEPS.map(function (name, index)
+            {
+                const cls = index <= step ? (rejected && index === step ? 'stop' : 'done') : '';
+                return '<i class="' + cls + '"></i>';
+            }).join('');
+
+            return '<div class="d-steps" role="img" aria-label="Step ' + (step + 1) + ' of ' + STEPS.length + ': ' + Dash.esc(label(app.status)) + '">' + bars + '</div>' +
+                '<div class="d-steplabels"><span>' + STEPS.join('</span><span>') + '</span></div>';
+        }
+
+        function timelineHtml(timeline)
+        {
+            const entries = timeline || [];
+
+            if (!entries.length)
+            {
+                return '';
+            }
+
+            return '<div class="d-timeline" style="margin-top:16px">' + entries.map(function (entry)
+            {
+                return '<div class="d-tl-item done"><b>' + Dash.esc(label(entry.status)) + '</b><span>' + Dash.esc(Dash.dateTime(entry.at)) + '</span></div>';
+            }).join('') + '</div>';
+        }
+
+        function renderApps(apps)
+        {
+            const box = el('apps-list');
+
+            if (!apps.length)
+            {
+                box.innerHTML = Dash.empty('file-text', 'You have not applied to any jobs yet. When you apply somewhere, every update will appear here.', '<a class="btn btn-sm" href="candidate.html#jobs">Browse open jobs</a>');
+                return;
+            }
+
+            box.innerHTML = apps.map(function (app)
+            {
+                const badge = app.status === 'Rejected' ? 'bad' : (app.status === 'Selected' ? 'ok' : 'info');
+                const date = Dash.formatDate(app.appliedAt);
+
+                return '<article class="d-q"><div class="d-item" style="padding-top:0"><div class="main"><b>' + Dash.esc(app.jobTitle) + '</b>' +
+                    '<span>' + (date ? 'Applied ' + date : '') + '</span></div>' +
+                    '<span class="d-badge ' + badge + '">' + Dash.esc(label(app.status)) + '</span></div>' +
+                    stepsHtml(app) + timelineHtml(app.timeline) + '</article>';
+            }).join('');
+        }
+
+        function renderNotifications()
+        {
+            const box = el('notifications-list');
+            const unread = notifications.filter(function (item)
+            {
+                return item.read !== true;
+            }).length;
+
+            Dash.setBell(unread);
+
+            if (!notifications.length)
+            {
+                box.innerHTML = Dash.empty('bell', 'No notifications yet. We will let you know the moment something changes.');
+                return;
+            }
+
+            box.innerHTML = notifications.map(function (item)
+            {
+                const isUnread = item.read !== true;
+
+                const dot = isUnread
+                    ? '<span title="Unread" style="width:9px;height:9px;border-radius:50%;background:var(--ac);flex:none"></span>'
+                    : '<span style="width:9px;flex:none"></span>';
+
+                const weight = isUnread ? ' style="font-weight:650"' : ' style="font-weight:500;color:#64748b"';
+
+                return '<div class="d-item">' + dot + '<div class="main"><b' + weight + '>' + Dash.esc(item.message) + '</b>' +
+                    '<span>' + Dash.esc(Dash.timeAgo(item.createdAt)) + '</span></div></div>';
+            }).join('');
+        }
+
+        async function markAllRead()
+        {
+            const button = el('mark-read');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                notifications = await Api.patch('/api/notifications/read');
+                renderNotifications();
+                showToast('All notifications marked as read.', 'success');
+            }
+            catch (error)
+            {
+                showToast(error.message, 'error');
+            }
+
+            Dash.setBusy(button, false);
+        }
+
+        async function load()
+        {
+            el('apps-list').innerHTML = Dash.skeletons(2);
+            el('notifications-list').innerHTML = Dash.skeletons(1);
+
+            try
+            {
+                const results = await Promise.all([Api.get('/api/candidate/applications'), Api.get('/api/notifications')]);
+                notifications = results[1];
+                renderApps(results[0]);
+                renderNotifications();
+            }
+            catch (error)
+            {
+                el('notifications-list').innerHTML = '';
+                Dash.failInto(el('apps-list'), error.message, load);
+            }
+
+            Dash.icons();
+        }
+
+        if (user)
+        {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'rocket',
+                title: 'My applications',
+                subtitle: 'Every step of your journey in one place',
+                search: false,
+                active: 'candidate.html',
+                items: Dash.CANDIDATE_NAV,
+                onBell: function ()
+                {
+                    window.location.href = 'candidate.html#notifications';
+                }
+            });
+
+            el('mark-read').addEventListener('click', markAllRead);
+            load();
+        }
+    

@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interviews - RC3 Job Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="theme-recruiter">
+    <div id="content" class="d-content">
+        <div class="d-callout">
+            <i data-lucide="bot"></i>
+            <div><b>Humans decide, AI informs</b>AI matching and assessment scores help you prepare for each interview, but every reschedule, every piece of feedback and every final decision on this page is made by you.</div>
+        </div>
+
+        <section class="d-kpis" id="kpis" aria-label="Interview numbers"></section>
+
+        <div class="d-group-title" id="upcoming-title">Upcoming</div>
+        <div id="upcoming"></div>
+
+        <div class="d-group-title hidden" id="past-title">Completed and past</div>
+        <div id="past"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/mock.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        const user = guardPage('recruiter');
+
+        const TYPE_LABELS =
+        {
+            technical: 'Technical',
+            behavioural: 'Behavioural',
+            culture: 'Culture fit',
+            hr: 'HR round'
+        };
+
+        const RECOMMENDATION_TONE =
+        {
+            hire: 'ok',
+            hold: 'warn',
+            reject: 'bad'
+        };
+
+        const CRITERIA = ['technical', 'communication', 'problem_solving', 'culture_fit'];
+
+        const state =
+        {
+            interviews: [],
+            openReschedule: null,
+            openFeedback: null,
+            decision: null,
+            decisionNote: null
+        };
+
+        function findInterview(id)
+        {
+            for (let i = 0; i < state.interviews.length; i++)
+            {
+                if (state.interviews[i].id === id)
+                {
+                    return state.interviews[i];
+                }
+            }
+
+            return null;
+        }
+
+        function isUpcoming(interview)
+        {
+            return interview.status === 'scheduled' && new Date(interview.scheduled_at).getTime() > Date.now();
+        }
+
+        function awaitingFeedback(interview)
+        {
+            return !interview.feedback && !isUpcoming(interview);
+        }
+
+        function typeLabel(type)
+        {
+            const key = String(type || 'technical');
+            return TYPE_LABELS[key] || key.charAt(0).toUpperCase() + key.slice(1);
+        }
+
+        function recommendationLabel(value)
+        {
+            return String(value || '').charAt(0).toUpperCase() + String(value || '').slice(1);
+        }
+
+        function toLocalInput(iso)
+        {
+            const date = new Date(iso);
+
+            if (isNaN(date.getTime()))
+            {
+                return '';
+            }
+
+            const pad = function (value)
+            {
+                return value < 10 ? '0' + value : String(value);
+            };
+
+            return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+                'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+        }
+
+        function overlaps(startA, minutesA, startB, minutesB)
+        {
+            const a1 = new Date(startA).getTime();
+            const a2 = a1 + (Number(minutesA) || 0) * 60000;
+            const b1 = new Date(startB).getTime();
+            const b2 = b1 + (Number(minutesB) || 0) * 60000;
+            return a1 < b2 && b1 < a2;
+        }
+
+        function localConflicts(interview, payload)
+        {
+            const conflicts = [];
+
+            state.interviews.forEach(function (existing)
+            {
+                if (existing.status === 'cancelled' || existing.id === interview.id)
+                {
+                    return;
+                }
+
+                if (!overlaps(payload.scheduled_at, payload.duration_minutes, existing.scheduled_at, existing.duration_minutes))
+                {
+                    return;
+                }
+
+                if (existing.interviewer === payload.interviewer)
+                {
+                    conflicts.push({ type: 'interviewer', name: existing.interviewer, scheduled_at: existing.scheduled_at, duration_minutes: existing.duration_minutes, with: existing.candidateName });
+                }
+
+                if (existing.applicationId === interview.applicationId)
+                {
+                    conflicts.push({ type: 'candidate', name: existing.candidateName, scheduled_at: existing.scheduled_at, duration_minutes: existing.duration_minutes, with: existing.interviewer });
+                }
+            });
+
+            return conflicts;
+        }
+
+        function conflictListHtml(conflicts)
+        {
+            if (!conflicts.length)
+            {
+                return '<p>Another interview overlaps this slot.</p>';
+            }
+
+            return '<ul style="margin:0 0 12px 18px;padding:0">' + conflicts.map(function (conflict)
+            {
+                const when = Dash.esc(Dash.dateTime(conflict.scheduled_at));
+                const minutes = Dash.esc(conflict.duration_minutes);
+
+                if (conflict.type === 'interviewer')
+                {
+                    return '<li><strong>' + Dash.esc(conflict.name) + '</strong> is already interviewing ' + Dash.esc(conflict.with) + ' at ' + when + ' for ' + minutes + ' minutes.</li>';
+                }
+
+                return '<li><strong>' + Dash.esc(conflict.name) + '</strong> already has an interview with ' + Dash.esc(conflict.with) + ' at ' + when + ' for ' + minutes + ' minutes.</li>';
+            }).join('') + '</ul>';
+        }
+
+        function kpiCard(icon, value, label)
+        {
+            return '<div class="d-kpi"><div class="ic"><i data-lucide="' + icon + '"></i></div><b>' + Dash.esc(value) + '</b><span>' + label + '</span></div>';
+        }
+
+        function renderKpis()
+        {
+            const upcoming = state.interviews.filter(isUpcoming).length;
+            const completed = state.interviews.filter(function (interview) { return interview.status === 'completed'; }).length;
+            const awaiting = state.interviews.filter(awaitingFeedback).length;
+
+            document.getElementById('kpis').innerHTML =
+                kpiCard('calendar-clock', upcoming, 'Upcoming interviews') +
+                kpiCard('check-circle-2', completed, 'Completed') +
+                kpiCard('message-square', awaiting, 'Awaiting feedback');
+        }
+
+        function typeOptionsHtml(selected)
+        {
+            return Object.keys(TYPE_LABELS).map(function (type)
+            {
+                return '<option value="' + type + '"' + (type === selected ? ' selected' : '') + '>' + TYPE_LABELS[type] + '</option>';
+            }).join('');
+        }
+
+        function rescheduleFormHtml(interview)
+        {
+            return '<div class="d-compare-col" style="margin-top:16px">' +
+                '<form data-reschedule-form novalidate>' +
+                    '<div class="d-form-grid">' +
+                        '<div class="d-field">' +
+                            '<label for="rs-when-' + interview.id + '">Date and time</label>' +
+                            '<input type="datetime-local" id="rs-when-' + interview.id + '" data-when value="' + Dash.esc(toLocalInput(interview.scheduled_at)) + '">' +
+                            '<div class="error-text" data-error="when"></div>' +
+                        '</div>' +
+                        '<div class="d-field">' +
+                            '<label for="rs-duration-' + interview.id + '">Duration (minutes)</label>' +
+                            '<input type="number" id="rs-duration-' + interview.id + '" data-duration min="15" max="240" step="5" value="' + Dash.esc(interview.duration_minutes) + '">' +
+                            '<div class="error-text" data-error="duration"></div>' +
+                        '</div>' +
+                        '<div class="d-field">' +
+                            '<label for="rs-interviewer-' + interview.id + '">Interviewer</label>' +
+                            '<input type="text" id="rs-interviewer-' + interview.id + '" data-interviewer value="' + Dash.esc(interview.interviewer) + '">' +
+                            '<div class="error-text" data-error="interviewer"></div>' +
+                        '</div>' +
+                        '<div class="d-field">' +
+                            '<label for="rs-type-' + interview.id + '">Interview type</label>' +
+                            '<select id="rs-type-' + interview.id + '" data-type>' + typeOptionsHtml(interview.interview_type) + '</select>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div data-conflicts></div>' +
+                    '<div class="error-text" data-form-error role="alert"></div>' +
+                    '<div class="d-actions">' +
+                        '<button class="btn btn-sm" type="submit" data-submit-reschedule><i data-lucide="save"></i>Save changes</button>' +
+                        '<button class="btn btn-secondary btn-sm" type="button" data-open="reschedule">Cancel</button>' +
+                    '</div>' +
+                '</form>' +
+            '</div>';
+        }
+
+        function ratingFieldHtml(interview, key, label, value)
+        {
+            const buttons = [1, 2, 3, 4, 5].map(function (level)
+            {
+                return '<button type="button" role="radio" aria-checked="' + (level === value ? 'true' : 'false') + '" data-value="' + level + '"' +
+                    (value && level <= value ? ' class="on"' : '') + '>' + level + '</button>';
+            }).join('');
+
+            return '<div class="d-field" data-rating="' + key + '" data-label="' + Dash.esc(label) + '"' + (value ? ' data-value="' + value + '"' : '') + '>' +
+                '<label id="fb-' + key + '-' + interview.id + '">' + Dash.esc(label) + '</label>' +
+                '<div class="d-rating" role="radiogroup" aria-labelledby="fb-' + key + '-' + interview.id + '">' + buttons + '</div>' +
+                '<p class="d-sr" aria-live="polite" data-live>' + Dash.esc(label + ': ' + (value ? value + ' out of 5' : 'not rated yet')) + '</p>' +
+                '<div class="error-text" data-error></div>' +
+            '</div>';
+        }
+
+        function feedbackFormHtml(interview)
+        {
+            const feedback = interview.feedback;
+            const recommendation = feedback ? feedback.recommendation : '';
+            const comments = feedback ? feedback.comments : '';
+            const ratingValue = function (key)
+            {
+                return feedback ? feedback[key] : 0;
+            };
+
+            return '<div class="d-compare-col" style="margin-top:16px">' +
+                '<form data-feedback-form novalidate>' +
+                    '<h3>' + (feedback ? 'Edit feedback' : 'Interview feedback') + '</h3>' +
+                    '<p class="sub">Rate each area from 1 (poor) to 5 (excellent).</p>' +
+                    '<div class="d-form-grid">' +
+                        ratingFieldHtml(interview, 'technical', 'Technical', ratingValue('technical')) +
+                        ratingFieldHtml(interview, 'communication', 'Communication', ratingValue('communication')) +
+                        ratingFieldHtml(interview, 'problem_solving', 'Problem solving', ratingValue('problem_solving')) +
+                        ratingFieldHtml(interview, 'culture_fit', 'Culture fit', ratingValue('culture_fit')) +
+                        '<div class="d-field full">' +
+                            '<label for="fb-comments-' + interview.id + '">Comments</label>' +
+                            '<textarea id="fb-comments-' + interview.id + '" data-comments placeholder="What stood out? Any concerns worth recording?">' + Dash.esc(comments) + '</textarea>' +
+                        '</div>' +
+                        '<div class="d-field full">' +
+                            '<label for="fb-recommendation-' + interview.id + '">Recommendation</label>' +
+                            '<select id="fb-recommendation-' + interview.id + '" data-recommendation>' +
+                                '<option value="">Choose one</option>' +
+                                '<option value="hire"' + (recommendation === 'hire' ? ' selected' : '') + '>Hire</option>' +
+                                '<option value="hold"' + (recommendation === 'hold' ? ' selected' : '') + '>Hold</option>' +
+                                '<option value="reject"' + (recommendation === 'reject' ? ' selected' : '') + '>Reject</option>' +
+                            '</select>' +
+                            '<div class="error-text" data-error="recommendation"></div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="error-text" data-form-error role="alert"></div>' +
+                    '<div class="d-actions">' +
+                        '<button class="btn btn-sm" type="submit" data-submit-feedback><i data-lucide="send"></i>Save feedback</button>' +
+                        (awaitingFeedback(interview) ? '' : '<button class="btn btn-secondary btn-sm" type="button" data-open="feedback">Cancel</button>') +
+                    '</div>' +
+                '</form>' +
+            '</div>';
+        }
+
+        function feedbackViewHtml(interview)
+        {
+            const feedback = interview.feedback;
+
+            return '<div class="d-compare-col" style="margin-top:16px">' +
+                '<div class="d-panel-head">' +
+                    '<div><h3>Interview feedback</h3><p class="sub">Submitted by ' + Dash.esc(feedback.submittedBy) + ' &middot; ' + Dash.esc(Dash.timeAgo(feedback.submittedAt)) + '</p></div>' +
+                    Dash.badge(recommendationLabel(feedback.recommendation), RECOMMENDATION_TONE[feedback.recommendation] || 'neutral') +
+                '</div>' +
+                '<div class="d-fair">' +
+                    '<div><b>' + Dash.esc(feedback.technical) + '</b><span>Technical</span></div>' +
+                    '<div><b>' + Dash.esc(feedback.communication) + '</b><span>Communication</span></div>' +
+                    '<div><b>' + Dash.esc(feedback.problem_solving) + '</b><span>Problem solving</span></div>' +
+                    '<div><b>' + Dash.esc(feedback.culture_fit) + '</b><span>Culture fit</span></div>' +
+                '</div>' +
+                (feedback.comments ? '<div class="d-excerpt" style="margin-top:16px">' + Dash.esc(feedback.comments) + '</div>' : '') +
+            '</div>';
+        }
+
+        function decisionRegionHtml(interview)
+        {
+            const active = state.decision && state.decision.interviewId === interview.id;
+
+            let html = '<div class="d-compare-col" style="margin-top:16px" data-decision="' + interview.id + '">' +
+                '<h3>Final decision</h3>' +
+                '<p class="sub">Record the outcome for ' + Dash.esc(interview.candidateName) + '. The candidate is notified as soon as you confirm.</p>';
+
+            if (active)
+            {
+                const selected = state.decision.decision;
+                const selectedClass = selected === 'Selected' ? 'btn-success' : 'btn-danger';
+                const question = selected === 'Selected' ? 'Why are you selecting this candidate?' : 'Why are you rejecting this candidate?';
+
+                html += '<div class="d-field">' +
+                        '<label for="dec-reason-' + interview.id + '">' + question + '</label>' +
+                        '<textarea id="dec-reason-' + interview.id + '" data-reason placeholder="This reason is saved with the decision and kept in the audit trail."></textarea>' +
+                        '<div class="error-text" data-decision-error role="alert"></div>' +
+                    '</div>' +
+                    '<div class="d-actions">' +
+                        '<button class="btn ' + selectedClass + ' btn-sm" type="button" data-confirm-decision="' + selected + '">' +
+                            '<i data-lucide="' + (selected === 'Selected' ? 'user-check' : 'user-x') + '"></i>' +
+                            (selected === 'Selected' ? 'Confirm selection' : 'Confirm rejection') +
+                        '</button>' +
+                        '<button class="btn btn-secondary btn-sm" type="button" data-cancel-decision>Cancel</button>' +
+                    '</div>';
+            }
+            else
+            {
+                html += '<div class="d-actions">' +
+                        '<button class="btn btn-success btn-sm" type="button" data-start-decision="Selected"><i data-lucide="user-check"></i>Select candidate</button>' +
+                        '<button class="btn btn-danger btn-sm" type="button" data-start-decision="Rejected"><i data-lucide="user-x"></i>Reject</button>' +
+                    '</div>';
+            }
+
+            return html + '</div>';
+        }
+
+        function feedbackToggleHtml(interview)
+        {
+            if (awaitingFeedback(interview))
+            {
+                return '';
+            }
+
+            if (state.openFeedback === interview.id)
+            {
+                return '<button class="btn btn-secondary btn-sm" type="button" data-open="feedback">Close feedback</button>';
+            }
+
+            return '<button class="btn btn-secondary btn-sm" type="button" data-open="feedback"><i data-lucide="message-square"></i>' +
+                (interview.feedback ? 'Edit feedback' : 'Add feedback') + '</button>';
+        }
+
+        function cardHtml(interview)
+        {
+            const upcoming = isUpcoming(interview);
+            const statusBadge = interview.status === 'completed'
+                ? Dash.badge('Completed', 'ok')
+                : Dash.badge('Scheduled', 'info');
+            const lateBadge = interview.status === 'scheduled' && !upcoming ? Dash.badge('Time passed', 'warn') : '';
+            const kept = (interview.conflicts || []).length;
+
+            let html = '<section class="d-panel" data-interview="' + interview.id + '">' +
+                '<div class="d-panel-head">' +
+                    '<div><h3>' + Dash.esc(interview.candidateName) + '</h3>' +
+                    '<p class="sub">' + Dash.esc(interview.jobTitle) + ' &middot; Interviewer ' + Dash.esc(interview.interviewer) +
+                    ' &middot; ' + Dash.esc(Dash.dateTime(interview.scheduled_at)) + ' &middot; ' + Dash.esc(interview.duration_minutes) + ' min</p></div>' +
+                    '<div class="d-meta">' + Dash.badge(typeLabel(interview.interview_type), 'neutral') + statusBadge + lateBadge + '</div>' +
+                '</div>';
+
+            if (kept)
+            {
+                html += Dash.callout('triangle-alert', 'This interview intentionally overlaps ' + kept + (kept === 1 ? ' other interview' : ' other interviews'),
+                    conflictListHtml(interview.conflicts), 'warn');
+            }
+
+            if (state.decisionNote && state.decisionNote.interviewId === interview.id)
+            {
+                html += Dash.callout('check-circle-2', 'Decision recorded. The candidate was notified:',
+                    '<p>' + Dash.esc(state.decisionNote.message) + '</p>', 'ok');
+            }
+
+            html += '<div class="d-actions">' +
+                    '<button class="btn btn-secondary btn-sm" type="button" data-open="reschedule"><i data-lucide="calendar-clock"></i>' +
+                        (state.openReschedule === interview.id ? 'Close reschedule' : 'Reschedule') + '</button>' +
+                    feedbackToggleHtml(interview) +
+                    '<a class="btn btn-secondary btn-sm" href="applicant-detail.html?id=' + encodeURIComponent(interview.applicationId) + '"><i data-lucide="user"></i>View applicant</a>' +
+                '</div>';
+
+            if (state.openReschedule === interview.id)
+            {
+                html += rescheduleFormHtml(interview);
+            }
+
+            if (state.openFeedback === interview.id || awaitingFeedback(interview))
+            {
+                html += feedbackFormHtml(interview);
+            }
+            else if (interview.feedback)
+            {
+                html += feedbackViewHtml(interview);
+            }
+
+            if (interview.feedback)
+            {
+                html += decisionRegionHtml(interview);
+            }
+
+            return html + '</section>';
+        }
+
+        function render()
+        {
+            renderKpis();
+
+            const upcoming = state.interviews.filter(isUpcoming);
+            const past = state.interviews.filter(function (interview) { return !isUpcoming(interview); });
+
+            document.getElementById('past-title').classList.toggle('hidden', !past.length);
+            document.getElementById('upcoming').innerHTML = upcoming.length
+                ? upcoming.map(cardHtml).join('')
+                : Dash.empty('calendar-clock', 'No upcoming interviews. Schedule one from an applicant page.',
+                    '<a class="btn btn-sm" href="applicants.html">Go to applicants</a>');
+            document.getElementById('past').innerHTML = past.map(cardHtml).join('');
+
+            wire();
+            Dash.icons();
+        }
+
+        function wire()
+        {
+            document.querySelectorAll('[data-interview]').forEach(function (card)
+            {
+                const id = Number(card.getAttribute('data-interview'));
+                const interview = findInterview(id);
+
+                if (!interview)
+                {
+                    return;
+                }
+
+                card.querySelectorAll('[data-open]').forEach(function (button)
+                {
+                    button.addEventListener('click', function ()
+                    {
+                        const what = button.getAttribute('data-open');
+
+                        if (what === 'reschedule')
+                        {
+                            state.openReschedule = state.openReschedule === id ? null : id;
+                        }
+                        else
+                        {
+                            state.openFeedback = state.openFeedback === id ? null : id;
+                        }
+
+                        render();
+                    });
+                });
+
+                wireReschedule(card, interview);
+                wireFeedback(card, interview);
+                wireDecision(card, interview);
+            });
+        }
+
+        function wireReschedule(card, interview)
+        {
+            const form = card.querySelector('[data-reschedule-form]');
+
+            if (!form)
+            {
+                return;
+            }
+
+            form.addEventListener('submit', function (event)
+            {
+                event.preventDefault();
+
+                const when = form.querySelector('[data-when]').value;
+                const duration = Number(form.querySelector('[data-duration]').value);
+                const interviewer = form.querySelector('[data-interviewer]').value.trim();
+                const whenError = form.querySelector('[data-error="when"]');
+                const durationError = form.querySelector('[data-error="duration"]');
+                const interviewerError = form.querySelector('[data-error="interviewer"]');
+                let valid = true;
+
+                if (!when || isNaN(new Date(when).getTime()))
+                {
+                    whenError.textContent = 'Please pick a valid date and time for the interview.';
+                    valid = false;
+                }
+                else
+                {
+                    whenError.textContent = '';
+                }
+
+                if (!Number.isFinite(duration) || duration < 15 || duration > 240)
+                {
+                    durationError.textContent = 'Interview length must be between 15 and 240 minutes.';
+                    valid = false;
+                }
+                else
+                {
+                    durationError.textContent = '';
+                }
+
+                if (!interviewer)
+                {
+                    interviewerError.textContent = 'Please say who will run the interview.';
+                    valid = false;
+                }
+                else
+                {
+                    interviewerError.textContent = '';
+                }
+
+                if (!valid)
+                {
+                    return;
+                }
+
+                const payload =
+                {
+                    scheduled_at: new Date(when).toISOString(),
+                    duration_minutes: duration,
+                    interviewer: interviewer,
+                    interview_type: form.querySelector('[data-type]').value
+                };
+
+                submitReschedule(card, interview, payload, false, form.querySelector('[data-submit-reschedule]'));
+            });
+        }
+
+        async function submitReschedule(card, interview, payload, force, button)
+        {
+            const conflictBox = card.querySelector('[data-conflicts]');
+            const errorBox = card.querySelector('[data-reschedule-form] [data-form-error]');
+
+            conflictBox.innerHTML = '';
+            errorBox.textContent = '';
+            Dash.setBusy(button, true);
+
+            const body =
+            {
+                scheduled_at: payload.scheduled_at,
+                duration_minutes: payload.duration_minutes,
+                interviewer: payload.interviewer,
+                interview_type: payload.interview_type
+            };
+
+            if (force)
+            {
+                body.force = true;
+            }
+
+            try
+            {
+                const result = await Api.put('/api/interviews/' + interview.id, body);
+                const kept = (result.conflicts || []).length;
+                showToast(kept
+                    ? 'Interview rescheduled with ' + kept + ' intentional ' + (kept === 1 ? 'clash' : 'clashes') + '.'
+                    : 'Interview rescheduled.', 'success');
+                state.openReschedule = null;
+                await load();
+            }
+            catch (error)
+            {
+                Dash.setBusy(button, false);
+
+                if (error.status === 409 && !force)
+                {
+                    const conflicts = localConflicts(interview, payload);
+
+                    conflictBox.innerHTML = Dash.callout('triangle-alert', error.message,
+                        conflictListHtml(conflicts) +
+                        '<button class="btn btn-danger btn-sm" type="button" data-force-reschedule style="margin-top:4px">Reschedule anyway</button>',
+                        'bad');
+                    Dash.icons();
+
+                    const forceButton = conflictBox.querySelector('[data-force-reschedule]');
+
+                    if (forceButton)
+                    {
+                        forceButton.addEventListener('click', function ()
+                        {
+                            submitReschedule(card, interview, payload, true, forceButton);
+                        });
+                    }
+
+                    return;
+                }
+
+                errorBox.textContent = error.message;
+            }
+        }
+
+        function wireFeedback(card, interview)
+        {
+            card.querySelectorAll('[data-rating]').forEach(function (field)
+            {
+                const label = field.getAttribute('data-label');
+
+                field.querySelectorAll('.d-rating button').forEach(function (button)
+                {
+                    button.addEventListener('click', function ()
+                    {
+                        const value = Number(button.getAttribute('data-value'));
+
+                        field.setAttribute('data-value', String(value));
+                        field.querySelectorAll('.d-rating button').forEach(function (other)
+                        {
+                            const otherValue = Number(other.getAttribute('data-value'));
+                            other.classList.toggle('on', otherValue <= value);
+                            other.setAttribute('aria-checked', otherValue === value ? 'true' : 'false');
+                        });
+                        field.querySelector('[data-live]').textContent = label + ': ' + value + ' out of 5';
+                        field.querySelector('[data-error]').textContent = '';
+                    });
+                });
+            });
+
+            const form = card.querySelector('[data-feedback-form]');
+
+            if (!form)
+            {
+                return;
+            }
+
+            form.addEventListener('submit', function (event)
+            {
+                event.preventDefault();
+                submitFeedback(form, interview);
+            });
+        }
+
+        async function submitFeedback(form, interview)
+        {
+            const body = {};
+            let valid = true;
+
+            form.querySelector('[data-form-error]').textContent = '';
+
+            CRITERIA.forEach(function (key)
+            {
+                const field = form.querySelector('[data-rating="' + key + '"]');
+                const error = field.querySelector('[data-error]');
+                const value = Number(field.getAttribute('data-value'));
+
+                if (!Number.isFinite(value) || value < 1 || value > 5)
+                {
+                    error.textContent = 'Please rate this from 1 to 5.';
+                    valid = false;
+                    return;
+                }
+
+                error.textContent = '';
+                body[key] = value;
+            });
+
+            const recommendation = form.querySelector('[data-recommendation]').value;
+            const recommendationError = form.querySelector('[data-error="recommendation"]');
+
+            if (['hire', 'hold', 'reject'].indexOf(recommendation) === -1)
+            {
+                recommendationError.textContent = 'Please choose a recommendation: hire, hold or reject.';
+                valid = false;
+            }
+            else
+            {
+                recommendationError.textContent = '';
+            }
+
+            if (!valid)
+            {
+                return;
+            }
+
+            body.comments = form.querySelector('[data-comments]').value.trim();
+            body.recommendation = recommendation;
+
+            const button = form.querySelector('[data-submit-feedback]');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                await Api.post('/api/interviews/' + interview.id + '/feedback', body);
+                showToast('Feedback saved for ' + interview.candidateName + '.', 'success');
+                state.openFeedback = null;
+                await load();
+            }
+            catch (error)
+            {
+                Dash.setBusy(button, false);
+                form.querySelector('[data-form-error]').textContent = error.message;
+            }
+        }
+
+        function wireDecision(card, interview)
+        {
+            card.querySelectorAll('[data-start-decision]').forEach(function (button)
+            {
+                button.addEventListener('click', function ()
+                {
+                    state.decision = { interviewId: interview.id, decision: button.getAttribute('data-start-decision') };
+                    render();
+
+                    const reason = document.querySelector('[data-interview="' + interview.id + '"] [data-reason]');
+
+                    if (reason)
+                    {
+                        reason.focus();
+                    }
+                });
+            });
+
+            const cancelButton = card.querySelector('[data-cancel-decision]');
+
+            if (cancelButton)
+            {
+                cancelButton.addEventListener('click', function ()
+                {
+                    state.decision = null;
+                    render();
+                });
+            }
+
+            const confirmButton = card.querySelector('[data-confirm-decision]');
+
+            if (confirmButton)
+            {
+                confirmButton.addEventListener('click', function ()
+                {
+                    submitDecision(card, interview, confirmButton);
+                });
+            }
+        }
+
+        async function submitDecision(card, interview, button)
+        {
+            const errorBox = card.querySelector('[data-decision-error]');
+            const reason = card.querySelector('[data-reason]').value.trim();
+
+            errorBox.textContent = '';
+
+            if (!reason)
+            {
+                errorBox.textContent = 'Please give a reason for the final decision. The candidate is notified and the decision is audited.';
+                return;
+            }
+
+            Dash.setBusy(button, true);
+
+            try
+            {
+                const result = await Api.post('/api/applications/' + interview.applicationId + '/decision',
+                {
+                    decision: state.decision.decision,
+                    reason: reason
+                });
+
+                showToast('Final decision recorded.', 'success');
+                state.decisionNote = { interviewId: interview.id, message: result.notification };
+                state.decision = null;
+                await load();
+            }
+            catch (error)
+            {
+                Dash.setBusy(button, false);
+                errorBox.textContent = error.message;
+            }
+        }
+
+        async function load()
+        {
+            const pastTitle = document.getElementById('past-title');
+
+            document.getElementById('kpis').innerHTML = Dash.skeletons(3);
+            document.getElementById('upcoming').innerHTML = Dash.skeletons(2);
+            document.getElementById('past').innerHTML = '';
+            pastTitle.classList.add('hidden');
+
+            try
+            {
+                state.interviews = await Api.get('/api/interviews');
+                render();
+            }
+            catch (error)
+            {
+                document.getElementById('kpis').innerHTML = '';
+                document.getElementById('past').innerHTML = '';
+                pastTitle.classList.add('hidden');
+                Dash.failInto(document.getElementById('upcoming'), error.message, load);
+            }
+        }
+
+        if (user)
+        {
+            Dash.mountShell(
+            {
+                user: user,
+                logo: 'calendar-clock',
+                title: 'Interviews',
+                subtitle: 'Scheduled interviews, feedback and final decisions',
+                search: true,
+                items: Dash.RECRUITER_NAV,
+                onBell: function ()
+                {
+                    showToast('You have no new notifications.', 'info');
+                }
+            });
+
+            load();
+        }
+    </script>
+</body>
+</html>
