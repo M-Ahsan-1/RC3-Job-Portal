@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - PORT=3000
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  # no db service yet, I don't know what Sameer picked.
+  # once he says, add it here and point DATABASE_URL in .env at it.
+
+volumes:
+  uploads:
