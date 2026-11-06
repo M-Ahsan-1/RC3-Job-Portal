@@ -1,4 +1,4 @@
-// Shared sidebar for the recruiter pages that come after A5.
+// Shared sidebar for every recruiter page after the dashboard.
 function mountRecruiterShell(title, subtitle, activeHref)
 {
     const user = guardPage('recruiter');
@@ -11,27 +11,14 @@ function mountRecruiterShell(title, subtitle, activeHref)
     Dash.mountShell(
     {
         user: user,
-        logo: 'sparkles',
         title: title,
         subtitle: subtitle,
-        search: true,
-        items:
-        [
-            { label: 'Overview', href: 'recruiter.html', icon: 'layout-dashboard' },
-            { label: 'Jobs', href: 'jobs.html', icon: 'briefcase' },
-            { label: 'Interviews', href: 'interviews.html', icon: 'calendar-clock' },
-            { label: 'Analytics', href: 'analytics.html', icon: 'bar-chart-3' },
-            { label: 'Talent Search', href: 'search.html', icon: 'search' }
-        ],
+        items: Dash.RECRUITER_NAV,
+        active: activeHref,
         onBell: function ()
         {
             showToast('You have no new notifications.', 'info');
         }
-    });
-
-    document.querySelectorAll('.d-nav a').forEach(function (link)
-    {
-        link.classList.toggle('on', link.getAttribute('href') === activeHref);
     });
 
     return user;

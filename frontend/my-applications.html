@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Applications - RC3 Job Portal</title>
+    <title>My applications – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/candidate.css">
 </head>
 <body class="theme-candidate">
+    <script src="js/brand.js"></script>
+    <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
         <section class="d-panel" aria-label="My applications">
             <h3>My applications</h3>
@@ -17,7 +23,7 @@
             <div id="apps-list"></div>
         </section>
 
-        <section class="d-panel" aria-label="Notifications">
+        <section class="d-panel" id="notifications" tabindex="-1" aria-label="Notifications">
             <div class="d-panel-head">
                 <div>
                     <h3>Notifications</h3>
@@ -25,149 +31,48 @@
                 </div>
                 <button class="btn btn-secondary btn-sm" id="mark-read" type="button">Mark all as read</button>
             </div>
-            <div id="notifications-list" style="margin-top:10px"></div>
+            <div id="notes-list"></div>
         </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/illustrations.js"></script>
+    <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/candidate-shared.js"></script>
     <script>
         const user = guardPage('candidate');
-        const STEPS = ['Submitted', 'Under review', 'Shortlisted', 'Interview', 'Decision'];
-        const STEP_OF = { 'Submitted': 0, 'Parsed': 0, 'AI Assessment Available': 1, 'Recruiter Review': 1, 'Shortlisted': 2, 'Interview': 3, 'Selected': 4, 'Rejected': 4 };
-        const LABEL_OF = { 'Submitted': 'Submitted', 'Parsed': 'Received', 'AI Assessment Available': 'Under review', 'Recruiter Review': 'Under review', 'Shortlisted': 'Shortlisted', 'Interview': 'Interview', 'Selected': 'Selected', 'Rejected': 'Not selected' };
-        let notifications = [];
-
-        function el(id)
-        {
-            return document.getElementById(id);
-        }
-
-        function label(status)
-        {
-            return LABEL_OF[status] || status;
-        }
-
-        function stepsHtml(app)
-        {
-            const step = STEP_OF[app.status] === undefined ? 0 : STEP_OF[app.status];
-            const rejected = app.status === 'Rejected';
-
-            const bars = STEPS.map(function (name, index)
-            {
-                const cls = index <= step ? (rejected && index === step ? 'stop' : 'done') : '';
-                return '<i class="' + cls + '"></i>';
-            }).join('');
-
-            return '<div class="d-steps" role="img" aria-label="Step ' + (step + 1) + ' of ' + STEPS.length + ': ' + Dash.esc(label(app.status)) + '">' + bars + '</div>' +
-                '<div class="d-steplabels"><span>' + STEPS.join('</span><span>') + '</span></div>';
-        }
-
-        function timelineHtml(timeline)
-        {
-            const entries = timeline || [];
-
-            if (!entries.length)
-            {
-                return '';
-            }
-
-            return '<div class="d-timeline" style="margin-top:16px">' + entries.map(function (entry)
-            {
-                return '<div class="d-tl-item done"><b>' + Dash.esc(label(entry.status)) + '</b><span>' + Dash.esc(Dash.dateTime(entry.at)) + '</span></div>';
-            }).join('') + '</div>';
-        }
+        const appsList = document.getElementById('apps-list');
+        let notes = null;
 
         function renderApps(apps)
         {
-            const box = el('apps-list');
-
             if (!apps.length)
             {
-                box.innerHTML = Dash.empty('file-text', 'You have not applied to any jobs yet. When you apply somewhere, every update will appear here.', '<a class="btn btn-sm" href="candidate.html#jobs">Browse open jobs</a>');
+                appsList.innerHTML = Dash.empty('file-text', 'You have not applied to any jobs yet. When you apply, every update appears here.', '<a class="btn btn-sm" href="candidate.html#jobs">Browse open jobs</a>');
                 return;
             }
 
-            box.innerHTML = apps.map(function (app)
+            appsList.innerHTML = apps.map(function (app)
             {
-                const badge = app.status === 'Rejected' ? 'bad' : (app.status === 'Selected' ? 'ok' : 'info');
-                const date = Dash.formatDate(app.appliedAt);
-
-                return '<article class="d-q"><div class="d-item" style="padding-top:0"><div class="main"><b>' + Dash.esc(app.jobTitle) + '</b>' +
-                    '<span>' + (date ? 'Applied ' + date : '') + '</span></div>' +
-                    '<span class="d-badge ' + badge + '">' + Dash.esc(label(app.status)) + '</span></div>' +
-                    stepsHtml(app) + timelineHtml(app.timeline) + '</article>';
+                return CandidateKit.applicationHtml(app, false);
             }).join('');
-        }
-
-        function renderNotifications()
-        {
-            const box = el('notifications-list');
-            const unread = notifications.filter(function (item)
-            {
-                return item.read !== true;
-            }).length;
-
-            Dash.setBell(unread);
-
-            if (!notifications.length)
-            {
-                box.innerHTML = Dash.empty('bell', 'No notifications yet. We will let you know the moment something changes.');
-                return;
-            }
-
-            box.innerHTML = notifications.map(function (item)
-            {
-                const isUnread = item.read !== true;
-
-                const dot = isUnread
-                    ? '<span title="Unread" style="width:9px;height:9px;border-radius:50%;background:var(--ac);flex:none"></span>'
-                    : '<span style="width:9px;flex:none"></span>';
-
-                const weight = isUnread ? ' style="font-weight:650"' : ' style="font-weight:500;color:#64748b"';
-
-                return '<div class="d-item">' + dot + '<div class="main"><b' + weight + '>' + Dash.esc(item.message) + '</b>' +
-                    '<span>' + Dash.esc(Dash.timeAgo(item.createdAt)) + '</span></div></div>';
-            }).join('');
-        }
-
-        async function markAllRead()
-        {
-            const button = el('mark-read');
-            Dash.setBusy(button, true);
-
-            try
-            {
-                notifications = await Api.patch('/api/notifications/read');
-                renderNotifications();
-                showToast('All notifications marked as read.', 'success');
-            }
-            catch (error)
-            {
-                showToast(error.message, 'error');
-            }
-
-            Dash.setBusy(button, false);
         }
 
         async function load()
         {
-            el('apps-list').innerHTML = Dash.skeletons(2);
-            el('notifications-list').innerHTML = Dash.skeletons(1);
+            appsList.innerHTML = Dash.skeletons(2);
 
             try
             {
-                const results = await Promise.all([Api.get('/api/candidate/applications'), Api.get('/api/notifications')]);
-                notifications = results[1];
-                renderApps(results[0]);
-                renderNotifications();
+                renderApps(await Api.get('/api/candidate/applications'));
             }
             catch (error)
             {
-                el('notifications-list').innerHTML = '';
-                Dash.failInto(el('apps-list'), error.message, load);
+                Dash.failInto(appsList, error.message, load);
             }
 
             Dash.icons();
@@ -182,16 +87,15 @@
                 title: 'My applications',
                 subtitle: 'Every step of your journey in one place',
                 search: false,
-                active: 'candidate.html',
+                active: 'my-applications.html',
                 items: Dash.CANDIDATE_NAV,
-                onBell: function ()
-                {
-                    window.location.href = 'candidate.html#notifications';
-                }
+                onBell: CandidateKit.bellHandler
             });
 
-            el('mark-read').addEventListener('click', markAllRead);
+            notes = CandidateKit.mountNotes({ list: document.getElementById('notes-list'), markButton: document.getElementById('mark-read') });
+
             load();
+            notes.load();
         }
     </script>
 </body>

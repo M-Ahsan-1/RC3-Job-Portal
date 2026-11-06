@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jobs - RC3 Job Portal</title>
+    <title>Jobs – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/jobs.css">
 </head>
 <body class="theme-recruiter">
+    <script src="js/brand.js"></script>
+    <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
         <div class="page-header">
             <div>
@@ -22,44 +28,69 @@
         <section class="d-panel" aria-label="All jobs">
             <div class="d-toolbar">
                 <div class="d-field">
-                    <label for="filter-text">Filter</label>
-                    <input type="text" id="filter-text" placeholder="Title, department or location">
+                    <label for="filter-text">Search jobs</label>
+                    <input type="search" id="filter-text" placeholder="Title, department or location" autocomplete="off">
                 </div>
                 <div class="d-field">
-                    <label for="filter-status">Status</label>
-                    <select id="filter-status">
-                        <option value="all">All</option>
-                        <option value="open">Open</option>
-                        <option value="closed">Closed</option>
-                    </select>
+                    <span class="jb-label" id="status-label">Status</span>
+                    <div class="jb-chips" id="status-chips" role="group" aria-labelledby="status-label">
+                        <button type="button" class="jb-fchip" data-status="all" aria-pressed="true">All <span class="jb-count">0</span></button>
+                        <button type="button" class="jb-fchip" data-status="open" aria-pressed="false">Open <span class="jb-count">0</span></button>
+                        <button type="button" class="jb-fchip" data-status="closed" aria-pressed="false">Closed <span class="jb-count">0</span></button>
+                    </div>
                 </div>
             </div>
 
-            <p class="sub" id="summary"></p>
-            <div id="confirm-box"></div>
+            <p class="sub" id="summary" aria-live="polite"></p>
             <div id="jobs-list"></div>
         </section>
     </div>
 
+    <dialog id="close-dialog" class="jb-dialog" aria-labelledby="close-title" aria-describedby="close-text">
+        <div class="jb-dialog-body">
+            <h3 id="close-title">Close this job?</h3>
+            <p id="close-text"></p>
+            <div class="jb-dialog-actions">
+                <button type="button" class="btn btn-secondary btn-sm" id="close-cancel" autofocus>Keep it open</button>
+                <button type="button" class="btn btn-danger btn-sm" id="close-confirm">Close job</button>
+            </div>
+        </div>
+    </dialog>
+
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/illustrations.js"></script>
+    <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
     <script>
         const user = guardPage('recruiter');
         const jobsList = document.getElementById('jobs-list');
-        const confirmBox = document.getElementById('confirm-box');
         const summary = document.getElementById('summary');
         const filterText = document.getElementById('filter-text');
-        const filterStatus = document.getElementById('filter-status');
+        const statusChips = document.getElementById('status-chips');
+        const closeDialog = document.getElementById('close-dialog');
+        const closeTitle = document.getElementById('close-title');
+        const closeText = document.getElementById('close-text');
+        const closeCancel = document.getElementById('close-cancel');
+        const closeConfirm = document.getElementById('close-confirm');
+        const DOTS = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
         let jobs = [];
-        let pendingCloseId = 0;
+        let statusFilter = 'all';
+        let changedId = '';
+        let dialogJobId = '';
+
+        function attrEsc(value)
+        {
+            return Dash.esc(String(value)).replace(/"/g, '&quot;');
+        }
 
         function findJob(jobId)
         {
             for (let i = 0; i < jobs.length; i++)
             {
-                if (jobs[i].id === Number(jobId))
+                if (String(jobs[i].id) === String(jobId))
                 {
                     return jobs[i];
                 }
@@ -68,14 +99,44 @@
             return null;
         }
 
+        function statusCounts()
+        {
+            const counts = { all: jobs.length, open: 0, closed: 0 };
+
+            jobs.forEach(function (job)
+            {
+                if (job.status === 'open')
+                {
+                    counts.open++;
+                }
+                else
+                {
+                    counts.closed++;
+                }
+            });
+
+            return counts;
+        }
+
+        function renderChips()
+        {
+            const counts = statusCounts();
+
+            statusChips.querySelectorAll('button[data-status]').forEach(function (button)
+            {
+                const status = button.getAttribute('data-status');
+                button.setAttribute('aria-pressed', String(status === statusFilter));
+                button.querySelector('.jb-count').textContent = counts[status];
+            });
+        }
+
         function applyFilters()
         {
             const term = filterText.value.trim().toLowerCase();
-            const status = filterStatus.value;
 
             return jobs.filter(function (job)
             {
-                if (status !== 'all' && job.status !== status)
+                if (statusFilter !== 'all' && job.status !== statusFilter)
                 {
                     return false;
                 }
@@ -93,81 +154,115 @@
         {
             const open = job.status === 'open';
             const id = encodeURIComponent(job.id);
-            const place = [job.department, job.location].filter(Boolean).map(Dash.esc).join(' · ');
-            const years = Number(job.experienceYears) || 0;
+            const idAttr = attrEsc(job.id);
+            const titleAttr = attrEsc(job.title);
+            const count = Number(job.applicantCount) || 0;
+            const flash = changedId && String(job.id) === String(changedId) ? ' class="jb-flash"' : '';
 
-            return '<tr>' +
-                '<td><strong>' + Dash.esc(job.title) + '</strong><br><span class="muted">' + place + '</span></td>' +
-                '<td>' + Dash.esc(job.type || '-') + '</td>' +
-                '<td>' + Dash.esc(job.salary || '-') + '</td>' +
-                '<td class="num">' + Dash.esc(years + (years === 1 ? ' yr' : ' yrs')) + '</td>' +
-                '<td>' + Dash.badge(open ? 'Open' : 'Closed', open ? 'ok' : 'neutral') + '</td>' +
-                '<td class="num">' + (Number(job.applicantCount) || 0) + '</td>' +
-                '<td><div class="row">' +
-                    '<a class="btn btn-secondary btn-sm" href="applicants.html?jobId=' + id + '"><i data-lucide="users"></i>Applicants</a>' +
-                    '<a class="btn btn-secondary btn-sm" href="job-form.html?id=' + id + '"><i data-lucide="pencil"></i>Edit</a>' +
-                    '<button class="btn btn-sm ' + (open ? 'btn-danger' : 'btn-success') + '" type="button" data-id="' + Dash.esc(job.id) + '" data-action="' + (open ? 'close' : 'reopen') + '">' + (open ? 'Close' : 'Reopen') + '</button>' +
+            return '<tr data-job="' + idAttr + '"' + flash + '>' +
+                '<td class="jb-title" data-label="Job"><strong>' + Dash.esc(job.title) + '</strong>' + (job.type ? '<span class="jb-sub">' + Dash.esc(job.type) + '</span>' : '') + '</td>' +
+                '<td data-label="Department">' + Dash.esc(job.department || '–') + '</td>' +
+                '<td data-label="Location">' + Dash.esc(job.location || '–') + '</td>' +
+                '<td data-label="Status">' + Dash.badge(open ? 'Open' : 'Closed', open ? 'ok' : 'neutral') + '</td>' +
+                '<td class="num" data-label="Applicants"><a class="jb-link" href="applicants.html?jobId=' + id + '" aria-label="' + count + (count === 1 ? ' applicant' : ' applicants') + ' for ' + titleAttr + '">' + count + (count === 1 ? ' applicant' : ' applicants') + '</a></td>' +
+                '<td class="jb-act"><div class="jb-menu-wrap">' +
+                    '<button type="button" class="jb-more" data-menu="' + idAttr + '" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' + titleAttr + '">' + DOTS + '</button>' +
+                    '<div class="jb-menu" role="menu" aria-label="Actions for ' + titleAttr + '" hidden>' +
+                        '<a role="menuitem" href="job-form.html?id=' + id + '">Edit job</a>' +
+                        '<button type="button" role="menuitem" class="' + (open ? 'danger' : '') + '" data-id="' + idAttr + '" data-action="' + (open ? 'close' : 'reopen') + '">' + (open ? 'Close job' : 'Reopen job') + '</button>' +
+                    '</div>' +
                 '</div></td>' +
                 '</tr>';
         }
 
-        async function toggleStatus(jobId, action, button)
+        function closeMenus(returnFocus)
+        {
+            const trigger = jobsList.querySelector('.jb-more[aria-expanded="true"]');
+
+            if (!trigger)
+            {
+                return;
+            }
+
+            trigger.setAttribute('aria-expanded', 'false');
+            trigger.parentNode.querySelector('.jb-menu').hidden = true;
+
+            if (returnFocus)
+            {
+                trigger.focus();
+            }
+        }
+
+        function openMenu(trigger)
+        {
+            closeMenus(false);
+            trigger.setAttribute('aria-expanded', 'true');
+
+            const menu = trigger.parentNode.querySelector('.jb-menu');
+            menu.hidden = false;
+            menu.querySelector('[role="menuitem"]').focus();
+        }
+
+        function focusMenuButton(jobId)
+        {
+            const buttons = jobsList.querySelectorAll('.jb-more');
+
+            for (let i = 0; i < buttons.length; i++)
+            {
+                if (buttons[i].getAttribute('data-menu') === String(jobId))
+                {
+                    buttons[i].focus();
+                    return;
+                }
+            }
+        }
+
+        async function setStatus(jobId, action, button)
         {
             Dash.setBusy(button, true);
 
             try
             {
                 await Api.patch('/api/jobs/' + encodeURIComponent(jobId) + '/' + action);
-                pendingCloseId = 0;
-                await load();
+
+                const job = findJob(jobId);
+
+                if (job)
+                {
+                    job.status = action === 'close' ? 'closed' : 'open';
+                }
+
+                changedId = jobId;
+                render();
                 showToast(action === 'close' ? 'Job closed. Candidates can no longer apply.' : 'Job reopened. Candidates can apply again.', 'success');
+                return true;
             }
             catch (error)
             {
-                Dash.setBusy(button, false);
                 showToast(error.message, 'error');
+                return false;
+            }
+            finally
+            {
+                Dash.setBusy(button, false);
             }
         }
 
-        function renderConfirm(job)
+        function askClose(job)
         {
             const count = Number(job.applicantCount) || 0;
 
-            confirmBox.innerHTML = Dash.callout('triangle-alert', 'Close ' + job.title + '?',
-                '<p>This job already has ' + count + (count === 1 ? ' applicant' : ' applicants') + '. Closing it stops new applications, and you can reopen it at any time.</p>' +
-                '<div class="row" style="margin-top:10px">' +
-                    '<button class="btn btn-danger btn-sm" type="button" id="confirm-close">Yes, close this job</button>' +
-                    '<button class="btn btn-secondary btn-sm" type="button" id="confirm-cancel">Keep it open</button>' +
-                '</div>', 'warn');
-
-            Dash.icons();
-            confirmBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-            document.getElementById('confirm-close').addEventListener('click', function ()
-            {
-                toggleStatus(job.id, 'close', this);
-            });
-
-            document.getElementById('confirm-cancel').addEventListener('click', function ()
-            {
-                pendingCloseId = 0;
-                render();
-            });
+            dialogJobId = String(job.id);
+            closeTitle.textContent = 'Close ' + job.title + '?';
+            closeText.textContent = count > 0
+                ? 'This job has ' + count + (count === 1 ? ' applicant' : ' applicants') + '. Closing it stops new applications, and you can reopen it at any time.'
+                : 'Closing it stops new applications, and you can reopen it at any time.';
+            closeDialog.showModal();
         }
 
         function render()
         {
-            const pending = pendingCloseId ? findJob(pendingCloseId) : null;
-
-            if (pending)
-            {
-                renderConfirm(pending);
-            }
-            else
-            {
-                pendingCloseId = 0;
-                confirmBox.innerHTML = '';
-            }
+            renderChips();
 
             if (!jobs.length)
             {
@@ -178,9 +273,8 @@
             }
 
             const filtered = applyFilters();
-            const openCount = filtered.filter(function (job) { return job.status === 'open'; }).length;
 
-            summary.textContent = filtered.length + (filtered.length === 1 ? ' job' : ' jobs') + ' · ' + openCount + ' open';
+            summary.textContent = filtered.length + (filtered.length === 1 ? ' job' : ' jobs') + ' shown';
 
             if (!filtered.length)
             {
@@ -189,59 +283,96 @@
                 document.getElementById('clear-filters').addEventListener('click', function ()
                 {
                     filterText.value = '';
-                    filterStatus.value = 'all';
+                    statusFilter = 'all';
                     render();
+                    filterText.focus();
                 });
 
                 Dash.icons();
                 return;
             }
 
-            jobsList.innerHTML = '<div class="d-table-wrap"><table class="d-table">' +
-                '<thead><tr><th>Job</th><th>Type</th><th>Salary</th><th class="num">Experience</th><th>Status</th><th class="num">Applicants</th><th>Actions</th></tr></thead>' +
+            jobsList.innerHTML = '<table class="jb-table">' +
+                '<thead><tr><th scope="col">Job</th><th scope="col">Department</th><th scope="col">Location</th><th scope="col">Status</th><th scope="col" class="num">Applicants</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>' +
                 '<tbody>' + filtered.map(rowHtml).join('') + '</tbody>' +
-                '</table></div>';
+                '</table>';
 
+            changedId = '';
             Dash.icons();
         }
 
         async function load()
         {
-            confirmBox.innerHTML = '';
             summary.textContent = '';
             jobsList.innerHTML = Dash.skeletons(3);
 
             try
             {
                 jobs = await Api.get('/api/jobs');
-                pendingCloseId = 0;
                 render();
             }
             catch (error)
             {
                 jobs = [];
+                renderChips();
                 Dash.failInto(jobsList, error.message, load);
             }
 
             Dash.icons();
         }
 
+        function showFlash()
+        {
+            try
+            {
+                const message = sessionStorage.getItem('soryn-flash');
+
+                if (message)
+                {
+                    sessionStorage.removeItem('soryn-flash');
+                    showToast(message, 'success');
+                }
+            }
+            catch (error)
+            {
+            }
+        }
+
         if (user)
         {
-            filterText.addEventListener('input', function ()
-            {
-                pendingCloseId = 0;
-                render();
-            });
+            filterText.addEventListener('input', render);
 
-            filterStatus.addEventListener('change', function ()
+            statusChips.addEventListener('click', function (event)
             {
-                pendingCloseId = 0;
+                const button = event.target.closest('button[data-status]');
+
+                if (!button)
+                {
+                    return;
+                }
+
+                statusFilter = button.getAttribute('data-status');
                 render();
             });
 
             jobsList.addEventListener('click', function (event)
             {
+                const trigger = event.target.closest('.jb-more');
+
+                if (trigger)
+                {
+                    if (trigger.getAttribute('aria-expanded') === 'true')
+                    {
+                        closeMenus(true);
+                    }
+                    else
+                    {
+                        openMenu(trigger);
+                    }
+
+                    return;
+                }
+
                 const button = event.target.closest('button[data-action]');
 
                 if (!button)
@@ -249,25 +380,113 @@
                     return;
                 }
 
-                const jobId = Number(button.getAttribute('data-id'));
+                const jobId = button.getAttribute('data-id');
                 const action = button.getAttribute('data-action');
+
+                closeMenus(false);
 
                 if (action === 'reopen')
                 {
-                    toggleStatus(jobId, 'reopen', button);
+                    setStatus(jobId, 'reopen', button);
                     return;
                 }
 
                 const job = findJob(jobId);
 
-                if (job && (Number(job.applicantCount) || 0) > 0)
+                if (job)
                 {
-                    pendingCloseId = jobId;
-                    render();
+                    askClose(job);
+                }
+            });
+
+            jobsList.addEventListener('keydown', function (event)
+            {
+                const trigger = event.target.closest('.jb-more');
+
+                if (trigger && event.key === 'ArrowDown')
+                {
+                    event.preventDefault();
+                    openMenu(trigger);
                     return;
                 }
 
-                toggleStatus(jobId, 'close', button);
+                const menu = event.target.closest('.jb-menu');
+
+                if (!menu)
+                {
+                    return;
+                }
+
+                const items = Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"]'));
+                const at = items.indexOf(document.activeElement);
+
+                if (event.key === 'ArrowDown')
+                {
+                    event.preventDefault();
+                    items[(at + 1) % items.length].focus();
+                }
+                else if (event.key === 'ArrowUp')
+                {
+                    event.preventDefault();
+                    items[(at - 1 + items.length) % items.length].focus();
+                }
+                else if (event.key === 'Home')
+                {
+                    event.preventDefault();
+                    items[0].focus();
+                }
+                else if (event.key === 'End')
+                {
+                    event.preventDefault();
+                    items[items.length - 1].focus();
+                }
+                else if (event.key === 'Escape')
+                {
+                    event.preventDefault();
+                    closeMenus(true);
+                }
+                else if (event.key === 'Tab')
+                {
+                    closeMenus(false);
+                }
+            });
+
+            document.addEventListener('click', function (event)
+            {
+                if (!event.target.closest('.jb-menu-wrap'))
+                {
+                    closeMenus(false);
+                }
+            });
+
+            closeCancel.addEventListener('click', function ()
+            {
+                closeDialog.close();
+            });
+
+            closeConfirm.addEventListener('click', async function ()
+            {
+                const job = findJob(dialogJobId);
+
+                if (job)
+                {
+                    await setStatus(job.id, 'close', closeConfirm);
+                }
+
+                closeDialog.close();
+            });
+
+            closeDialog.addEventListener('click', function (event)
+            {
+                if (event.target === closeDialog)
+                {
+                    closeDialog.close();
+                }
+            });
+
+            closeDialog.addEventListener('close', function ()
+            {
+                focusMenuButton(dialogJobId);
             });
 
             Dash.mountShell(
@@ -278,13 +497,14 @@
                 subtitle: 'Manage your job postings',
                 search: true,
                 items: Dash.RECRUITER_NAV,
+                active: 'jobs.html',
                 onBell: function ()
                 {
                     showToast('You have no new notifications.', 'info');
                 }
             });
 
-            load();
+            load().then(showFlash);
         }
     </script>
 </body>

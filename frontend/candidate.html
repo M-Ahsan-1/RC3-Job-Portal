@@ -3,46 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Dashboard - RC3 Job Portal</title>
+    <title>My dashboard – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/candidate.css">
 </head>
 <body class="theme-candidate">
+    <script src="js/brand.js"></script>
+    <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
-        <section class="d-hero" id="overview">
-            <div>
+        <section class="cd-home" aria-label="Welcome">
+            <div class="cd-greet">
                 <h2 id="greeting">Welcome</h2>
-                <p>Every application is a step forward. Find a role that fits and track it from first look to final answer.</p>
-                <a class="btn" href="#jobs"><i data-lucide="search"></i>Browse jobs</a>
+                <p id="status-line" aria-live="polite">Find a role that fits, then follow it from first look to final answer.</p>
+                <div class="row">
+                    <a class="btn" href="#jobs"><i data-lucide="search"></i>Browse open jobs</a>
+                    <a class="btn btn-secondary" href="my-applications.html">My applications</a>
+                </div>
             </div>
-            <svg class="art" viewBox="0 0 220 140" fill="none" aria-hidden="true">
-                <path d="M10 120 L70 90 L120 100 L200 30" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
-                <circle cx="70" cy="90" r="8" fill="#fff" opacity=".6"/>
-                <circle cx="120" cy="100" r="8" fill="#fff" opacity=".6"/>
-                <circle cx="200" cy="30" r="12" fill="#fff"/>
-                <path d="M194 30 l5 5 l9 -10" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </section>
-
-        <div id="error-box" class="d-panel hidden" role="alert"></div>
-
-        <section class="d-kpis" id="kpis" aria-label="My statistics"></section>
-
-        <section class="d-panel" id="jobs" aria-label="Open jobs">
-            <h3>Open jobs</h3>
-            <p class="sub">Roles you can apply to right now</p>
-            <div id="jobs-list"></div>
+            <aside class="d-panel cd-strength" id="strength" aria-label="Profile strength" hidden></aside>
         </section>
 
         <section class="d-panel" id="applications" aria-label="My applications">
-            <h3>My applications</h3>
-            <p class="sub">Follow each application through the hiring process</p>
+            <div class="d-panel-head">
+                <div><h3>Where your applications stand</h3><p class="sub">Your latest three. Open My applications for every step.</p></div>
+                <a class="btn btn-secondary btn-sm" href="my-applications.html">See all</a>
+            </div>
             <div id="apps-list"></div>
         </section>
 
-        <section class="d-panel" id="notifications" aria-label="Notifications">
+        <section class="d-panel" id="jobs" aria-label="Open jobs">
+            <div class="d-panel-head">
+                <div><h3>Open jobs</h3><p class="sub">Roles you can apply to right now</p></div>
+            </div>
+            <div class="d-toolbar">
+                <div class="d-field">
+                    <label for="job-search">Search jobs</label>
+                    <input type="search" id="job-search" placeholder="Title, location or skill" autocomplete="off">
+                </div>
+                <div class="d-field">
+                    <span class="cd-label" id="type-label">Show</span>
+                    <div class="cd-chips" id="type-chips" role="group" aria-labelledby="type-label"></div>
+                </div>
+            </div>
+            <p class="sub" id="jobs-summary"></p>
+            <p class="cd-vh" id="jobs-live" role="status" aria-live="polite"></p>
+            <div id="jobs-list"></div>
+        </section>
+
+        <section class="d-panel" id="notifications" tabindex="-1" aria-label="Notifications">
             <div class="d-panel-head">
                 <div><h3>Notifications</h3><p class="sub">Updates about your applications</p></div>
                 <button class="btn btn-secondary btn-sm" id="mark-read" type="button">Mark all as read</button>
@@ -51,149 +65,432 @@
         </section>
     </div>
 
+    <dialog id="apply-drawer" class="cd-drawer" aria-labelledby="drawer-title">
+        <div class="cd-drawer-head">
+            <div>
+                <h3 id="drawer-title">Apply</h3>
+                <p id="drawer-sub"></p>
+            </div>
+            <button type="button" class="d-icon-btn" id="drawer-close" aria-label="Close"><i data-lucide="x"></i></button>
+        </div>
+        <div class="cd-drawer-body" id="drawer-body"></div>
+    </dialog>
+
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/illustrations.js"></script>
+    <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/candidate-shared.js"></script>
     <script>
         const user = guardPage('candidate');
-        const STEPS = ['Submitted', 'Under review', 'Shortlisted', 'Interview', 'Decision'];
-        const STEP_OF = { 'Submitted': 0, 'Parsed': 0, 'AI Assessment Available': 1, 'Recruiter Review': 1, 'Shortlisted': 2, 'Interview': 3, 'Selected': 4, 'Rejected': 4 };
-        const LABEL_OF = { 'Submitted': 'Submitted', 'Parsed': 'Received', 'AI Assessment Available': 'Under review', 'Recruiter Review': 'Under review', 'Shortlisted': 'Shortlisted', 'Interview': 'Interview', 'Selected': 'Selected', 'Rejected': 'Not selected' };
-        const REVIEW = ['Submitted', 'Parsed', 'AI Assessment Available', 'Recruiter Review'];
-        let notifications = [];
+        const jobsList = document.getElementById('jobs-list');
+        const appsList = document.getElementById('apps-list');
+        const typeChips = document.getElementById('type-chips');
+        const jobSearch = document.getElementById('job-search');
+        const jobsSummary = document.getElementById('jobs-summary');
+        const jobsLive = document.getElementById('jobs-live');
+        const statusLine = document.getElementById('status-line');
+        const strengthBox = document.getElementById('strength');
+        const drawer = document.getElementById('apply-drawer');
+        const drawerBody = document.getElementById('drawer-body');
+        const drawerTitle = document.getElementById('drawer-title');
+        const drawerSub = document.getElementById('drawer-sub');
+        const drawerClose = document.getElementById('drawer-close');
+        const BOOKMARK = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>';
+        let jobs = [];
+        let apps = [];
+        let appsLoaded = false;
+        let saved = [];
+        let typeFilter = 'all';
+        let notes = null;
+        let flow = null;
+        let drawerJobId = '';
 
-        function kpiCard(icon, value, label)
+        function greetingWord()
         {
-            return '<div class="d-kpi"><div class="ic"><i data-lucide="' + icon + '"></i></div><b>' + value + '</b><span>' + label + '</span></div>';
-        }
+            const hour = new Date().getHours();
 
-        function countWhere(apps, test)
-        {
-            return apps.filter(function (app) { return test(app.status); }).length;
-        }
-
-        function renderKpis(apps)
-        {
-            document.getElementById('kpis').innerHTML =
-                kpiCard('file-text', apps.length, 'Total applications') +
-                kpiCard('eye', countWhere(apps, function (s) { return REVIEW.indexOf(s) !== -1; }), 'Under review') +
-                kpiCard('star', countWhere(apps, function (s) { return s === 'Shortlisted'; }), 'Shortlisted') +
-                kpiCard('calendar-check', countWhere(apps, function (s) { return s === 'Interview'; }), 'Interviews scheduled');
-        }
-
-        function renderJobs(jobs)
-        {
-            const box = document.getElementById('jobs-list');
-
-            if (!jobs.length)
+            if (hour < 12)
             {
-                box.innerHTML = Dash.empty('briefcase', 'No open jobs right now. Check back soon for new roles.');
+                return 'Good morning';
+            }
+
+            return hour < 18 ? 'Good afternoon' : 'Good evening';
+        }
+
+        function appFor(jobId)
+        {
+            for (let i = 0; i < apps.length; i++)
+            {
+                if (String(apps[i].jobId) === String(jobId))
+                {
+                    return apps[i];
+                }
+            }
+
+            return null;
+        }
+
+        function findJob(jobId)
+        {
+            for (let i = 0; i < jobs.length; i++)
+            {
+                if (String(jobs[i].id) === String(jobId))
+                {
+                    return jobs[i];
+                }
+            }
+
+            return null;
+        }
+
+        function renderStatusLine()
+        {
+            if (!appsLoaded)
+            {
                 return;
             }
 
-            box.innerHTML = '<div class="d-jobs">' + jobs.map(function (job)
-            {
-                const tags = [job.department, job.location, job.type].filter(Boolean).map(function (tag)
-                {
-                    return '<span class="d-badge info">' + Dash.esc(tag) + '</span>';
-                }).join('');
-
-                return '<article class="d-job"><h4>' + Dash.esc(job.title) + '</h4><div class="d-meta">' + tags + '</div>' +
-                    '<p>' + Dash.esc(job.description || 'No description provided yet.') + '</p>' +
-                    '<a class="btn btn-sm" href="apply.html?jobId=' + encodeURIComponent(job.id) + '">Apply now</a></article>';
-            }).join('') + '</div>';
-        }
-
-        function renderApps(apps)
-        {
-            const box = document.getElementById('apps-list');
+            const active = apps.filter(function (app) { return CandidateKit.isActive(app.status); }).length;
 
             if (!apps.length)
             {
-                box.innerHTML = Dash.empty('file-text', 'You have not applied to any jobs yet.', '<a class="btn btn-sm" href="#jobs">Find a job</a>');
-                return;
+                statusLine.textContent = 'You have not applied yet. Pick a role below and track every step here.';
             }
-
-            box.innerHTML = apps.map(function (app)
+            else if (!active)
             {
-                const step = STEP_OF[app.status] === undefined ? 0 : STEP_OF[app.status];
-                const rejected = app.status === 'Rejected';
-                const bars = STEPS.map(function (name, index)
-                {
-                    const cls = index <= step ? (rejected && index === step ? 'stop' : 'done') : '';
-                    return '<i class="' + cls + '"></i>';
-                }).join('');
-                const badge = rejected ? 'bad' : (app.status === 'Selected' ? 'ok' : 'info');
-                const date = Dash.formatDate(app.appliedAt);
-
-                return '<div class="d-item" style="display:block"><div style="display:flex;gap:12px;align-items:center;justify-content:space-between">' +
-                    '<div class="main"><b>' + Dash.esc(app.jobTitle) + '</b><span>' + (date ? 'Applied ' + date : '') + '</span></div>' +
-                    '<span class="d-badge ' + badge + '">' + Dash.esc(LABEL_OF[app.status] || app.status) + '</span></div>' +
-                    '<div class="d-steps" role="img" aria-label="Step ' + (step + 1) + ' of ' + STEPS.length + ': ' + Dash.esc(LABEL_OF[app.status] || app.status) + '">' + bars + '</div>' +
-                    '<div class="d-steplabels"><span>' + STEPS.join('</span><span>') + '</span></div></div>';
-            }).join('');
+                statusLine.textContent = 'You have no active applications right now. Open roles are listed below.';
+            }
+            else
+            {
+                statusLine.textContent = 'You have ' + active + (active === 1 ? ' active application' : ' active applications') + '. Here is where they stand.';
+            }
         }
 
-        function renderNotes()
+        function renderApps()
         {
-            const box = document.getElementById('notes-list');
-            const unread = notifications.filter(function (note) { return note.read !== true; }).length;
-            Dash.setBell(unread);
-
-            if (!notifications.length)
+            if (!apps.length)
             {
-                box.innerHTML = Dash.empty('bell', 'No notifications yet. We will tell you when something changes.');
+                appsList.innerHTML = Dash.empty('file-text', 'You have not applied to any jobs yet. Your applications will appear here.', '<a class="btn btn-sm" href="#jobs">Find a job</a>');
                 Dash.icons();
                 return;
             }
 
-            box.innerHTML = notifications.map(function (note)
+            appsList.innerHTML = apps.slice(0, 3).map(function (app)
             {
-                const isUnread = note.read !== true;
-                return '<div class="d-note"><span class="' + (isUnread ? 'unread' : 'read') + '"' + (isUnread ? ' title="Unread"' : '') + '></span>' +
-                    '<div' + (isUnread ? ' style="font-weight:600"' : '') + '>' + Dash.esc(note.message) + '<small>' + Dash.esc(Dash.timeAgo(note.createdAt)) + '</small></div></div>';
+                return CandidateKit.applicationHtml(app, true);
             }).join('');
+        }
+
+        function typeOptions()
+        {
+            const seen = {};
+            const types = [];
+
+            jobs.forEach(function (job)
+            {
+                if (job.type && !seen[job.type])
+                {
+                    seen[job.type] = true;
+                    types.push(job.type);
+                }
+            });
+
+            return [['all', 'All jobs']].concat(types.map(function (type) { return [type, type]; })).concat([['saved', 'Saved (' + saved.length + ')']]);
+        }
+
+        function renderChips()
+        {
+            typeChips.innerHTML = typeOptions().map(function (option)
+            {
+                return '<button type="button" class="cd-fchip" data-type="' + CandidateKit.attrEsc(option[0]) + '" aria-pressed="' + (option[0] === typeFilter) + '">' + Dash.esc(option[1]) + '</button>';
+            }).join('');
+        }
+
+        function applyFilters()
+        {
+            const term = jobSearch.value.trim().toLowerCase();
+
+            return jobs.filter(function (job)
+            {
+                if (typeFilter === 'saved' && saved.indexOf(String(job.id)) === -1)
+                {
+                    return false;
+                }
+
+                if (typeFilter !== 'all' && typeFilter !== 'saved' && job.type !== typeFilter)
+                {
+                    return false;
+                }
+
+                if (!term)
+                {
+                    return true;
+                }
+
+                const skills = (job.skills || []).map(function (item) { return item.skill; }).join(' ');
+                return [job.title, job.department, job.location, skills].join(' ').toLowerCase().indexOf(term) !== -1;
+            }).sort(function (a, b)
+            {
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+        }
+
+        function factHtml(icon, text)
+        {
+            return '<li><i data-lucide="' + icon + '"></i>' + Dash.esc(text) + '</li>';
+        }
+
+        function cardHtml(job)
+        {
+            const applied = appFor(job.id);
+            const isNew = !applied && CandidateKit.isNewJob(job);
+            const isSaved = saved.indexOf(String(job.id)) !== -1;
+            const required = (job.skills || []).filter(function (item) { return item.requirement === 'required'; });
+            const shown = required.slice(0, 5);
+            const more = required.length - shown.length;
+            const id = CandidateKit.attrEsc(job.id);
+            const title = CandidateKit.attrEsc(job.title);
+            const facts = [];
+
+            if (job.department)
+            {
+                facts.push(factHtml('building-2', job.department));
+            }
+
+            if (job.location)
+            {
+                facts.push(factHtml('map-pin', job.location));
+            }
+
+            if (job.type)
+            {
+                facts.push(factHtml('clock', job.type));
+            }
+
+            if (job.salary)
+            {
+                facts.push(factHtml('banknote', job.salary));
+            }
+
+            return '<article class="cd-job' + (isNew ? ' is-new' : '') + (applied ? ' is-applied' : '') + '" data-job="' + id + '">' +
+                '<div class="cd-job-top"><div><h4>' + Dash.esc(job.title) + '</h4>' + (isNew ? '<span class="cd-new">New</span>' : '') + '</div>' +
+                    '<button type="button" class="cd-save" data-save="' + id + '" aria-pressed="' + isSaved + '" aria-label="' + (isSaved ? 'Remove ' + title + ' from saved jobs' : 'Save ' + title + ' for later') + '">' + BOOKMARK + '</button></div>' +
+                (facts.length ? '<ul class="cd-facts">' + facts.join('') + '</ul>' : '') +
+                '<p class="cd-desc">' + Dash.esc(job.description || 'No description provided yet.') + '</p>' +
+                (shown.length ? '<ul class="cd-skills" aria-label="Required skills">' + shown.map(function (item) { return '<li class="cd-skill">' + Dash.esc(item.skill) + '</li>'; }).join('') + (more > 0 ? '<li class="cd-skill">+' + more + ' more</li>' : '') + '</ul>' : '') +
+                '<div class="cd-job-act">' + (applied
+                    ? Dash.badge(CandidateKit.label(applied.status), CandidateKit.tone(applied.status)) + '<a class="btn btn-secondary btn-sm" href="my-applications.html">View application</a>'
+                    : '<button type="button" class="btn btn-sm" data-apply="' + id + '">Apply now</button>') +
+                '</div></article>';
+        }
+
+        function renderJobs()
+        {
+            renderChips();
+
+            if (!jobs.length)
+            {
+                jobsSummary.textContent = '';
+                jobsList.innerHTML = Dash.empty('briefcase', 'No open jobs right now. Check back soon for new roles.');
+                Dash.icons();
+                return;
+            }
+
+            const filtered = applyFilters();
+            jobsSummary.textContent = filtered.length + (filtered.length === 1 ? ' job' : ' jobs') + ' shown';
+
+            if (!filtered.length)
+            {
+                const savedOnly = typeFilter === 'saved' && !jobSearch.value.trim();
+
+                jobsList.innerHTML = Dash.empty(savedOnly ? 'bookmark' : 'search',
+                    savedOnly ? 'You have not saved any jobs yet. Use the bookmark on a job to keep it for later.' : 'No jobs match your search.',
+                    '<button class="btn btn-secondary btn-sm" type="button" id="clear-filters">Show all jobs</button>');
+
+                document.getElementById('clear-filters').addEventListener('click', function ()
+                {
+                    jobSearch.value = '';
+                    typeFilter = 'all';
+                    renderJobs();
+                    jobSearch.focus();
+                });
+
+                Dash.icons();
+                return;
+            }
+
+            jobsList.innerHTML = '<div class="cd-jobs">' + filtered.map(cardHtml).join('') + '</div>';
+            Dash.icons();
+        }
+
+        function renderStrength(profile)
+        {
+            if (!profile)
+            {
+                strengthBox.hidden = true;
+                return;
+            }
+
+            const result = CandidateKit.strength(profile);
+
+            strengthBox.innerHTML = CandidateKit.ringHtml(result.percent) +
+                '<div><h3>Profile strength</h3><p>' + Dash.esc(result.suggestion) + '</p><a class="btn btn-secondary btn-sm" href="profile.html">Open my profile</a></div>';
+            strengthBox.hidden = false;
+            CandidateKit.animateRings(strengthBox);
+        }
+
+        async function loadProfile()
+        {
+            try
+            {
+                renderStrength(await Api.get('/api/candidate/profile'));
+            }
+            catch (error)
+            {
+                strengthBox.hidden = true;
+            }
+        }
+
+        async function loadJobsAndApps()
+        {
+            appsList.innerHTML = Dash.skeletons(1);
+            jobsList.innerHTML = '<div class="cd-jobs">' + Dash.skeletons(3) + '</div>';
+            jobsSummary.textContent = '';
+
+            const results = await Promise.allSettled([Api.get('/api/jobs/open'), Api.get('/api/candidate/applications')]);
+
+            if (results[1].status === 'fulfilled')
+            {
+                apps = results[1].value;
+                appsLoaded = true;
+                renderApps();
+                renderStatusLine();
+            }
+            else
+            {
+                Dash.failInto(appsList, results[1].reason.message, loadJobsAndApps);
+            }
+
+            if (results[0].status === 'fulfilled')
+            {
+                jobs = results[0].value;
+                renderJobs();
+            }
+            else
+            {
+                renderChips();
+                Dash.failInto(jobsList, results[0].reason.message, loadJobsAndApps);
+            }
 
             Dash.icons();
         }
 
-        async function load()
+        function toggleSaved(jobId)
         {
-            const errorBox = document.getElementById('error-box');
-            errorBox.classList.add('hidden');
-            document.getElementById('kpis').innerHTML = Dash.skeletons(4);
-            document.getElementById('jobs-list').innerHTML = Dash.skeletons(2);
-            document.getElementById('apps-list').innerHTML = Dash.skeletons(1);
-            document.getElementById('notes-list').innerHTML = Dash.skeletons(1);
+            const key = String(jobId);
+            const at = saved.indexOf(key);
+            const job = findJob(jobId);
 
-            try
+            if (at === -1)
             {
-                const results = await Promise.all([Api.get('/api/jobs/open'), Api.get('/api/candidate/applications'), Api.get('/api/notifications')]);
-                notifications = results[2];
-                renderKpis(results[1]);
-                renderJobs(results[0]);
-                renderApps(results[1]);
-                renderNotes();
+                saved.push(key);
             }
-            catch (error)
+            else
             {
-                ['kpis', 'jobs-list', 'apps-list', 'notes-list'].forEach(function (id)
+                saved.splice(at, 1);
+            }
+
+            CandidateKit.storeSaved(user.id, saved);
+            jobsLive.textContent = (job ? job.title : 'Job') + (at === -1 ? ' saved for later.' : ' removed from saved jobs.');
+            renderJobs();
+
+            const buttons = jobsList.querySelectorAll('.cd-save');
+
+            for (let i = 0; i < buttons.length; i++)
+            {
+                if (buttons[i].getAttribute('data-save') === key)
                 {
-                    document.getElementById(id).innerHTML = '';
-                });
+                    buttons[i].focus();
 
-                errorBox.innerHTML = Dash.empty('triangle-alert', error.message, '<button class="btn btn-sm" id="retry-btn" type="button">Try again</button>');
-                errorBox.classList.remove('hidden');
-                document.getElementById('retry-btn').addEventListener('click', load);
+                    if (at === -1 && !CandidateKit.reducedMotion())
+                    {
+                        buttons[i].classList.add('pop');
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        function focusJobAction(jobId)
+        {
+            const card = jobsList.querySelector('.cd-job[data-job="' + jobId + '"]');
+            const target = card ? card.querySelector('.cd-job-act a, .cd-job-act button') : null;
+
+            if (target)
+            {
+                target.focus();
+            }
+        }
+
+        function handleApplied(result, job)
+        {
+            if (result && result.application)
+            {
+                apps.unshift(result.application);
             }
 
+            appsLoaded = true;
+            renderApps();
+            renderStatusLine();
+            renderJobs();
             Dash.icons();
+            notes.refresh(false);
+            loadProfile();
+            showToast('Your application was submitted. Good luck!', 'success');
+        }
+
+        function openApply(jobId)
+        {
+            const job = findJob(jobId);
+
+            if (!job || appFor(jobId))
+            {
+                return;
+            }
+
+            drawerJobId = String(job.id);
+            drawerTitle.textContent = 'Apply for ' + job.title;
+            drawerSub.textContent = 'Attach your resume as a PDF and send your application.';
+            flow = ApplyFlow.mount(drawerBody, job,
+            {
+                onCancel: function () { drawer.close(); },
+                onClose: function () { drawer.close(); },
+                onApplied: handleApplied
+            });
+            drawer.showModal();
+            flow.focus();
+        }
+
+        function closeDrawerIfIdle()
+        {
+            if (flow && flow.busy())
+            {
+                showToast('Your resume is still uploading. Please wait a moment.', 'info');
+                return;
+            }
+
+            drawer.close();
         }
 
         if (user)
         {
-            document.getElementById('greeting').textContent = 'Hi ' + user.name.split(' ')[0] + ', ready for your next role?';
+            document.getElementById('greeting').textContent = greetingWord() + ', ' + user.name.split(' ')[0];
+            saved = CandidateKit.loadSaved(user.id);
 
             Dash.mountShell(
             {
@@ -202,28 +499,80 @@
                 title: 'Hi, ' + user.name.split(' ')[0],
                 subtitle: 'Your job search at a glance',
                 search: false,
-                items:
-                [
-                    { label: 'Overview', href: '#overview', icon: 'layout-dashboard' },
-                    { label: 'Browse Jobs', href: '#jobs', icon: 'search' },
-                    { label: 'My Applications', href: 'my-applications.html', icon: 'file-text' },
-                    { label: 'My Profile', href: 'profile.html', icon: 'user' },
-                    { label: 'Notifications', href: '#notifications', icon: 'bell' }
-                ],
-                onBell: function ()
+                items: Dash.CANDIDATE_NAV,
+                onBell: CandidateKit.bellHandler
+            });
+
+            notes = CandidateKit.mountNotes({ list: document.getElementById('notes-list'), markButton: document.getElementById('mark-read') });
+
+            jobSearch.addEventListener('input', renderJobs);
+
+            typeChips.addEventListener('click', function (event)
+            {
+                const button = event.target.closest('button[data-type]');
+
+                if (!button)
                 {
-                    document.getElementById('notifications').scrollIntoView({ behavior: 'smooth' });
+                    return;
+                }
+
+                typeFilter = button.getAttribute('data-type');
+                renderJobs();
+            });
+
+            jobsList.addEventListener('click', function (event)
+            {
+                const save = event.target.closest('button[data-save]');
+
+                if (save)
+                {
+                    toggleSaved(save.getAttribute('data-save'));
+                    return;
+                }
+
+                const apply = event.target.closest('button[data-apply]');
+
+                if (apply)
+                {
+                    openApply(apply.getAttribute('data-apply'));
                 }
             });
 
-            document.getElementById('mark-read').addEventListener('click', function ()
+            drawerClose.addEventListener('click', closeDrawerIfIdle);
+
+            drawer.addEventListener('cancel', function (event)
             {
-                notifications.forEach(function (note) { note.read = true; });
-                renderNotes();
-                showToast('All notifications marked as read.', 'success');
+                if (flow && flow.busy())
+                {
+                    event.preventDefault();
+                    showToast('Your resume is still uploading. Please wait a moment.', 'info');
+                }
             });
 
-            load();
+            drawer.addEventListener('click', function (event)
+            {
+                if (event.target === drawer)
+                {
+                    closeDrawerIfIdle();
+                }
+            });
+
+            drawer.addEventListener('close', function ()
+            {
+                flow = null;
+                drawerBody.innerHTML = '';
+                focusJobAction(drawerJobId);
+            });
+
+            Promise.all([loadJobsAndApps(), loadProfile(), notes.load()]).then(function ()
+            {
+                const wanted = Dash.param('apply');
+
+                if (wanted)
+                {
+                    openApply(wanted);
+                }
+            });
         }
     </script>
 </body>

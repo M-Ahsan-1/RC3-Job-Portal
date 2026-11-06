@@ -3,13 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Applicant - RC3 Job Portal</title>
+    <title>Applicant – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/applicant.css">
+    <link rel="stylesheet" href="css/pages.css">
 </head>
 <body class="theme-recruiter">
+    <script src="js/brand.js"></script>
+    <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
         <div id="fatal" class="d-panel hidden" role="alert"></div>
 
@@ -23,19 +30,28 @@
                     <a class="btn btn-secondary btn-sm" id="back-link" href="applicants.html"><i data-lucide="arrow-left"></i>Back to applicants</a>
                 </div>
                 <div class="d-chips" id="head-badges"></div>
+                <div class="ev-actions" id="head-actions"></div>
+                <div id="decision-error" class="form-error hidden" role="alert"></div>
+                <p class="d-hint" id="head-hint"></p>
+                <p class="d-hint ev-ai-line">AI assessment. You make the final decision.</p>
             </section>
 
             <div class="d-tabs" role="tablist" aria-label="Applicant sections">
-                <button class="d-tab active" id="tab-assessment" type="button" role="tab" aria-selected="true" aria-controls="panel-assessment" data-tab="assessment">Assessment</button>
+                <button class="d-tab active" id="tab-evidence" type="button" role="tab" aria-selected="true" aria-controls="panel-evidence" data-tab="evidence">Evidence</button>
+                <button class="d-tab" id="tab-overview" type="button" role="tab" aria-selected="false" aria-controls="panel-overview" data-tab="overview">Overview</button>
                 <button class="d-tab" id="tab-questions" type="button" role="tab" aria-selected="false" aria-controls="panel-questions" data-tab="questions">Questions</button>
-                <button class="d-tab" id="tab-fairness" type="button" role="tab" aria-selected="false" aria-controls="panel-fairness" data-tab="fairness">Fairness &amp; evidence</button>
                 <button class="d-tab" id="tab-interview" type="button" role="tab" aria-selected="false" aria-controls="panel-interview" data-tab="interview">Interview</button>
-                <button class="d-tab" id="tab-decision" type="button" role="tab" aria-selected="false" aria-controls="panel-decision" data-tab="decision">Decision &amp; audit</button>
+                <button class="d-tab" id="tab-notes" type="button" role="tab" aria-selected="false" aria-controls="panel-notes" data-tab="notes">Notes and history</button>
             </div>
 
-            <section id="panel-assessment" role="tabpanel" aria-labelledby="tab-assessment">
+            <section id="panel-evidence" role="tabpanel" aria-labelledby="tab-evidence">
                 <div id="assess-error" class="form-error hidden" role="alert"></div>
-                <div id="assess-body"></div>
+                <div id="evidence-body"></div>
+            </section>
+
+            <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="hidden">
+                <div id="overview-error" class="form-error hidden" role="alert"></div>
+                <div id="overview-body"></div>
             </section>
 
             <section id="panel-questions" role="tabpanel" aria-labelledby="tab-questions" class="hidden">
@@ -43,36 +59,15 @@
                     <div class="d-panel-head">
                         <div>
                             <h3>Interview questions</h3>
-                            <p class="sub">Tailored to this applicant's evidence. Edit anything — you decide what gets asked.</p>
+                            <p class="sub">Tailored to this applicant's evidence. Edit anything. You decide what gets asked.</p>
                         </div>
-                        <button class="btn btn-sm" id="gen-questions" type="button"><i data-lucide="sparkles"></i>Generate questions</button>
+                        <div class="row">
+                            <button class="btn btn-secondary btn-sm" id="copy-questions" type="button"><i data-lucide="copy"></i>Copy all for the interview</button>
+                            <button class="btn btn-sm" id="gen-questions" type="button"><i data-lucide="sparkles"></i>Generate questions</button>
+                        </div>
                     </div>
                     <div id="questions-error" class="form-error hidden" role="alert"></div>
                     <div id="questions-body"></div>
-                </div>
-            </section>
-
-            <section id="panel-fairness" role="tabpanel" aria-labelledby="tab-fairness" class="hidden">
-                <div class="d-panel">
-                    <div class="d-panel-head">
-                        <div>
-                            <h3>Fairness test</h3>
-                            <p class="sub">Re-scores the resume with every protected attribute removed</p>
-                        </div>
-                        <button class="btn btn-sm" id="fairness-run" type="button"><i data-lucide="scale"></i>Run fairness test</button>
-                    </div>
-                    <div id="fairness-error" class="form-error hidden" role="alert"></div>
-                    <div id="fairness-body"></div>
-                </div>
-                <div class="d-panel">
-                    <div class="d-panel-head">
-                        <div>
-                            <h3>Unsupported claims</h3>
-                            <p class="sub">Resume claims the AI could not fully evidence</p>
-                        </div>
-                    </div>
-                    <div id="claims-error" class="form-error hidden" role="alert"></div>
-                    <div id="claims-body"></div>
                 </div>
             </section>
 
@@ -92,13 +87,13 @@
                                 <input type="text" id="iv-interviewer" placeholder="Who will run the interview?" autocomplete="off">
                             </div>
                             <div>
-                                <label for="iv-type">Interview type</label>
-                                <select id="iv-type">
-                                    <option value="technical">Technical</option>
-                                    <option value="behavioural">Behavioural</option>
-                                    <option value="culture">Culture fit</option>
-                                    <option value="hr">HR round</option>
-                                </select>
+                                <span class="label" id="iv-type-label">Interview type</span>
+                                <div class="pg-seg" id="iv-type" role="radiogroup" aria-labelledby="iv-type-label" data-value="technical">
+                                    <button type="button" role="radio" aria-checked="true" data-value="technical">Technical</button>
+                                    <button type="button" role="radio" aria-checked="false" data-value="behavioural">Behavioural</button>
+                                    <button type="button" role="radio" aria-checked="false" data-value="culture">Culture fit</button>
+                                    <button type="button" role="radio" aria-checked="false" data-value="hr">HR round</button>
+                                </div>
                             </div>
                             <div>
                                 <label for="iv-when">Date and time</label>
@@ -111,7 +106,7 @@
                             </div>
                         </div>
                         <div id="interview-error" class="form-error hidden" role="alert"></div>
-                        <div id="interview-conflict"></div>
+                        <div id="interview-conflict" aria-live="polite"></div>
                         <div class="d-actions">
                             <button class="btn" id="iv-submit" type="submit"><i data-lucide="calendar-plus"></i>Schedule interview</button>
                         </div>
@@ -120,23 +115,13 @@
                 </div>
             </section>
 
-            <section id="panel-decision" role="tabpanel" aria-labelledby="tab-decision" class="hidden">
-                <div class="d-panel">
-                    <div class="d-panel-head">
-                        <div>
-                            <h3>Move this application</h3>
-                            <p class="sub">The human decision — every change is written to the audit trail</p>
-                        </div>
-                    </div>
-                    <div id="decision-error" class="form-error hidden" role="alert"></div>
-                    <div id="decision-body"></div>
-                </div>
+            <section id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" class="hidden">
                 <div class="d-grid cols-2">
                     <div class="d-panel">
                         <div class="d-panel-head">
                             <div>
                                 <h3>Private notes</h3>
-                                <p class="sub">Recruiter-only — candidates never see these</p>
+                                <p class="ev-lock"><i data-lucide="lock"></i>Visible to recruiters only</p>
                             </div>
                         </div>
                         <form id="note-form" novalidate>
@@ -163,7 +148,26 @@
         </div>
     </div>
 
+    <dialog class="ev-dialog" id="decision-dialog" aria-labelledby="dd-title">
+        <form id="decision-form" novalidate>
+            <h3 id="dd-title"></h3>
+            <p id="dd-text"></p>
+            <label for="dd-reason">Reason (required)</label>
+            <textarea id="dd-reason" placeholder="Say why, in a sentence or two"></textarea>
+            <div class="form-error hidden" id="dd-error" role="alert"></div>
+            <div class="row">
+                <button class="btn" type="submit" id="dd-confirm"></button>
+                <button class="btn btn-secondary" type="button" id="dd-cancel">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+
+    <div class="ev-tray hidden" id="compare-tray" role="region" aria-label="Compare tray"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/illustrations.js"></script>
+    <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
@@ -171,7 +175,20 @@
         const user = guardPage('recruiter');
         const applicantId = Dash.intParam('id', 0);
         let jobId = Dash.intParam('jobId', 0);
-        const TABS = ['assessment', 'questions', 'fairness', 'interview', 'decision'];
+        const TABS = ['evidence', 'overview', 'questions', 'interview', 'notes'];
+        const COMPARE_KEY = 'soryn-compare';
+        const COMPARE_MAX = 3;
+        const STACK_QUERY = '(max-width: 1180px)';
+        const HELP_ABSENT = "No evidence found means the resume doesn't mention it. Confirm absent only if you know the candidate lacks it.";
+
+        // same weights the scoring engine uses, change them here if the backend ever changes
+        const WEIGHTS =
+        [
+            { key: 'skills', label: 'Skills', weight: 40 },
+            { key: 'experience', label: 'Experience', weight: 25 },
+            { key: 'projects', label: 'Projects', weight: 20 },
+            { key: 'qualifications', label: 'Qualifications', weight: 15 }
+        ];
 
         const TRANSITIONS =
         {
@@ -193,14 +210,35 @@
         let fairness = null;
         let explanation = '';
         let learning = [];
-        let rejectOpen = false;
         let editingQuestionId = null;
         let confirmingDeleteId = null;
+        let evidenceBuilt = false;
+        let current = null;
+        let popSkill = null;
+        let overviewOpen = 0;
+        let decisionTarget = '';
+        let statusBusy = false;
+        let newHistoryFrom = -1;
         const openGuidelines = new Set();
 
         function el(id)
         {
             return document.getElementById(id);
+        }
+
+        function attr(value)
+        {
+            return Dash.esc(String(value)).replace(/"/g, '&quot;');
+        }
+
+        function reduced()
+        {
+            return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        }
+
+        function stacked()
+        {
+            return window.matchMedia(STACK_QUERY).matches;
         }
 
         function showError(id, message)
@@ -218,6 +256,11 @@
         function effScore(item)
         {
             return item.effectiveScore === null || item.effectiveScore === undefined ? null : item.effectiveScore;
+        }
+
+        function scoreText(item)
+        {
+            return effScore(item) === null ? 'not scored' : effScore(item);
         }
 
         function fatal(message, href, linkLabel, retryFn)
@@ -246,18 +289,23 @@
 
         function showSkeletons()
         {
+            evidenceBuilt = false;
             el('main').classList.remove('hidden');
-            el('assess-body').innerHTML = Dash.skeletons(3);
+            el('evidence-body').innerHTML = Dash.skeletons(3);
+            el('overview-body').innerHTML = Dash.skeletons(2);
             el('questions-body').innerHTML = Dash.skeletons(2);
-            el('fairness-body').innerHTML = Dash.skeletons(1);
-            el('claims-body').innerHTML = Dash.skeletons(1);
-            el('decision-body').innerHTML = Dash.skeletons(1);
             el('notes-body').innerHTML = Dash.skeletons(1);
             el('history-body').innerHTML = Dash.skeletons(1);
         }
 
         function setTab(name)
         {
+            if (name !== 'evidence')
+            {
+                clearActive();
+                closePop(false);
+            }
+
             TABS.forEach(function (tab)
             {
                 const on = tab === name;
@@ -265,6 +313,116 @@
                 el('tab-' + tab).setAttribute('aria-selected', on ? 'true' : 'false');
                 el('panel-' + tab).classList.toggle('hidden', !on);
             });
+        }
+
+        function skillsData()
+        {
+            const sj = applicant.score_json || {};
+
+            return {
+                matched: sj.matched_skills || [],
+                gaps: sj.gaps || [],
+                claims: sj.unsupported_claims || []
+            };
+        }
+
+        function resumeText()
+        {
+            const sj = applicant.score_json || {};
+            return applicant.resumeText || applicant.resume_text || sj.resume_text || sj.resumeText || '';
+        }
+
+        function loadCompare()
+        {
+            try
+            {
+                const list = JSON.parse(localStorage.getItem(COMPARE_KEY) || '[]');
+                return Array.isArray(list) ? list : [];
+            }
+            catch (error)
+            {
+                return [];
+            }
+        }
+
+        function storeCompare(list)
+        {
+            try
+            {
+                localStorage.setItem(COMPARE_KEY, JSON.stringify(list));
+            }
+            catch (error)
+            {
+            }
+        }
+
+        function inCompare()
+        {
+            return loadCompare().some(function (item)
+            {
+                return String(item.id) === String(applicantId);
+            });
+        }
+
+        function renderTray()
+        {
+            const tray = el('compare-tray');
+            const list = loadCompare();
+
+            if (!list.length)
+            {
+                tray.classList.add('hidden');
+                tray.innerHTML = '';
+                return;
+            }
+
+            const ids = list.map(function (item)
+            {
+                return item.id;
+            }).join(',');
+
+            tray.innerHTML = '<b>Compare tray</b>' + list.map(function (item)
+            {
+                return '<span class="ev-tray-item">' + Dash.esc(item.name) +
+                    '<button type="button" data-tray-remove="' + attr(item.id) + '" aria-label="Remove ' + attr(item.name) + ' from the compare tray"><i data-lucide="x"></i></button></span>';
+            }).join('') +
+                (list.length >= 2
+                    ? '<a class="btn btn-sm" href="compare.html?ids=' + attr(ids) + '">Compare ' + list.length + ' candidates</a>'
+                    : '<span class="d-hint" style="margin:0 0 0 auto">Add one more candidate to compare.</span>');
+
+            tray.classList.remove('hidden');
+            Dash.icons();
+        }
+
+        function toggleCompare()
+        {
+            let list = loadCompare();
+
+            if (inCompare())
+            {
+                list = list.filter(function (item)
+                {
+                    return String(item.id) !== String(applicantId);
+                });
+
+                storeCompare(list);
+                showToast(applicant.candidateName + ' removed from the compare tray.', 'info');
+            }
+            else
+            {
+                if (list.length >= COMPARE_MAX)
+                {
+                    showToast('You can compare up to ' + COMPARE_MAX + ' candidates. Remove one from the tray first.', 'error');
+                    return;
+                }
+
+                list.push({ id: applicantId, name: applicant.candidateName });
+                storeCompare(list);
+                showToast(applicant.candidateName + ' added to the compare tray.', 'success');
+            }
+
+            renderActions();
+            renderTray();
         }
 
         function renderHeader()
@@ -302,181 +460,713 @@
             el('head-badges').innerHTML = chips;
         }
 
-        function renderAssessment()
+        function renderActions()
         {
-            const body = el('assess-body');
+            const allowed = TRANSITIONS[applicant.status] || [];
+            const forward = allowed.filter(function (status)
+            {
+                return status !== 'Rejected';
+            })[0] || null;
 
+            const canShortlist = allowed.indexOf('Shortlisted') !== -1;
+            const canReject = allowed.indexOf('Rejected') !== -1;
+            const disabled = statusBusy ? ' disabled' : '';
+
+            let html = '<button class="btn btn-success" type="button" data-status="Shortlisted"' + (canShortlist && !statusBusy ? '' : ' disabled') + '><i data-lucide="user-check"></i>Shortlist candidate</button>';
+
+            if (forward === 'Selected')
+            {
+                html += '<button class="btn" type="button" data-decide="Selected"' + disabled + '><i data-lucide="badge-check"></i>Select candidate</button>';
+            }
+            else if (forward && forward !== 'Shortlisted')
+            {
+                html += '<button class="btn" type="button" data-status="' + attr(forward) + '"' + disabled + '><i data-lucide="arrow-right"></i>Advance to ' + Dash.esc(forward) + '</button>';
+            }
+
+            html += '<button class="btn btn-danger" type="button" data-decide="Rejected"' + (canReject && !statusBusy ? '' : ' disabled') + '><i data-lucide="user-x"></i>Reject candidate</button>';
+            html += '<button class="btn btn-secondary" type="button" data-act="compare"><i data-lucide="columns-2"></i>' + (inCompare() ? 'Remove from compare' : 'Add to compare') + '</button>';
+
+            el('head-actions').innerHTML = html;
+            el('head-hint').textContent = allowed.length
+                ? 'Next steps from "' + applicant.status + '": ' + allowed.join(', ') + '.'
+                : '"' + applicant.status + '" is a final status. No further changes are available.';
+        }
+
+        function locate(text, excerpt)
+        {
+            const needle = String(excerpt || '').trim();
+
+            if (needle.length < 3)
+            {
+                return null;
+            }
+
+            const pattern = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+            const match = new RegExp(pattern, 'i').exec(text);
+
+            return match ? { start: match.index, end: match.index + match[0].length } : null;
+        }
+
+        function buildRanges(text, data)
+        {
+            const found = [];
+
+            data.matched.forEach(function (item)
+            {
+                const at = locate(text, item.excerpt);
+
+                if (at)
+                {
+                    found.push({ start: at.start, end: at.end, kind: 'skill', skills: [item.skill] });
+                }
+            });
+
+            data.claims.forEach(function (claim, index)
+            {
+                const at = locate(text, claim.excerpt);
+
+                if (at)
+                {
+                    found.push({ start: at.start, end: at.end, kind: 'claim', index: index });
+                }
+            });
+
+            found.sort(function (a, b)
+            {
+                return a.start - b.start || b.end - a.end;
+            });
+
+            const ranges = [];
+
+            found.forEach(function (range)
+            {
+                const last = ranges[ranges.length - 1];
+
+                if (last && range.start === last.start && range.end === last.end && range.kind === 'skill' && last.kind === 'skill')
+                {
+                    last.skills = last.skills.concat(range.skills);
+                    return;
+                }
+
+                if (last && range.start < last.end)
+                {
+                    return;
+                }
+
+                ranges.push(range);
+            });
+
+            return ranges;
+        }
+
+        function docHtml(text, ranges, claims)
+        {
+            let html = '';
+            let cursor = 0;
+
+            ranges.forEach(function (range)
+            {
+                html += Dash.esc(text.slice(cursor, range.start));
+                const piece = Dash.esc(text.slice(range.start, range.end));
+
+                if (range.kind === 'skill')
+                {
+                    html += '<mark class="ev-hl" tabindex="0" data-skills="' + attr(range.skills.join('|')) + '" aria-label="Evidence for ' + attr(range.skills.join(', ')) + '">' +
+                        piece + '<span class="ev-tag" aria-hidden="true">' + Dash.esc(range.skills.join(', ')) + '</span></mark>';
+                }
+                else
+                {
+                    const claim = claims[range.index];
+                    html += '<span class="ev-claim' + (claim.reviewed ? ' is-reviewed' : '') + '" tabindex="0" data-claim-mark="' + range.index + '" title="' + attr(claim.reason || '') + '">' +
+                        piece + '<span class="ev-claim-label">' + (claim.reviewed ? 'Reviewed' : 'Needs review') + '</span></span>';
+                }
+
+                cursor = range.end;
+            });
+
+            return html + Dash.esc(text.slice(cursor));
+        }
+
+        function renderDoc()
+        {
+            const data = skillsData();
+            const real = resumeText();
+            let text = real;
+
+            if (!text)
+            {
+                const pieces = [];
+
+                data.matched.forEach(function (item)
+                {
+                    if (item.excerpt && pieces.indexOf(item.excerpt) === -1)
+                    {
+                        pieces.push(item.excerpt);
+                    }
+                });
+
+                data.claims.forEach(function (claim)
+                {
+                    if (claim.excerpt && pieces.indexOf(claim.excerpt) === -1)
+                    {
+                        pieces.push(claim.excerpt);
+                    }
+                });
+
+                text = pieces.join('\n\n');
+            }
+
+            const note = real
+                ? ''
+                : '<p class="ev-note">The full resume text is not available yet, so this shows the excerpts the assessment used.</p>';
+
+            el('ev-doc').innerHTML = text
+                ? note + docHtml(text, buildRanges(text, data), data.claims)
+                : note + '<p class="ev-empty">There is no resume text to show for this application.</p>';
+        }
+
+        function renderRail()
+        {
+            clearActive();
+            closePop(false);
+
+            const data = skillsData();
+            const open = [];
+            const absent = [];
+
+            data.gaps.forEach(function (gap, index)
+            {
+                if (gap.label === 'confirmed_absent')
+                {
+                    absent.push(gap);
+                }
+                else
+                {
+                    open.push({ gap: gap, index: index });
+                }
+            });
+
+            let html = '<h4 class="ev-group is-match">Matched <span>' + data.matched.length + '</span></h4>';
+
+            if (!data.matched.length)
+            {
+                html += '<p class="ev-empty">No matching skills were found in this resume.</p>';
+            }
+
+            html += data.matched.map(function (item, index)
+            {
+                const pct = Math.round((Number(item.similarity) || 0) * 100);
+
+                return '<button type="button" class="ev-chip is-match" data-skill="' + attr(item.skill) + '" data-index="' + index + '" aria-haspopup="dialog" aria-expanded="false">' +
+                    '<span class="ev-chip-top"><span>' + Dash.esc(item.skill) + '</span>' +
+                    (item.verified ? '' : '<span class="ev-unv" title="Not verified yet"><i data-lucide="flag"></i><span class="ev-vh">Unverified</span></span>') + '</span>' +
+                    '<span class="ev-sim" aria-hidden="true"><i style="width:' + pct + '%"></i></span>' +
+                    '<span class="ev-vh">' + pct + ' percent similarity</span></button>';
+            }).join('');
+
+            if (open.length)
+            {
+                html += '<h4 class="ev-group is-gap">No evidence found <span>' + open.length + '</span></h4><p class="ev-help">' + Dash.esc(HELP_ABSENT) + '</p>';
+
+                html += open.map(function (item)
+                {
+                    return '<div class="ev-gap-row"><div class="ev-chip is-gap">' + Dash.esc(item.gap.skill) + '</div>' +
+                        '<button type="button" class="btn btn-secondary btn-sm" data-gap="' + item.index + '">Confirm absent</button></div>';
+                }).join('');
+            }
+
+            if (absent.length)
+            {
+                html += '<h4 class="ev-group is-absent">Confirmed absent <span>' + absent.length + '</span></h4>';
+                html += absent.map(function (gap)
+                {
+                    return '<div class="ev-chip is-absent">' + Dash.esc(gap.skill) + '</div>';
+                }).join('');
+            }
+
+            el('ev-rail-groups').innerHTML = html;
+        }
+
+        function renderClaims()
+        {
+            const claims = skillsData().claims;
+            const box = el('ev-claims');
+
+            if (!claims.length)
+            {
+                box.innerHTML = '';
+                return;
+            }
+
+            box.innerHTML = '<h4>Needs review</h4><p class="ev-help">The AI could not find enough evidence for these claims. It accepts or rejects nothing on its own, so you decide what each flag means.</p>' +
+                claims.map(function (claim, index)
+                {
+                    return '<div class="ev-claim-row"><div><b>' + Dash.esc(claim.claim) + '</b>' +
+                        '<p>Resume excerpt: "' + Dash.esc(claim.excerpt) + '"</p><p>' + Dash.esc(claim.reason) + '</p></div>' +
+                        '<label><input type="checkbox" data-claim="' + index + '"' + (claim.reviewed ? ' checked' : '') + '> Marked as reviewed</label></div>';
+                }).join('');
+        }
+
+        function ringHtml(value, label, small, id)
+        {
+            const score = Math.max(0, Math.min(100, Number(value) || 0));
+
+            return '<div class="ev-ring' + (small ? ' sm' : '') + '"' + (id ? ' id="' + id + '"' : '') + ' data-tone="' + Dash.scoreTone(score) + '" data-p="' + score + '" style="--p:0" role="img" aria-label="' + attr(label) + ' ' + score + ' out of 100">' +
+                '<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="bg" cx="18" cy="18" r="15.9155" pathLength="100"/><circle class="fg" cx="18" cy="18" r="15.9155" pathLength="100"/></svg><b>' + score + '</b></div>';
+        }
+
+        function fillRings(root)
+        {
+            const rings = root.querySelectorAll('.ev-ring');
+
+            requestAnimationFrame(function ()
+            {
+                requestAnimationFrame(function ()
+                {
+                    for (let i = 0; i < rings.length; i++)
+                    {
+                        rings[i].style.setProperty('--p', rings[i].getAttribute('data-p'));
+                    }
+                });
+            });
+        }
+
+        function countTo(node, target)
+        {
+            const from = Number(node.textContent) || 0;
+
+            if (reduced() || from === target)
+            {
+                node.textContent = target;
+                return;
+            }
+
+            const start = performance.now();
+            const length = 700;
+
+            function frame(now)
+            {
+                const t = Math.min(1, (now - start) / length);
+                node.textContent = Math.round(from + (target - from) * t);
+
+                if (t < 1)
+                {
+                    requestAnimationFrame(frame);
+                }
+            }
+
+            requestAnimationFrame(frame);
+        }
+
+        function updateScore()
+        {
+            const score = effScore(applicant);
+            const value = score === null ? 0 : score;
+            const ring = el('ev-score-ring');
+            const sj = applicant.score_json || {};
+            const breakdown = sj.breakdown || {};
+            const overridden = applicant.overrideScore !== null && applicant.overrideScore !== undefined;
+
+            ring.setAttribute('data-p', value);
+            ring.setAttribute('data-tone', Dash.scoreTone(value));
+            ring.setAttribute('aria-label', 'Overall score ' + value + ' out of 100');
+            countTo(ring.querySelector('b'), value);
+            fillRings(el('ev-score'));
+
+            el('ev-score-cap').textContent = overridden
+                ? 'Recruiter override in place. Original AI score: ' + (applicant.score === null ? 'none' : applicant.score) + '. Reason: ' + (applicant.overrideReason || 'none given') + '.'
+                : 'Overall score out of 100 for ' + job.title + '.';
+
+            WEIGHTS.forEach(function (item)
+            {
+                const row = el('ev-bar-' + item.key);
+                const part = Math.max(0, Math.min(100, Number(breakdown[item.key]) || 0));
+
+                row.setAttribute('data-tier', Dash.scoreTier(part));
+                countTo(row.querySelector('b'), part);
+
+                requestAnimationFrame(function ()
+                {
+                    requestAnimationFrame(function ()
+                    {
+                        row.querySelector('i').style.width = part + '%';
+                    });
+                });
+            });
+        }
+
+        function renderFairness()
+        {
+            const box = el('ev-fair-body');
+
+            if (!fairness)
+            {
+                box.innerHTML = '<p class="ev-help">Re-scores the resume with protected attributes removed, so you can see whether they moved the score.</p>';
+                return;
+            }
+
+            const badge = fairness.unchanged
+                ? '<span class="d-badge ok">Score unchanged by protected attributes</span>'
+                : '<span class="d-badge bad">Score moved by ' + Dash.esc(fairness.difference) + ' points</span>';
+
+            const attributes = (fairness.protected_attributes_excluded || []).map(function (item)
+            {
+                return Dash.esc(item);
+            }).join(', ');
+
+            box.innerHTML =
+                '<div class="ev-fair">' +
+                '<figure>' + ringHtml(fairness.original_score, 'Original score', true) + '<figcaption>Original text</figcaption></figure>' +
+                '<figure>' + ringHtml(fairness.anonymised_score, 'Score with protected attributes changed', true) + '<figcaption>Protected attributes changed</figcaption></figure>' +
+                '</div>' +
+                '<p class="ev-help" style="margin-top:12px">Difference: <b>' + Dash.esc(fairness.difference) + '</b> points</p>' +
+                '<p style="margin:6px 0">' + badge + '</p>' +
+                '<p class="ev-help">Name, gender and age are excluded from the score.' + (attributes ? ' Removed for the re-score: ' + attributes + '.' : '') + '</p>' +
+                '<p class="ev-help">' + Dash.esc(fairness.note || '') + '</p>';
+
+            fillRings(box);
+        }
+
+        function buildEvidence()
+        {
+            let weightRows = '';
+
+            WEIGHTS.forEach(function (item)
+            {
+                weightRows += '<div class="ev-bar" id="ev-bar-' + item.key + '" data-tier="low"><div class="ev-bar-head"><span>' + item.label + ' <small>' + item.weight + '%</small></span><b>0</b></div>' +
+                    '<div class="ev-bar-track"><i></i></div></div>';
+            });
+
+            el('evidence-body').innerHTML =
+                '<div class="ev-stage" id="ev-stage">' +
+                '<svg class="ev-threads" id="ev-threads" aria-hidden="true"></svg>' +
+                '<aside class="ev-rail" aria-label="Skills">' +
+                '<div id="ev-rail-groups"></div>' +
+                '<form class="ev-add" id="ev-add-form" novalidate><label for="ev-add-input">Add a skill to check</label>' +
+                '<div class="ev-add-row"><input type="text" id="ev-add-input" placeholder="For example Redis" autocomplete="off">' +
+                '<button class="btn btn-secondary btn-sm" type="submit" id="ev-add-btn"><i data-lucide="plus"></i>Add skill</button></div>' +
+                '<p class="ev-help" style="margin-top:6px">Added skills start as No evidence found until the resume supports them.</p></form>' +
+                '</aside>' +
+                '<section class="ev-doc-wrap" aria-label="Resume">' +
+                '<div class="ev-doc-head"><h3>Resume</h3><span>' + Dash.esc(applicant.resumeFileName || 'No resume file') + '</span></div>' +
+                '<div class="ev-doc" id="ev-doc" tabindex="0" aria-label="Resume text with highlighted evidence"></div>' +
+                '<div class="ev-claims" id="ev-claims"></div>' +
+                '</section>' +
+                '<div class="ev-side" id="ev-side">' +
+                '<section id="ev-score" aria-label="Score"><h3>Match score</h3>' +
+                ringHtml(0, 'Overall score', false, 'ev-score-ring') +
+                '<p class="ev-score-cap" id="ev-score-cap"></p>' + weightRows +
+                '<div class="d-actions"><button class="btn btn-sm" type="button" data-act="rescore"><i data-lucide="calculator"></i>Re-score</button></div></section>' +
+                '<section aria-label="Fairness check"><h3>Fairness check</h3><div id="ev-fair-body"></div>' +
+                '<div class="d-actions"><button class="btn btn-secondary btn-sm" type="button" data-act="fairness"><i data-lucide="scale"></i>Run fairness check</button></div></section>' +
+                '</div>' +
+                '<div class="ev-pop hidden" id="ev-pop" role="dialog" aria-label="Why this matched"></div>' +
+                '</div>';
+
+            evidenceBuilt = true;
+        }
+
+        function renderEvidence()
+        {
             if (!applicant.score_json)
             {
-                body.innerHTML =
+                evidenceBuilt = false;
+                el('evidence-body').innerHTML =
                     Dash.callout('info', 'No AI assessment yet',
-                        '<p>This resume has not been parsed and scored yet. The score breakdown, resume evidence, question generator and fairness test all unlock once an assessment exists.</p>') +
+                        '<p>This resume has not been parsed and scored yet. The evidence view, questions and fairness check unlock once an assessment exists.</p>') +
                     Dash.empty('file-text', 'Nothing to review here until this application has been assessed.');
                 return;
             }
 
-            const sj = applicant.score_json;
-            const breakdown = sj.breakdown || {};
-            const matched = sj.matched_skills || [];
-            const gaps = sj.gaps || [];
-            const score = effScore(applicant);
-            const overridden = applicant.overrideScore !== null && applicant.overrideScore !== undefined;
-
-            let left = '<div>';
-
-            left += '<section class="d-panel" aria-label="Match score">' +
-                '<div class="d-panel-head"><div><h3>Match score</h3><p class="sub">Skills 40% · experience 25% · projects 20% · qualifications 15%</p></div></div>' +
-                '<div class="d-total"><span class="d-total-num">' + (score === null ? '—' : Dash.esc(score)) + '</span><div><b>Overall score out of 100</b>' +
-                '<p>' + (overridden
-                    ? 'Recruiter override in place. Original AI score: ' + Dash.esc(applicant.score === null ? '—' : applicant.score) + '. Reason: ' + Dash.esc(applicant.overrideReason || 'None given.')
-                    : 'AI-assessed match against the requirements of ' + Dash.esc(job.title) + '.') + '</p>' +
-                '</div></div>' +
-                Dash.scoreBar('Skills', breakdown.skills) +
-                Dash.scoreBar('Experience', breakdown.experience) +
-                Dash.scoreBar('Projects', breakdown.projects) +
-                Dash.scoreBar('Qualifications', breakdown.qualifications) +
-                '</section>';
-
-            left += '<section class="d-panel" aria-label="Matched skills and gaps">' +
-                '<div class="d-panel-head"><div><h3>Matched skills and resume evidence</h3><p class="sub">Excerpts the AI matched against the job requirements</p></div></div>';
-
-            if (!matched.length)
+            if (!evidenceBuilt)
             {
-                left += '<p class="muted">No matching skills were found in this resume.</p>';
+                buildEvidence();
             }
-            else
+
+            renderRail();
+            renderDoc();
+            renderClaims();
+            updateScore();
+            renderFairness();
+        }
+
+        function chipFor(skill)
+        {
+            const chips = document.querySelectorAll('.ev-chip[data-skill]');
+
+            for (let i = 0; i < chips.length; i++)
             {
-                left += matched.map(function (item)
+                if (chips[i].getAttribute('data-skill') === skill)
                 {
-                    const pct = Math.round((Number(item.similarity) || 0) * 100);
-
-                    return '<div class="d-skill"><div class="d-skill-head"><b>' + Dash.esc(item.skill) + '</b>' +
-                        (item.verified
-                            ? '<span class="d-chip ok"><i data-lucide="badge-check"></i>Verified</span>'
-                            : '<span class="d-chip warn"><i data-lucide="flag"></i>Unverified</span>') +
-                        '<span class="d-sim">' + pct + '% similarity</span></div>' +
-                        '<div class="d-excerpt">' + Dash.esc(item.excerpt || 'No excerpt was captured for this skill.') + '</div></div>';
-                }).join('');
+                    return chips[i];
+                }
             }
 
-            left += '<div class="d-group-title">Skill gaps</div>';
+            return null;
+        }
 
-            if (!gaps.length)
+        function hlsOf(skill)
+        {
+            return Array.prototype.filter.call(document.querySelectorAll('.ev-hl'), function (mark)
             {
-                left += '<p class="muted">No skill gaps were flagged for this applicant.</p>';
+                return mark.getAttribute('data-skills').split('|').indexOf(skill) !== -1;
+            });
+        }
+
+        function clearThreads()
+        {
+            const svg = el('ev-threads');
+
+            if (svg)
+            {
+                svg.innerHTML = '';
             }
-            else
+        }
+
+        function drawThreads()
+        {
+            clearThreads();
+
+            if (!current || stacked() || !el('ev-stage'))
             {
-                left += '<div class="d-chips">' + gaps.map(function (gap, index)
+                return;
+            }
+
+            const svg = el('ev-threads');
+            const stage = el('ev-stage').getBoundingClientRect();
+            const box = el('ev-doc').getBoundingClientRect();
+            let markup = '';
+
+            current.skills.forEach(function (skill)
+            {
+                const chip = chipFor(skill);
+
+                if (!chip)
                 {
-                    if (gap.label === 'confirmed_absent')
+                    return;
+                }
+
+                const targets = current.hl ? [current.hl] : hlsOf(skill);
+                const c = chip.getBoundingClientRect();
+
+                targets.forEach(function (mark)
+                {
+                    const rect = mark.getClientRects()[0];
+
+                    if (!rect || rect.bottom < box.top || rect.top > box.bottom)
                     {
-                        return '<span class="d-chip bad"><i data-lucide="x"></i>' + Dash.esc(gap.skill) + ' — Confirmed absent</span>';
+                        return;
                     }
 
-                    return '<span class="d-chip warn"><i data-lucide="triangle-alert"></i>' + Dash.esc(gap.skill) + ' — No evidence' +
-                        '<button type="button" data-gap="' + index + '" title="Confirm this skill is absent and re-score">Confirm absent</button></span>';
-                }).join('') + '</div>';
+                    const sx = c.right - stage.left;
+                    const sy = c.top + c.height / 2 - stage.top;
+                    const ex = rect.left - stage.left;
+                    const ey = rect.top + rect.height / 2 - stage.top;
+                    const reach = Math.max(40, (ex - sx) / 2);
+
+                    markup += '<path pathLength="1" d="M' + sx + ' ' + sy + ' C' + (sx + reach) + ' ' + sy + ' ' + (ex - reach) + ' ' + ey + ' ' + ex + ' ' + ey + '"/>' +
+                        '<circle cx="' + sx + '" cy="' + sy + '" r="3"/><circle cx="' + ex + '" cy="' + ey + '" r="3"/>';
+                });
+            });
+
+            svg.innerHTML = markup;
+        }
+
+        function scrollToHl(mark)
+        {
+            const behavior = reduced() ? 'auto' : 'smooth';
+
+            if (stacked())
+            {
+                mark.scrollIntoView({ block: 'center', behavior: behavior });
+                return;
             }
 
-            left += '</section></div>';
+            const doc = el('ev-doc');
+            const box = doc.getBoundingClientRect();
+            const rect = mark.getBoundingClientRect();
 
-            let right = '<div>';
-
-            right += '<section class="d-panel" aria-label="AI explanation">' +
-                '<div class="d-panel-head"><div><h3>AI explanation</h3><p class="sub">In plain language, why this score</p></div>' +
-                '<button class="btn btn-secondary btn-sm" type="button" data-act="explain"><i data-lucide="refresh-cw"></i>Regenerate explanation</button></div>' +
-                '<div class="d-excerpt">' + Dash.esc(explanation || 'No explanation is available for this assessment.') + '</div>' +
-                '</section>';
-
-            right += '<section class="d-panel" aria-label="Learning areas">' +
-                '<div class="d-panel-head"><div><h3>Learning areas</h3><p class="sub">Growth suggestions to discuss with the candidate</p></div>' +
-                '<button class="btn btn-secondary btn-sm" type="button" data-act="learning"><i data-lucide="book-open"></i>Get learning areas</button></div>';
-
-            if (!learning.length)
+            if (rect.top >= box.top + 20 && rect.bottom <= box.bottom - 20)
             {
-                right += '<p class="muted">No learning areas were identified.</p>';
+                return;
+            }
+
+            doc.scrollTo({ top: doc.scrollTop + (rect.top - box.top) - box.height / 2 + rect.height / 2, behavior: behavior });
+        }
+
+        function clearActive()
+        {
+            current = null;
+
+            document.querySelectorAll('.ev-chip.is-lit, .ev-hl.is-lit').forEach(function (node)
+            {
+                node.classList.remove('is-lit');
+            });
+
+            clearThreads();
+        }
+
+        function setActive(skills, mark, scroll)
+        {
+            document.querySelectorAll('.ev-chip.is-lit, .ev-hl.is-lit').forEach(function (node)
+            {
+                node.classList.remove('is-lit');
+            });
+
+            current = { skills: skills, hl: mark };
+
+            skills.forEach(function (skill)
+            {
+                const chip = chipFor(skill);
+
+                if (chip)
+                {
+                    chip.classList.add('is-lit');
+                }
+            });
+
+            const targets = mark ? [mark] : hlsOf(skills[0]);
+
+            targets.forEach(function (node)
+            {
+                node.classList.add('is-lit');
+            });
+
+            if (scroll && targets.length)
+            {
+                scrollToHl(targets[0]);
+
+                if (!reduced())
+                {
+                    targets.forEach(function (node)
+                    {
+                        node.classList.remove('pulse');
+                        void node.offsetWidth;
+                        node.classList.add('pulse');
+                        node.addEventListener('animationend', function ()
+                        {
+                            node.classList.remove('pulse');
+                        }, { once: true });
+                    });
+                }
+            }
+
+            drawThreads();
+        }
+
+        function closePop(returnFocus)
+        {
+            const pop = el('ev-pop');
+
+            if (!pop || pop.classList.contains('hidden'))
+            {
+                return;
+            }
+
+            pop.classList.add('hidden');
+
+            const chip = popSkill ? chipFor(popSkill) : null;
+
+            if (chip)
+            {
+                chip.setAttribute('aria-expanded', 'false');
+
+                if (returnFocus)
+                {
+                    chip.focus();
+                }
+            }
+
+            popSkill = null;
+        }
+
+        function openPop(chip)
+        {
+            const data = skillsData();
+            const index = Number(chip.getAttribute('data-index'));
+            const item = data.matched[index];
+            const pop = el('ev-pop');
+
+            if (!item)
+            {
+                return;
+            }
+
+            const pct = Math.round((Number(item.similarity) || 0) * 100);
+            const located = hlsOf(item.skill).length > 0;
+
+            pop.innerHTML =
+                '<button type="button" class="ev-pop-x" data-pop-close aria-label="Close"><i data-lucide="x"></i></button>' +
+                '<h4>Why this matched: ' + Dash.esc(item.skill) + '</h4>' +
+                '<p>' + pct + '% similarity to the job requirement.</p>' +
+                '<blockquote>' + Dash.esc(item.excerpt || 'No excerpt was captured for this skill.') + '</blockquote>' +
+                (item.matchType === 'semantic'
+                    ? '<p>Matched by meaning: this excerpt supports ' + Dash.esc(item.skill) + ' without naming it exactly.</p>'
+                    : '') +
+                (located || !item.excerpt ? '' : '<p>This excerpt could not be found in the resume text, so nothing is highlighted for it.</p>') +
+                '<label><input type="checkbox" data-verify="' + index + '"' + (item.verified ? ' checked' : '') + '> Mark as verified</label>';
+
+            closePop(false);
+            pop.classList.remove('hidden');
+            chip.setAttribute('aria-expanded', 'true');
+            popSkill = item.skill;
+
+            if (stacked())
+            {
+                pop.style.top = '';
+                pop.style.left = '';
             }
             else
             {
-                right += '<div class="d-chips">' + learning.map(function (item)
-                {
-                    return '<span class="d-chip info"><i data-lucide="book-open"></i>' + Dash.esc(item) + '</span>';
-                }).join('') + '</div>';
+                const stage = el('ev-stage').getBoundingClientRect();
+                const rect = chip.getBoundingClientRect();
+                pop.style.top = (rect.bottom - stage.top + 8) + 'px';
+                pop.style.left = (rect.left - stage.left) + 'px';
             }
 
-            right += '</section>';
-
-            right += '<section class="d-panel" aria-label="Verify skills">' +
-                '<div class="d-panel-head"><div><h3>Verify skills</h3><p class="sub">Mark what you have personally verified. The score recalculates on every change.</p></div></div>';
-
-            if (!matched.length)
-            {
-                right += '<p class="muted">There are no matched skills to verify.</p>';
-            }
-            else
-            {
-                right += matched.map(function (item, index)
-                {
-                    const pct = Math.round((Number(item.similarity) || 0) * 100);
-
-                    return '<div class="d-item"><div class="main"><b>' + Dash.esc(item.skill) + '</b><span>' + pct + '% similarity</span></div>' +
-                        '<label class="d-chip ' + (item.verified ? 'ok' : 'warn') + '">' +
-                        '<input type="checkbox" data-verify="' + index + '"' + (item.verified ? ' checked' : '') + '> ' +
-                        (item.verified ? 'Verified' : 'Unverified') + '</label></div>';
-                }).join('');
-            }
-
-            right += '<div class="d-actions">' +
-                '<button class="btn btn-sm" type="button" data-act="rescore"><i data-lucide="calculator"></i>Re-score application</button>' +
-                '<span class="d-hint">Re-runs the scoring engine with your latest edits.</span>' +
-                '</div></section>';
-
-            right += '</div>';
-
-            body.innerHTML = '<div class="d-grid side">' + left + right + '</div>';
+            Dash.icons();
+            pop.querySelector('[data-pop-close]').focus();
         }
 
         async function runExplain(button)
         {
-            hideError('assess-error');
+            hideError('overview-error');
             Dash.setBusy(button, true);
 
             try
             {
                 const result = await Api.post('/api/applications/' + applicantId + '/explain');
                 explanation = result.explanation;
-                renderAssessment();
+                overviewOpen = 0;
+                renderOverview();
                 Dash.icons();
                 showToast('Explanation refreshed.', 'success');
             }
             catch (error)
             {
-                showError('assess-error', error.message);
+                showError('overview-error', error.message);
+                Dash.setBusy(button, false);
             }
-
-            Dash.setBusy(button, false);
         }
 
         async function runLearning(button)
         {
-            hideError('assess-error');
+            hideError('overview-error');
             Dash.setBusy(button, true);
 
             try
             {
                 const result = await Api.post('/api/applications/' + applicantId + '/learning-areas');
                 learning = result.learning_areas || [];
-                renderAssessment();
+                renderOverview();
                 Dash.icons();
                 showToast(learning.length ? 'Learning areas updated.' : 'The AI found no learning areas for this applicant.', 'success');
             }
             catch (error)
             {
-                showError('assess-error', error.message);
+                showError('overview-error', error.message);
+                Dash.setBusy(button, false);
             }
-
-            Dash.setBusy(button, false);
         }
 
         async function runRescore(button)
@@ -488,19 +1178,42 @@
             {
                 applicant = await Api.post('/api/applications/' + applicantId + '/assess');
                 renderAll();
-                showToast('Score recalculated: ' + (effScore(applicant) === null ? 'not scored' : effScore(applicant)) + '.', 'success');
+                showToast('Score recalculated: ' + scoreText(applicant) + '.', 'success');
             }
             catch (error)
             {
                 showError('assess-error', error.message);
-                Dash.setBusy(button, false);
             }
+
+            Dash.setBusy(button, false);
+        }
+
+        async function runFairness(button)
+        {
+            hideError('assess-error');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                fairness = await Api.post('/api/applications/' + applicantId + '/fairness-test');
+                renderFairness();
+                Dash.icons();
+                showToast(fairness.unchanged
+                    ? 'Fairness check passed. The score did not change.'
+                    : 'Fairness check found a difference of ' + fairness.difference + ' points. Review the result.',
+                    fairness.unchanged ? 'success' : 'info');
+            }
+            catch (error)
+            {
+                showError('assess-error', error.message);
+            }
+
+            Dash.setBusy(button, false);
         }
 
         async function confirmGap(index, button)
         {
-            const gaps = (applicant.score_json && applicant.score_json.gaps) || [];
-            const gap = gaps[index];
+            const gap = (applicant.score_json && applicant.score_json.gaps || [])[index];
 
             if (!gap)
             {
@@ -514,7 +1227,7 @@
             {
                 applicant = await Api.patch('/api/applications/' + applicantId + '/skills', { skill: gap.skill, label: 'confirmed_absent' });
                 renderAll();
-                showToast(gap.skill + ' marked as confirmed absent. The score was recalculated: ' + (effScore(applicant) === null ? 'not scored' : effScore(applicant)) + '.', 'success');
+                showToast(gap.skill + ' confirmed absent. New score: ' + scoreText(applicant) + '.', 'success');
             }
             catch (error)
             {
@@ -525,8 +1238,7 @@
 
         async function toggleVerified(index, box)
         {
-            const matched = (applicant.score_json && applicant.score_json.matched_skills) || [];
-            const skill = matched[index];
+            const skill = skillsData().matched[index];
 
             if (!skill)
             {
@@ -541,61 +1253,254 @@
             {
                 applicant = await Api.patch('/api/applications/' + applicantId + '/skills', { skill: skill.skill, verified: verified });
                 renderAll();
-                showToast(skill.skill + (verified ? ' marked as verified. ' : ' marked as unverified. ') +
-                    'New score: ' + (effScore(applicant) === null ? 'not scored' : effScore(applicant)) + '.', 'success');
+                showToast(skill.skill + (verified ? ' marked as verified. ' : ' marked as unverified. ') + 'New score: ' + scoreText(applicant) + '.', 'success');
             }
             catch (error)
             {
                 showError('assess-error', error.message);
-                renderAssessment();
-                Dash.icons();
+                box.checked = !verified;
+                box.disabled = false;
             }
+        }
+
+        async function addSkills(event)
+        {
+            event.preventDefault();
+
+            const input = el('ev-add-input');
+            const button = el('ev-add-btn');
+            const names = input.value.split(',').map(function (part)
+            {
+                return part.trim();
+            }).filter(Boolean);
+
+            hideError('assess-error');
+
+            if (!names.length)
+            {
+                showError('assess-error', 'Type a skill name first, for example Redis. Use commas to add several.');
+                input.focus();
+                return;
+            }
+
+            const data = skillsData();
+            const known = data.matched.map(function (item) { return item.skill.toLowerCase(); })
+                .concat(data.gaps.map(function (item) { return item.skill.toLowerCase(); }));
+            const fresh = names.filter(function (name)
+            {
+                return known.indexOf(name.toLowerCase()) === -1;
+            });
+
+            if (!fresh.length)
+            {
+                showError('assess-error', names.join(', ') + (names.length > 1 ? ' are' : ' is') + ' already part of this assessment.');
+                return;
+            }
+
+            Dash.setBusy(button, true);
+
+            try
+            {
+                for (let i = 0; i < fresh.length; i++)
+                {
+                    applicant = await Api.patch('/api/applications/' + applicantId + '/skills', { skill: fresh[i], label: 'no_evidence' });
+                }
+
+                input.value = '';
+                renderAll();
+                showToast(fresh.join(', ') + ' added. New score: ' + scoreText(applicant) + '.', 'success');
+            }
+            catch (error)
+            {
+                showError('assess-error', error.message);
+            }
+
+            Dash.setBusy(el('ev-add-btn'), false);
+        }
+
+        async function reviewClaim(index, box)
+        {
+            const claim = skillsData().claims[index];
+
+            if (!claim)
+            {
+                return;
+            }
+
+            const matched = skillsData().matched;
+
+            if (!matched.length)
+            {
+                showToast('There is no assessed skill to attach this review to.', 'error');
+                box.checked = !box.checked;
+                return;
+            }
+
+            const reviewed = box.checked;
+            hideError('assess-error');
+            box.disabled = true;
+
+            try
+            {
+                applicant = await Api.patch('/api/applications/' + applicantId + '/skills',
+                {
+                    skill: matched[0].skill,
+                    verified: matched[0].verified,
+                    claim: claim.claim,
+                    reviewed: reviewed
+                });
+
+                renderAll();
+                showToast(reviewed ? 'Flag marked as reviewed.' : 'Review mark removed.', 'success');
+            }
+            catch (error)
+            {
+                showError('assess-error', error.message);
+                box.checked = !reviewed;
+                box.disabled = false;
+            }
+        }
+
+        function sentencesOf(text)
+        {
+            return String(text || '').match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [];
+        }
+
+        function refSkills(sentence, index)
+        {
+            const sj = applicant.score_json || {};
+            const given = Array.isArray(sj.evidenceRefs) ? sj.evidenceRefs[index] : null;
+
+            if (Array.isArray(given))
+            {
+                return given.map(function (ref)
+                {
+                    return typeof ref === 'string' ? ref : (ref && ref.skill);
+                }).filter(Boolean);
+            }
+
+            return skillsData().matched.filter(function (item)
+            {
+                return sentence.toLowerCase().indexOf(item.skill.toLowerCase()) !== -1;
+            }).map(function (item)
+            {
+                return item.skill;
+            });
+        }
+
+        function renderOverview()
+        {
+            const body = el('overview-body');
+
+            if (!applicant.score_json)
+            {
+                body.innerHTML = Dash.empty('file-text', 'The explanation appears once this application has been assessed.');
+                return;
+            }
+
+            const matched = skillsData().matched;
+            const openRef = { n: 0, skill: '' };
+            let counter = 0;
+            let prose = '';
+
+            sentencesOf(explanation).forEach(function (sentence, index)
+            {
+                prose += Dash.esc(sentence.trim()) + ' ';
+
+                refSkills(sentence, index).forEach(function (skill)
+                {
+                    counter += 1;
+
+                    if (counter === overviewOpen)
+                    {
+                        openRef.n = counter;
+                        openRef.skill = skill;
+                    }
+
+                    prose += '<button type="button" class="ev-ref" data-ref="' + counter + '" data-ref-skill="' + attr(skill) + '" aria-expanded="' + (counter === overviewOpen ? 'true' : 'false') + '" aria-label="Evidence ' + counter + ': ' + attr(skill) + '">' + counter + '</button> ';
+                });
+            });
+
+            let refBox = '';
+
+            if (openRef.n)
+            {
+                const item = matched.filter(function (entry)
+                {
+                    return entry.skill === openRef.skill;
+                })[0];
+
+                refBox = '<div class="ev-ref-box"><b>Evidence ' + openRef.n + ': ' + Dash.esc(openRef.skill) + '</b>' +
+                    '<p>' + Dash.esc(item && item.excerpt ? item.excerpt : 'No excerpt was captured for this skill.') + '</p>' +
+                    '<button type="button" class="btn btn-secondary btn-sm" data-act="show-evidence" data-skill="' + attr(openRef.skill) + '"><i data-lucide="highlighter"></i>Show in resume</button></div>';
+            }
+
+            body.innerHTML =
+                '<section class="d-panel" aria-label="AI explanation">' +
+                '<div class="d-panel-head"><div><h3>AI explanation</h3><p class="sub">In plain language, why this score. AI assessment. You make the final decision.</p></div>' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-act="explain"><i data-lucide="refresh-cw"></i>Regenerate explanation</button></div>' +
+                (explanation ? '<p style="line-height:1.8;max-width:75ch">' + prose + '</p>' + refBox : '<p class="muted">No explanation is available for this assessment.</p>') +
+                '</section>' +
+                '<section class="d-panel" aria-label="Learning areas">' +
+                '<div class="d-panel-head"><div><h3>Learning areas</h3><p class="sub">Growth suggestions to discuss with the candidate</p></div>' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-act="learning"><i data-lucide="book-open"></i>Get learning areas</button></div>' +
+                (learning.length
+                    ? '<ul style="margin:0;padding-left:20px;line-height:1.8">' + learning.map(function (item) { return '<li>' + Dash.esc(item) + '</li>'; }).join('') + '</ul>'
+                    : '<p class="muted">No learning areas were identified.</p>') +
+                '</section>';
+        }
+
+        function isProjectQuestion(item)
+        {
+            return Boolean(item.from_project || item.fromProject || item.source === 'project' || item.category === 'project' || item.type === 'project');
         }
 
         function questionHtml(item)
         {
-            const expanded = openGuidelines.has(item.id);
+            const expanded = openGuidelines.has(item.id) || editingQuestionId === item.id || confirmingDeleteId === item.id;
             const editing = editingQuestionId === item.id;
             const confirming = confirmingDeleteId === item.id;
+            const meta = (isProjectQuestion(item) ? '<span class="d-chip info">From their project</span>' : '') +
+                (item.skill ? '<span class="d-chip">Skill: ' + Dash.esc(item.skill) + '</span>' : '');
 
-            let html = '<div class="d-q" data-q="' + item.id + '">' +
-                '<div class="d-q-head"><p>' + Dash.esc(item.text) + '</p>' +
+            let html = '<div class="d-q pg-q' + (expanded ? ' open' : '') + '" data-q="' + item.id + '">' +
+                '<div class="pg-q-head">' +
+                '<button class="pg-q-toggle" type="button" data-act="toggle" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-controls="q-panel-' + item.id + '">' +
+                '<span>' + Dash.esc(item.text) + '</span><i data-lucide="chevron-down" class="pg-q-chev" aria-hidden="true"></i></button>' +
                 '<div class="d-q-actions">' +
-                '<button class="btn btn-secondary btn-sm" type="button" data-act="toggle" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-label="Toggle answer guideline" title="Answer guideline"><i data-lucide="' + (expanded ? 'chevron-up' : 'chevron-down') + '"></i></button>' +
                 '<button class="btn btn-secondary btn-sm" type="button" data-act="edit" aria-label="Edit question" title="Edit"><i data-lucide="pencil"></i></button>' +
                 '<button class="btn btn-secondary btn-sm" type="button" data-act="regen" aria-label="Regenerate question" title="Regenerate"><i data-lucide="refresh-cw"></i></button>' +
-                '<button class="btn btn-secondary btn-sm" type="button" data-act="del" aria-label="Delete question" title="Delete"><i data-lucide="trash-2"></i></button>' +
+                '<button class="btn btn-secondary btn-sm" type="button" data-act="del" aria-label="Remove question" title="Remove"><i data-lucide="trash-2"></i></button>' +
                 '</div></div>';
 
-            if (item.skill)
+            if (meta)
             {
-                html += '<div class="d-hint">Focus skill: ' + Dash.esc(item.skill) + '</div>';
+                html += '<div class="pg-q-meta">' + meta + '</div>';
             }
 
-            html += '<div class="d-q-body' + (expanded ? '' : ' hidden') + '"><b>Answer guideline</b><p>' +
-                Dash.esc(item.guideline || 'No guideline was provided for this question.') + '</p></div>';
+            html += '<div class="pg-q-panel" id="q-panel-' + item.id + '"><div class="pg-q-inner">' +
+                '<b>Answer guideline</b><p>' + Dash.esc(item.guideline || 'No guideline was provided for this question.') + '</p>';
 
             if (editing)
             {
-                html += '<div class="d-q-body">' +
-                    '<div class="form-group"><label for="q-edit-text">Question text</label><textarea id="q-edit-text">' + Dash.esc(item.text) + '</textarea></div>' +
+                html += '<div class="form-group" style="margin-top:12px"><label for="q-edit-text">Question text</label><textarea id="q-edit-text">' + Dash.esc(item.text) + '</textarea></div>' +
                     '<div class="form-error hidden" data-q-error role="alert"></div>' +
                     '<div class="row">' +
                     '<button class="btn btn-sm" type="button" data-act="save"><i data-lucide="check"></i>Save question</button>' +
                     '<button class="btn btn-secondary btn-sm" type="button" data-act="cancel-edit">Cancel</button>' +
-                    '</div></div>';
+                    '</div>';
             }
 
             if (confirming)
             {
-                html += '<div class="d-q-body"><p><b>Delete this question?</b> This cannot be undone.</p>' +
+                html += '<div style="margin-top:12px"><p><b>Remove this question?</b> This cannot be undone.</p>' +
                     '<div class="row">' +
-                    '<button class="btn btn-danger btn-sm" type="button" data-act="confirm-del"><i data-lucide="trash-2"></i>Delete question</button>' +
+                    '<button class="btn btn-danger btn-sm" type="button" data-act="confirm-del"><i data-lucide="trash-2"></i>Remove question</button>' +
                     '<button class="btn btn-secondary btn-sm" type="button" data-act="cancel-del">Keep it</button>' +
                     '</div></div>';
             }
 
-            html += '</div>';
+            html += '</div></div></div>';
             return html;
         }
 
@@ -603,15 +1508,18 @@
         {
             const body = el('questions-body');
             const generate = el('gen-questions');
+            const copy = el('copy-questions');
 
             if (!applicant.score_json)
             {
                 generate.disabled = true;
+                copy.disabled = true;
                 body.innerHTML = Dash.empty('sparkles', 'Questions are generated from the AI assessment. This application has not been assessed yet.');
                 return;
             }
 
             generate.disabled = false;
+            copy.disabled = !questions.length;
 
             if (!questions.length)
             {
@@ -647,6 +1555,58 @@
             }
 
             body.innerHTML = html;
+        }
+
+        function copyQuestions()
+        {
+            if (!questions.length)
+            {
+                return;
+            }
+
+            const levels = [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['advanced', 'Advanced'], ['', 'Other']];
+            let number = 0;
+            let text = 'Interview questions for ' + applicant.candidateName + ', ' + job.title + '\n';
+
+            levels.forEach(function (pair)
+            {
+                const group = questions.filter(function (item)
+                {
+                    return pair[0] ? item.level === pair[0] : ['beginner', 'intermediate', 'advanced'].indexOf(item.level) === -1;
+                });
+
+                if (!group.length)
+                {
+                    return;
+                }
+
+                text += '\n' + pair[1] + '\n';
+
+                group.forEach(function (item)
+                {
+                    number += 1;
+                    text += number + '. ' + item.text + '\n';
+
+                    if (item.guideline)
+                    {
+                        text += '   Look for: ' + item.guideline + '\n';
+                    }
+                });
+            });
+
+            if (typeof copyToClipboard === 'function')
+            {
+                copyToClipboard(text);
+                return;
+            }
+
+            navigator.clipboard.writeText(text).then(function ()
+            {
+                showToast('Questions copied for the interview.', 'success');
+            }, function ()
+            {
+                showToast('Could not copy. Select the questions and copy them by hand.', 'error');
+            });
         }
 
         async function generateQuestions(button)
@@ -699,6 +1659,7 @@
                 editingQuestionId = null;
                 renderQuestions();
                 Dash.icons();
+                focusQuestion(id, 'edit');
                 showToast('Question updated.', 'success');
             }
             catch (error)
@@ -724,9 +1685,10 @@
                 });
 
                 confirmingDeleteId = null;
+                openGuidelines.delete(id);
                 renderQuestions();
                 Dash.icons();
-                showToast('Question deleted.', 'success');
+                showToast('Question removed.', 'success');
             }
             catch (error)
             {
@@ -737,8 +1699,12 @@
 
         async function regenerateQuestion(id, button)
         {
+            const card = button.closest('.d-q');
+
             hideError('questions-error');
             Dash.setBusy(button, true);
+            card.classList.add('is-busy');
+            card.setAttribute('aria-busy', 'true');
 
             try
             {
@@ -751,130 +1717,25 @@
 
                 renderQuestions();
                 Dash.icons();
+                focusQuestion(id, 'regen');
                 showToast('Question regenerated.', 'success');
             }
             catch (error)
             {
                 showError('questions-error', error.message);
                 Dash.setBusy(button, false);
+                card.classList.remove('is-busy');
+                card.removeAttribute('aria-busy');
             }
         }
 
-        function renderFairness()
+        function focusQuestion(id, action)
         {
-            const body = el('fairness-body');
-            const button = el('fairness-run');
+            const target = document.querySelector('[data-q="' + id + '"] [data-act="' + action + '"]');
 
-            if (!applicant.score_json)
+            if (target)
             {
-                button.disabled = true;
-                body.innerHTML = Dash.empty('scale', 'The fairness test needs an AI assessment. This application has not been assessed yet.');
-                return;
-            }
-
-            button.disabled = false;
-
-            if (!fairness)
-            {
-                body.innerHTML = Dash.empty('scale', 'No fairness test has been run yet. Run it to re-score this resume with every protected attribute removed.');
-                return;
-            }
-
-            const badge = fairness.unchanged
-                ? '<span class="d-badge ok">Score unchanged by protected attributes</span>'
-                : '<span class="d-badge bad">Score moved by ' + Dash.esc(fairness.difference) + ' points</span>';
-
-            const attributes = (fairness.protected_attributes_excluded || []).map(function (item)
-            {
-                return Dash.esc(item);
-            }).join(', ');
-
-            body.innerHTML =
-                '<div class="d-fair">' +
-                '<div><b>' + Dash.esc(fairness.original_score) + '</b><span>Original score</span></div>' +
-                '<div><b>' + Dash.esc(fairness.anonymised_score) + '</b><span>Anonymised score</span></div>' +
-                '<div><b>' + Dash.esc(fairness.difference) + '</b><span>Difference</span></div>' +
-                '</div>' +
-                '<p class="d-hint">' + badge + '</p>' +
-                Dash.callout('shield', 'Excluded from the re-score',
-                    '<p>' + attributes + '</p><p>' + Dash.esc(fairness.note || '') + '</p>',
-                    fairness.unchanged ? 'ok' : 'bad');
-        }
-
-        function renderClaims()
-        {
-            const body = el('claims-body');
-
-            if (!applicant.score_json)
-            {
-                body.innerHTML = Dash.empty('shield', 'Unsupported-claim flags appear once this application has been assessed.');
-                return;
-            }
-
-            const claims = applicant.score_json.unsupported_claims || [];
-
-            if (!claims.length)
-            {
-                body.innerHTML = Dash.empty('check-circle-2', 'No unsupported claims were flagged in this resume.');
-                return;
-            }
-
-            body.innerHTML =
-                Dash.callout('info', 'These flags are for human review',
-                    '<p>The AI could not find enough evidence for the claims below. It does not accept or reject anything on its own — you decide what each flag means.</p>') +
-                claims.map(function (claim, index)
-                {
-                    return '<div class="d-flag"><i data-lucide="triangle-alert"></i>' +
-                        '<div><b>' + Dash.esc(claim.claim) + '</b>' +
-                        '<p>Resume excerpt: "' + Dash.esc(claim.excerpt) + '"</p>' +
-                        '<p>' + Dash.esc(claim.reason) + '</p></div>' +
-                        '<label><input type="checkbox" data-claim="' + index + '"' + (claim.reviewed ? ' checked' : '') + '> Marked as reviewed</label>' +
-                        '</div>';
-                }).join('');
-        }
-
-        async function reviewClaim(index, box)
-        {
-            const claims = (applicant.score_json && applicant.score_json.unsupported_claims) || [];
-            const claim = claims[index];
-
-            if (!claim)
-            {
-                return;
-            }
-
-            const matched = (applicant.score_json && applicant.score_json.matched_skills) || [];
-
-            if (!matched.length)
-            {
-                showToast('There is no assessed skill to attach this review to.', 'error');
-                renderClaims();
-                Dash.icons();
-                return;
-            }
-
-            const reviewed = box.checked;
-            hideError('claims-error');
-            box.disabled = true;
-
-            try
-            {
-                applicant = await Api.patch('/api/applications/' + applicantId + '/skills',
-                {
-                    skill: matched[0].skill,
-                    verified: matched[0].verified,
-                    claim: claim.claim,
-                    reviewed: reviewed
-                });
-
-                renderAll();
-                showToast(reviewed ? 'Flag marked as reviewed.' : 'Review mark removed.', 'success');
-            }
-            catch (error)
-            {
-                showError('claims-error', error.message);
-                renderClaims();
-                Dash.icons();
+                target.focus();
             }
         }
 
@@ -893,20 +1754,20 @@
             }
         }
 
+        function clockRange(iso, minutes)
+        {
+            const start = new Date(iso);
+            const end = new Date(start.getTime() + (Number(minutes) || 0) * 60000);
+            const fmt = { hour: '2-digit', minute: '2-digit' };
+            return start.toLocaleTimeString([], fmt) + ' to ' + end.toLocaleTimeString([], fmt);
+        }
+
         function conflictListHtml(conflicts)
         {
             return conflicts.map(function (conflict)
             {
-                const when = Dash.dateTime(conflict.scheduled_at);
-
-                if (conflict.type === 'interviewer')
-                {
-                    return '<p>' + Dash.esc(conflict.name) + ' is already interviewing ' + Dash.esc(conflict.with) +
-                        ' at ' + Dash.esc(when) + ' (' + Dash.esc(conflict.duration_minutes) + ' minutes).</p>';
-                }
-
-                return '<p>' + Dash.esc(conflict.name) + ' already has an interview with ' + Dash.esc(conflict.with) +
-                    ' at ' + Dash.esc(when) + '.</p>';
+                return '<p>' + Dash.esc(conflict.name) + ' already has an interview from ' +
+                    Dash.esc(clockRange(conflict.scheduled_at, conflict.duration_minutes)) + ' with ' + Dash.esc(conflict.with) + '.</p>';
             }).join('');
         }
 
@@ -932,10 +1793,10 @@
             const box = el('interview-conflict');
 
             box.innerHTML = Dash.callout('triangle-alert', 'This slot clashes with an existing interview',
-                '<p>' + Dash.esc(message) + '</p>', 'bad') +
-                '<div class="row">' +
+                '<p>' + Dash.esc(message) + '</p>', 'warn') +
+                '<div class="pg-conflict-actions">' +
+                '<button class="btn btn-secondary btn-sm" id="iv-force-cancel" type="button">Pick another time</button>' +
                 '<button class="btn btn-danger btn-sm" id="iv-force" type="button"><i data-lucide="calendar-plus"></i>Schedule anyway</button>' +
-                '<button class="btn btn-secondary btn-sm" id="iv-force-cancel" type="button">Choose a different slot</button>' +
                 '</div>';
 
             el('iv-force').addEventListener('click', function ()
@@ -946,9 +1807,11 @@
             el('iv-force-cancel').addEventListener('click', function ()
             {
                 box.innerHTML = '';
+                el('iv-when').focus();
             });
 
             Dash.icons();
+            el('iv-force-cancel').focus();
         }
 
         async function refreshAfterInterview()
@@ -997,7 +1860,7 @@
             {
                 application_id: applicantId,
                 interviewer: interviewer,
-                interview_type: el('iv-type').value,
+                interview_type: el('iv-type').getAttribute('data-value'),
                 scheduled_at: new Date(when).toISOString(),
                 duration_minutes: duration
             };
@@ -1039,108 +1902,154 @@
             }
         }
 
-        function renderDecision()
+        function wireSegmented(group)
         {
-            const body = el('decision-body');
-            const allowed = TRANSITIONS[applicant.status] || [];
-            const forward = allowed.filter(function (status)
-            {
-                return status !== 'Rejected';
-            })[0] || null;
+            const buttons = Array.from(group.querySelectorAll('[role="radio"]'));
 
-            const canShortlist = allowed.indexOf('Shortlisted') !== -1;
-            const canReject = allowed.indexOf('Rejected') !== -1;
-
-            let html = '<div class="row">' +
-                '<button class="btn btn-success" type="button" data-status="Shortlisted"' + (canShortlist ? '' : ' disabled') + '>' +
-                '<i data-lucide="user-check"></i>Shortlist</button>';
-
-            if (forward)
+            function choose(button, moveFocus)
             {
-                html += '<button class="btn" type="button" data-status="' + Dash.esc(forward) + '">' +
-                    '<i data-lucide="arrow-right"></i>Advance to ' + Dash.esc(forward) + '</button>';
-            }
-            else
-            {
-                html += '<button class="btn" type="button" disabled><i data-lucide="arrow-right"></i>Advance</button>';
+                buttons.forEach(function (other)
+                {
+                    const on = other === button;
+                    other.setAttribute('aria-checked', on ? 'true' : 'false');
+                    other.tabIndex = on ? 0 : -1;
+                });
+
+                group.setAttribute('data-value', button.getAttribute('data-value'));
+
+                if (moveFocus)
+                {
+                    button.focus();
+                }
             }
 
-            html += '<button class="btn btn-danger" type="button" data-act="reject-open"' + (canReject ? '' : ' disabled') + '>' +
-                '<i data-lucide="user-x"></i>Reject</button>' +
-                '</div>' +
-                '<p class="d-hint">' + (allowed.length
-                    ? 'Available next steps from "' + Dash.esc(applicant.status) + '": ' + Dash.esc(allowed.join(', ')) + '.'
-                    : '"' + Dash.esc(applicant.status) + '" is a final status — no further transitions are available.') + '</p>';
-
-            if (rejectOpen && canReject)
+            const start = buttons.filter(function (button)
             {
-                html += Dash.callout('triangle-alert', 'Reject this application?',
-                    '<p>Rejection is final and is written to the audit trail. Please record why — the reason is required and stays private to recruiters.</p>', 'bad') +
-                    '<div class="form-group"><label for="reject-reason">Reason for rejection (required)</label>' +
-                    '<textarea id="reject-reason" placeholder="For example: no evidence of the required Django experience for a senior role"></textarea></div>' +
-                    '<div class="form-error hidden" id="reject-error" role="alert"></div>' +
-                    '<div class="row">' +
-                    '<button class="btn btn-danger" type="button" data-act="reject-confirm"><i data-lucide="user-x"></i>Confirm rejection</button>' +
-                    '<button class="btn btn-secondary" type="button" data-act="reject-cancel">Cancel</button>' +
-                    '</div>';
-            }
+                return button.getAttribute('aria-checked') === 'true';
+            })[0] || buttons[0];
 
-            body.innerHTML = html;
+            buttons.forEach(function (button)
+            {
+                button.tabIndex = button === start ? 0 : -1;
+
+                button.addEventListener('click', function ()
+                {
+                    choose(button, false);
+                });
+
+                button.addEventListener('keydown', function (event)
+                {
+                    const at = buttons.indexOf(button);
+                    let next = -1;
+
+                    if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+                    {
+                        next = (at + 1) % buttons.length;
+                    }
+                    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+                    {
+                        next = (at - 1 + buttons.length) % buttons.length;
+                    }
+
+                    if (next !== -1)
+                    {
+                        event.preventDefault();
+                        choose(buttons[next], true);
+                    }
+                });
+            });
         }
 
-        async function changeStatus(status, button)
+        async function changeStatus(status)
         {
-            hideError('decision-error');
-            Dash.setBusy(button, true);
-
-            try
+            if (statusBusy)
             {
-                applicant = await Api.patch('/api/applications/' + applicantId + '/status', { status: status });
-                historyList = applicant.history || historyList;
-                rejectOpen = false;
-                renderAll();
-                showToast('Application moved to ' + status + '.', 'success');
-            }
-            catch (error)
-            {
-                showError('decision-error', error.message);
-                Dash.setBusy(button, false);
-            }
-        }
-
-        async function confirmReject(button)
-        {
-            const input = el('reject-reason');
-            const errorBox = el('reject-error');
-            const reason = input.value.trim();
-
-            errorBox.classList.add('hidden');
-
-            if (reason.length < 5)
-            {
-                errorBox.textContent = 'Please give a reason of at least a few words. Rejections are audited, so a reason is required.';
-                errorBox.classList.remove('hidden');
                 return;
             }
 
             hideError('decision-error');
+            statusBusy = true;
+
+            const previousStatus = applicant.status;
+            const previousHistory = historyList;
+
+            applicant.status = status;
+            newHistoryFrom = historyList.length;
+            historyList = historyList.concat([{ from: previousStatus, to: status, changedBy: user.name, at: new Date().toISOString() }]);
+            renderAll();
+
+            try
+            {
+                const result = await Api.patch('/api/applications/' + applicantId + '/status', { status: status });
+                applicant = result;
+                historyList = result.history || historyList;
+                showToast(status === 'Shortlisted' ? 'Candidate shortlisted.' : 'Application moved to ' + status + '.', 'success');
+            }
+            catch (error)
+            {
+                applicant.status = previousStatus;
+                historyList = previousHistory;
+                newHistoryFrom = -1;
+                showError('decision-error', error.message);
+            }
+
+            statusBusy = false;
+            renderAll();
+        }
+
+        function openDecision(decision)
+        {
+            const rejecting = decision === 'Rejected';
+            decisionTarget = decision;
+
+            el('dd-title').textContent = rejecting ? 'Reject this candidate?' : 'Select this candidate?';
+            el('dd-text').textContent = rejecting
+                ? 'Rejection is final and goes on the audit trail. The reason stays private to recruiters.'
+                : 'Selecting is final and goes on the audit trail. The candidate is notified.';
+            el('dd-confirm').className = 'btn ' + (rejecting ? 'btn-danger' : 'btn-success');
+            el('dd-confirm').textContent = rejecting ? 'Reject candidate' : 'Select candidate';
+            el('dd-reason').value = '';
+            hideError('dd-error');
+            el('decision-dialog').showModal();
+            el('dd-reason').focus();
+        }
+
+        async function confirmDecision(event)
+        {
+            event.preventDefault();
+
+            const reason = el('dd-reason').value.trim();
+            const button = el('dd-confirm');
+
+            hideError('dd-error');
+
+            if (reason.length < 5)
+            {
+                showError('dd-error', 'Please give a reason of at least a few words. Final decisions are audited, so a reason is required.');
+                el('dd-reason').focus();
+                return;
+            }
+
             Dash.setBusy(button, true);
 
             try
             {
-                const result = await Api.post('/api/applications/' + applicantId + '/decision', { decision: 'Rejected', reason: reason });
+                const result = await Api.post('/api/applications/' + applicantId + '/decision', { decision: decisionTarget, reason: reason });
                 applicant = result.application;
                 historyList = applicant.history || historyList;
-                rejectOpen = false;
+                newHistoryFrom = Math.max(0, historyList.length - 1);
+                el('decision-dialog').close();
                 renderAll();
-                showToast('Application rejected. The decision is on the audit trail.', 'success');
+                showToast(decisionTarget === 'Rejected'
+                    ? 'Candidate rejected. The decision is on the audit trail.'
+                    : 'Candidate selected. The decision is on the audit trail.', 'success');
             }
             catch (error)
             {
-                errorBox.textContent = error.message;
-                errorBox.classList.remove('hidden');
-                Dash.setBusy(button, false);
+                showError('dd-error', error.message);
             }
+
+            Dash.setBusy(button, false);
         }
 
         function renderNotes()
@@ -1170,33 +2079,27 @@
                 return;
             }
 
-            body.innerHTML = '<div class="d-table-wrap"><table class="d-table"><thead><tr>' +
-                '<th>From</th><th>To</th><th>Changed by</th><th>When</th><th>Reason</th>' +
-                '</tr></thead><tbody>' +
-                historyList.map(function (entry)
-                {
-                    return '<tr>' +
-                        '<td>' + (entry.from ? Dash.esc(entry.from) : '<span class="muted">Start</span>') + '</td>' +
-                        '<td>' + Dash.badge(entry.to, Dash.statusTone(entry.to)) + '</td>' +
-                        '<td>' + Dash.esc(entry.changedBy) + '</td>' +
-                        '<td>' + Dash.esc(Dash.dateTime(entry.at)) + '</td>' +
-                        '<td>' + (entry.reason ? Dash.esc(entry.reason) : '<span class="muted">—</span>') + '</td>' +
-                        '</tr>';
-                }).join('') +
-                '</tbody></table></div>';
+            body.innerHTML = '<ol class="ev-timeline">' + historyList.map(function (entry, index)
+            {
+                return '<li' + (index >= newHistoryFrom && newHistoryFrom >= 0 ? ' class="is-new"' : '') + '>' +
+                    Dash.badge(entry.to, Dash.statusTone(entry.to)) +
+                    '<p>' + (entry.from ? 'From ' + Dash.esc(entry.from) + '. ' : 'Application started. ') + 'Changed by ' + Dash.esc(entry.changedBy) + '.</p>' +
+                    (entry.reason ? '<p>Reason: ' + Dash.esc(entry.reason) + '</p>' : '') +
+                    '<small>' + Dash.esc(Dash.dateTime(entry.at)) + '</small></li>';
+            }).join('') + '</ol>';
         }
 
         function renderAll()
         {
             renderHeader();
-            renderAssessment();
+            renderActions();
+            renderEvidence();
+            renderOverview();
             renderQuestions();
-            renderFairness();
-            renderClaims();
             renderInterviewNote();
-            renderDecision();
             renderNotes();
             renderHistory();
+            renderTray();
             Dash.icons();
         }
 
@@ -1253,6 +2156,62 @@
 
         if (user)
         {
+            wireSegmented(el('iv-type'));
+
+            el('compare-tray').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-tray-remove]');
+
+                if (!button)
+                {
+                    return;
+                }
+
+                storeCompare(loadCompare().filter(function (item)
+                {
+                    return String(item.id) !== button.getAttribute('data-tray-remove');
+                }));
+
+                renderTray();
+
+                if (applicant)
+                {
+                    renderActions();
+                    Dash.icons();
+                }
+            });
+
+            el('head-actions').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('button');
+
+                if (!button || button.disabled)
+                {
+                    return;
+                }
+
+                if (button.getAttribute('data-status'))
+                {
+                    changeStatus(button.getAttribute('data-status'));
+                }
+                else if (button.getAttribute('data-decide'))
+                {
+                    openDecision(button.getAttribute('data-decide'));
+                }
+                else if (button.getAttribute('data-act') === 'compare')
+                {
+                    toggleCompare();
+                    Dash.icons();
+                }
+            });
+
+            el('decision-form').addEventListener('submit', confirmDecision);
+
+            el('dd-cancel').addEventListener('click', function ()
+            {
+                el('decision-dialog').close();
+            });
+
             document.querySelector('.d-tabs').addEventListener('click', function (event)
             {
                 const button = event.target.closest('[data-tab]');
@@ -1263,13 +2222,222 @@
                 }
             });
 
-            el('panel-assessment').addEventListener('click', function (event)
+            document.querySelector('.d-tabs').addEventListener('keydown', function (event)
+            {
+                if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft')
+                {
+                    return;
+                }
+
+                const at = TABS.indexOf(event.target.getAttribute('data-tab'));
+
+                if (at === -1)
+                {
+                    return;
+                }
+
+                const next = TABS[(at + (event.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length];
+                setTab(next);
+                el('tab-' + next).focus();
+            });
+
+            const evidence = el('evidence-body');
+
+            evidence.addEventListener('click', function (event)
             {
                 const gapButton = event.target.closest('[data-gap]');
 
                 if (gapButton)
                 {
                     confirmGap(Number(gapButton.getAttribute('data-gap')), gapButton);
+                    return;
+                }
+
+                const action = event.target.closest('[data-act]');
+
+                if (action)
+                {
+                    if (action.getAttribute('data-act') === 'rescore')
+                    {
+                        runRescore(action);
+                    }
+                    else if (action.getAttribute('data-act') === 'fairness')
+                    {
+                        runFairness(action);
+                    }
+
+                    return;
+                }
+
+                if (event.target.closest('[data-pop-close]'))
+                {
+                    closePop(true);
+                    return;
+                }
+
+                const chip = event.target.closest('.ev-chip[data-skill]');
+
+                if (chip)
+                {
+                    const skill = chip.getAttribute('data-skill');
+
+                    if (stacked())
+                    {
+                        setActive([skill], null, true);
+                    }
+
+                    if (popSkill === skill)
+                    {
+                        closePop(false);
+                    }
+                    else
+                    {
+                        openPop(chip);
+                    }
+                }
+            });
+
+            evidence.addEventListener('change', function (event)
+            {
+                const verify = event.target.closest('[data-verify]');
+
+                if (verify)
+                {
+                    toggleVerified(Number(verify.getAttribute('data-verify')), verify);
+                    return;
+                }
+
+                const claim = event.target.closest('[data-claim]');
+
+                if (claim)
+                {
+                    reviewClaim(Number(claim.getAttribute('data-claim')), claim);
+                }
+            });
+
+            evidence.addEventListener('submit', function (event)
+            {
+                if (event.target.id === 'ev-add-form')
+                {
+                    addSkills(event);
+                }
+            });
+
+            function pointerIn(event)
+            {
+                if (stacked())
+                {
+                    return;
+                }
+
+                const chip = event.target.closest('.ev-chip[data-skill]');
+
+                if (chip)
+                {
+                    setActive([chip.getAttribute('data-skill')], null, true);
+                    return;
+                }
+
+                const mark = event.target.closest('.ev-hl');
+
+                if (mark)
+                {
+                    setActive(mark.getAttribute('data-skills').split('|'), mark, false);
+                }
+            }
+
+            function pointerOut(event)
+            {
+                const from = event.target.closest('.ev-chip[data-skill], .ev-hl');
+
+                if (!from)
+                {
+                    return;
+                }
+
+                const to = event.relatedTarget && event.relatedTarget.closest ? event.relatedTarget.closest('.ev-chip[data-skill], .ev-hl') : null;
+
+                if (to !== from)
+                {
+                    clearActive();
+                }
+            }
+
+            evidence.addEventListener('mouseover', pointerIn);
+            evidence.addEventListener('mouseout', pointerOut);
+            evidence.addEventListener('focusin', function (event)
+            {
+                const chip = event.target.closest('.ev-chip[data-skill]');
+                const mark = event.target.closest('.ev-hl');
+
+                if (stacked())
+                {
+                    return;
+                }
+
+                if (chip)
+                {
+                    setActive([chip.getAttribute('data-skill')], null, true);
+                }
+                else if (mark)
+                {
+                    setActive(mark.getAttribute('data-skills').split('|'), mark, false);
+                }
+            });
+            evidence.addEventListener('focusout', pointerOut);
+
+            evidence.addEventListener('scroll', function ()
+            {
+                if (current)
+                {
+                    drawThreads();
+                }
+            }, true);
+
+            window.addEventListener('resize', function ()
+            {
+                if (current)
+                {
+                    drawThreads();
+                }
+
+                closePop(false);
+            });
+
+            document.addEventListener('keydown', function (event)
+            {
+                if (event.key === 'Escape' && popSkill)
+                {
+                    closePop(true);
+                }
+            });
+
+            document.addEventListener('click', function (event)
+            {
+                if (popSkill && !event.target.closest('#ev-pop') && !event.target.closest('.ev-chip[data-skill]'))
+                {
+                    closePop(false);
+                }
+            });
+
+            el('panel-overview').addEventListener('click', function (event)
+            {
+                const ref = event.target.closest('[data-ref]');
+
+                if (ref)
+                {
+                    const n = Number(ref.getAttribute('data-ref'));
+                    overviewOpen = overviewOpen === n ? 0 : n;
+                    renderOverview();
+                    Dash.icons();
+
+                    const again = document.querySelector('[data-ref="' + n + '"]');
+
+                    if (again)
+                    {
+                        again.focus();
+                    }
+
                     return;
                 }
 
@@ -1290,19 +2458,12 @@
                 {
                     runLearning(button);
                 }
-                else if (action === 'rescore')
+                else if (action === 'show-evidence')
                 {
-                    runRescore(button);
-                }
-            });
+                    setTab('evidence');
 
-            el('panel-assessment').addEventListener('change', function (event)
-            {
-                const box = event.target.closest('[data-verify]');
-
-                if (box)
-                {
-                    toggleVerified(Number(box.getAttribute('data-verify')), box);
+                    const skill = button.getAttribute('data-skill');
+                    setActive([skill], null, true);
                 }
             });
 
@@ -1310,6 +2471,8 @@
             {
                 generateQuestions(el('gen-questions'));
             });
+
+            el('copy-questions').addEventListener('click', copyQuestions);
 
             el('questions-body').addEventListener('click', function (event)
             {
@@ -1339,17 +2502,18 @@
 
                 if (action === 'toggle')
                 {
-                    if (openGuidelines.has(id))
-                    {
-                        openGuidelines.delete(id);
-                    }
-                    else
+                    const open = card.classList.toggle('open');
+
+                    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+                    if (open)
                     {
                         openGuidelines.add(id);
                     }
-
-                    renderQuestions();
-                    Dash.icons();
+                    else
+                    {
+                        openGuidelines.delete(id);
+                    }
                 }
                 else if (action === 'edit')
                 {
@@ -1357,12 +2521,22 @@
                     confirmingDeleteId = null;
                     renderQuestions();
                     Dash.icons();
+
+                    if (editingQuestionId === id)
+                    {
+                        el('q-edit-text').focus();
+                    }
+                    else
+                    {
+                        focusQuestion(id, 'edit');
+                    }
                 }
                 else if (action === 'cancel-edit')
                 {
                     editingQuestionId = null;
                     renderQuestions();
                     Dash.icons();
+                    focusQuestion(id, 'edit');
                 }
                 else if (action === 'save')
                 {
@@ -1374,12 +2548,14 @@
                     editingQuestionId = null;
                     renderQuestions();
                     Dash.icons();
+                    focusQuestion(id, 'del');
                 }
                 else if (action === 'cancel-del')
                 {
                     confirmingDeleteId = null;
                     renderQuestions();
                     Dash.icons();
+                    focusQuestion(id, 'del');
                 }
                 else if (action === 'confirm-del')
                 {
@@ -1391,78 +2567,10 @@
                 }
             });
 
-            el('fairness-run').addEventListener('click', async function ()
-            {
-                const button = el('fairness-run');
-                hideError('fairness-error');
-                Dash.setBusy(button, true);
-
-                try
-                {
-                    fairness = await Api.post('/api/applications/' + applicantId + '/fairness-test');
-                    renderFairness();
-                    Dash.icons();
-                    showToast(fairness.unchanged
-                        ? 'Fairness test passed — the score did not change.'
-                        : 'Fairness test found a difference of ' + fairness.difference + ' points. Review the result.',
-                        fairness.unchanged ? 'success' : 'info');
-                }
-                catch (error)
-                {
-                    showError('fairness-error', error.message);
-                }
-
-                Dash.setBusy(button, false);
-            });
-
-            el('claims-body').addEventListener('change', function (event)
-            {
-                const box = event.target.closest('[data-claim]');
-
-                if (box)
-                {
-                    reviewClaim(Number(box.getAttribute('data-claim')), box);
-                }
-            });
-
             el('interview-form').addEventListener('submit', function (event)
             {
                 event.preventDefault();
                 scheduleInterview(false);
-            });
-
-            el('decision-body').addEventListener('click', function (event)
-            {
-                const button = event.target.closest('button');
-
-                if (!button || button.disabled)
-                {
-                    return;
-                }
-
-                const status = button.getAttribute('data-status');
-                const action = button.getAttribute('data-act');
-
-                if (status)
-                {
-                    changeStatus(status, button);
-                }
-                else if (action === 'reject-open')
-                {
-                    rejectOpen = true;
-                    renderDecision();
-                    Dash.icons();
-                }
-                else if (action === 'reject-cancel')
-                {
-                    rejectOpen = false;
-                    renderDecision();
-                    Dash.icons();
-                }
-                else if (action === 'reject-confirm')
-                {
-                    confirmReject(button);
-                }
             });
 
             el('note-form').addEventListener('submit', async function (event)

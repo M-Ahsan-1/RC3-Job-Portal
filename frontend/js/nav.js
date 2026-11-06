@@ -4,7 +4,7 @@ const NAV_LINKS =
         { label: 'Dashboard', href: 'recruiter.html' },
         { label: 'Jobs', href: 'jobs.html' },
         { label: 'Interviews', href: 'interviews.html' },
-        { label: 'Talent Search', href: 'search.html' }
+        { label: 'Talent search', href: 'search.html' }
     ],
     candidate: [
         { label: 'Dashboard', href: 'candidate.html' }
@@ -26,6 +26,7 @@ function buildNavLink(link, activePage)
     if (link.href === activePage)
     {
         anchor.className = 'active';
+        anchor.setAttribute('aria-current', 'page');
     }
 
     return anchor;
@@ -35,21 +36,21 @@ function renderNav()
 {
     const user = getUser();
 
-    if (!user)
+    if (!user || document.querySelector('.d-shell'))
     {
         return;
     }
-
     const activePage = currentPageName();
     const links = NAV_LINKS[user.role] || [];
 
     const nav = document.createElement('nav');
     nav.className = 'navbar';
+    nav.setAttribute('aria-label', 'Main');
 
     const brand = document.createElement('a');
     brand.className = 'nav-brand';
     brand.href = dashboardFor(user.role);
-    brand.innerHTML = 'RC3 <span>Job Portal</span>';
+    brand.innerHTML = typeof wordmark === 'function' ? wordmark() : 'SORYNTH';
     nav.appendChild(brand);
 
     const linkBox = document.createElement('div');
@@ -72,7 +73,7 @@ function renderNav()
     const logoutButton = document.createElement('button');
     logoutButton.className = 'btn btn-secondary btn-sm';
     logoutButton.type = 'button';
-    logoutButton.textContent = 'Logout';
+    logoutButton.textContent = 'Log out';
     logoutButton.addEventListener('click', logout);
     userBox.appendChild(logoutButton);
 

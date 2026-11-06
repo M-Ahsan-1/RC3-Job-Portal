@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Components – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/brand.js"></script>
+<script>showPageLoader();</script>
+
+<main class="container">
+    <div class="page-header">
+        <h1>Component kit</h1>
+        <div class="row">
+            <button class="btn btn-secondary btn-sm" type="button" id="theme-btn">Toggle dark mode</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="loader-btn">Replay page loader</button>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-title"><h2>Buttons</h2></div>
+        <div class="row">
+            <button class="btn" type="button">Primary</button>
+            <button class="btn btn-secondary" type="button">Secondary</button>
+            <button class="btn btn-quiet" type="button">Quiet</button>
+            <button class="btn btn-success" type="button">Shortlist candidate</button>
+            <button class="btn btn-danger" type="button">Reject</button>
+            <button class="btn" type="button" disabled>Disabled</button>
+            <button class="btn" type="button" id="load-btn">Save corrections</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-title"><h2>Badges, pills and chips</h2></div>
+        <div class="row" id="badges"></div>
+        <div style="margin-top: 16px" id="chips">
+            <span class="chip chip-match">Django <button type="button" aria-label="Remove Django" data-remove>x</button></span>
+            <span class="chip chip-gap">Kubernetes <button type="button" aria-label="Remove Kubernetes" data-remove>x</button></span>
+            <span class="chip chip-absent">Go <button type="button" aria-label="Remove Go" data-remove>x</button></span>
+            <button class="btn btn-secondary btn-sm" type="button" id="add-chip">Add chip</button>
+        </div>
+        <p style="margin-top: 12px">Evidence looks like this: <mark>Built REST APIs in Django</mark></p>
+    </section>
+
+    <section class="card">
+        <div class="card-title"><h2>Form controls</h2></div>
+        <div class="grid-2">
+            <div class="form-group"><label for="t1">Email</label><input id="t1" type="email" placeholder="you@company.com"></div>
+            <div class="form-group"><label for="t2">Invalid field</label><input id="t2" type="text" class="invalid" value="oops"><div class="error-text">Enter a valid value.</div></div>
+            <div class="form-group"><label for="t3">Role</label><select id="t3"><option>Recruiter</option><option>Candidate</option></select></div>
+            <div class="form-group"><label for="t4">Notes</label><textarea id="t4"></textarea></div>
+        </div>
+        <div class="row">
+            <label class="check"><input type="checkbox" checked> Reviewed</label>
+            <label class="check"><input type="radio" name="r" checked> Required</label>
+            <label class="check"><input type="radio" name="r"> Preferred</label>
+            <label class="check"><input type="checkbox" class="switch" role="switch" checked> Email alerts</label>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-title"><h2>Tabs, progress and score ring</h2></div>
+        <div class="tabs" role="tablist">
+            <button class="tab-btn active" role="tab" aria-selected="true" type="button">Evidence</button>
+            <button class="tab-btn" role="tab" aria-selected="false" type="button">Overview</button>
+            <button class="tab-btn" role="tab" aria-selected="false" type="button">Notes</button>
+        </div>
+        <div class="row" style="gap: 32px">
+            <div class="ring-wrap" style="--ring-size: 96px">
+                <svg class="ring" viewBox="0 0 36 36" id="ring" style="--value: 72" aria-hidden="true">
+                    <circle class="ring-track" cx="18" cy="18" r="15.9155"/>
+                    <circle class="ring-fill" cx="18" cy="18" r="15.9155"/>
+                </svg>
+                <span class="ring-value" id="ring-num">72</span>
+            </div>
+            <div style="flex: 1; min-width: 220px">
+                <div class="score-row"><div class="score-label"><span>Skills</span><span class="num">50%</span></div><div class="progress match" style="--value: 80"><div class="progress-fill"></div></div></div>
+                <div class="score-row"><div class="score-label"><span>Experience</span><span class="num">25%</span></div><div class="progress" style="--value: 55"><div class="progress-fill"></div></div></div>
+                <button class="btn btn-secondary btn-sm" type="button" id="rescore">Re-score</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-title"><h2>Table</h2></div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th aria-sort="descending">Candidate</th><th>Score</th><th>Status</th></tr></thead>
+                <tbody>
+                    <tr><td>Priya Nair</td><td>86</td><td id="p1"></td></tr>
+                    <tr><td>Hamza Ali</td><td>64</td><td id="p2"></td></tr>
+                    <tr><td>Sara Khan</td><td>38</td><td id="p3"></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-title"><h2>Overlays and feedback</h2></div>
+        <div class="row">
+            <button class="btn btn-secondary" type="button" id="toast-ok">Success toast</button>
+            <button class="btn btn-secondary" type="button" id="toast-err">Error toast</button>
+            <button class="btn btn-secondary" type="button" id="drawer-btn">Open drawer</button>
+            <button class="btn btn-secondary" type="button" id="dialog-btn">Confirm dialog</button>
+            <button class="btn btn-secondary" type="button" id="reason-btn">Reason dialog</button>
+            <button class="btn btn-secondary" type="button" id="shake-btn">Shake</button>
+            <button class="btn btn-secondary" type="button" id="copy-btn">Copy text</button>
+            <button class="btn btn-secondary" type="button" data-tip="No evidence found means the resume doesn't mention it.">Tooltip</button>
+            <span class="stat-value" id="count">0</span>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-title"><h2>Skeleton, empty and error</h2></div>
+        <div class="grid-3">
+            <div id="demo-skeleton"></div>
+            <div id="demo-empty"></div>
+            <div id="demo-error"></div>
+        </div>
+        <div class="row" style="margin-top: 16px" id="illus-row"></div>
+    </section>
+</main>
+
+<aside class="drawer" id="demo-drawer" aria-labelledby="drawer-title">
+    <div class="drawer-header">
+        <h2 id="drawer-title">Apply for Backend Developer</h2>
+        <button class="btn btn-quiet btn-sm" type="button" id="drawer-close" aria-label="Close">Close</button>
+    </div>
+    <div class="drawer-body">
+        <div class="form-group"><label for="d1">Cover note</label><textarea id="d1"></textarea></div>
+    </div>
+    <div class="drawer-footer">
+        <button class="btn" type="button">Submit application</button>
+    </div>
+</aside>
+
+<script src="js/icons.js"></script>
+<script src="js/illustrations.js"></script>
+<script src="js/ui.js"></script>
+<script>
+    function $(id)
+    {
+        return document.getElementById(id);
+    }
+
+    ['submitted', 'parsed', 'under_review', 'shortlisted', 'interview', 'selected', 'rejected'].forEach(function (state)
+    {
+        $('badges').insertAdjacentHTML('beforeend', statusPill(state));
+    });
+
+    $('badges').insertAdjacentHTML('beforeend',
+        '<span class="badge badge-match">Matched</span>' +
+        '<span class="badge badge-gap">No evidence found</span>' +
+        '<span class="badge badge-absent">Confirmed absent</span>' +
+        '<span class="badge badge-neutral">Neutral</span>');
+
+    $('p1').innerHTML = statusPill('shortlisted');
+    $('p2').innerHTML = statusPill('under_review');
+    $('p3').innerHTML = statusPill('rejected');
+
+    $('theme-btn').addEventListener('click', function ()
+    {
+        const root = document.documentElement;
+        const dark = root.dataset.theme === 'dark' || (!root.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        root.dataset.theme = dark ? 'light' : 'dark';
+    });
+
+    $('loader-btn').addEventListener('click', function ()
+    {
+        showPageLoader();
+        setTimeout(hidePageLoader, 1800);
+    });
+
+    $('load-btn').addEventListener('click', function (event)
+    {
+        const button = event.currentTarget;
+        setLoading(button, true);
+        setTimeout(function ()
+        {
+            setLoading(button, false);
+            showToast('Corrections saved', 'success');
+        }, 1500);
+    });
+
+    $('chips').addEventListener('click', function (event)
+    {
+        if (event.target.matches('[data-remove]'))
+        {
+            removeChip(event.target.closest('.chip'));
+        }
+    });
+
+    $('add-chip').addEventListener('click', function ()
+    {
+        const chip = document.createElement('span');
+        chip.className = 'chip chip-match';
+        chip.innerHTML = 'Docker <button type="button" aria-label="Remove Docker" data-remove>x</button>';
+        $('chips').insertBefore(chip, $('add-chip'));
+    });
+
+    $('rescore').addEventListener('click', function ()
+    {
+        const next = Math.round(30 + Math.random() * 65);
+        $('ring').style.setProperty('--value', next);
+        countUp($('ring-num'), next, 700);
+    });
+
+    $('toast-ok').addEventListener('click', function () { showToast('Candidate shortlisted', 'success'); });
+    $('toast-err').addEventListener('click', function () { showToast('The file is over 5 MB. Upload a smaller PDF.', 'error'); });
+    $('drawer-btn').addEventListener('click', function () { openDrawer('demo-drawer'); });
+    $('drawer-close').addEventListener('click', function () { closeDrawer('demo-drawer'); });
+    $('shake-btn').addEventListener('click', function (event) { shake(event.currentTarget); });
+    $('copy-btn').addEventListener('click', function () { copyToClipboard('Hire on evidence. Decide as a human.'); });
+    $('count').addEventListener('click', function () { countUp($('count'), 1248, 900); });
+
+    $('dialog-btn').addEventListener('click', function ()
+    {
+        confirmDialog('Close this job? Candidates can no longer apply.', { title: 'Close job', confirmLabel: 'Close job' }).then(function (ok)
+        {
+            showToast(ok ? 'Job closed' : 'Nothing changed', ok ? 'success' : 'info');
+        });
+    });
+
+    $('reason-btn').addEventListener('click', function ()
+    {
+        confirmDialog('This decision is final and the candidate is notified.', {
+            title: 'Reject candidate',
+            confirmLabel: 'Reject candidate',
+            danger: true,
+            reasonLabel: 'Reason for rejecting'
+        }).then(function (reason)
+        {
+            if (reason)
+            {
+                showToast('Candidate rejected', 'success');
+            }
+        });
+    });
+
+    renderSkeleton($('demo-skeleton'), 4);
+
+    renderEmpty($('demo-empty'), {
+        title: 'No applicants yet',
+        text: 'Share the job link to start receiving applications.',
+        actionLabel: 'Copy job link',
+        illustration: 'no-applicants',
+        onAction: function () { copyToClipboard('https://example.com/job'); }
+    });
+
+    renderError($('demo-error'), 'The server did not respond. Check your connection and try again.', function () { showToast('Retrying', 'info'); });
+
+    ['no-jobs', 'no-applicants', 'no-applications', 'no-results', 'no-interviews', 'error', 'upload'].forEach(function (name)
+    {
+        $('illus-row').insertAdjacentHTML('beforeend', illustration(name));
+    });
+
+    countUp($('count'), 1248, 900);
+
+    window.addEventListener('load', hidePageLoader);
+</script>
+</body>
+</html>

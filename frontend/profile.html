@@ -3,18 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile - RC3 Job Portal</title>
+    <title>My profile – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/candidate.css">
+    <link rel="stylesheet" href="css/profile.css">
 </head>
 <body class="theme-candidate">
+    <script src="js/brand.js"></script>
+    <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
         <div id="load-box"></div>
 
         <form id="profile-form" class="hidden" novalidate>
-            <section class="d-panel" aria-label="About you">
+            <section class="d-panel cd-strength" id="strength-panel" aria-label="Profile strength" style="--i:0"></section>
+
+            <section class="d-panel" aria-label="About you" style="--i:1">
                 <h3>About you</h3>
                 <p class="sub">This is what we read from your resume. Fix anything that does not look like you.</p>
                 <p class="d-hint" id="who-line"></p>
@@ -32,20 +41,23 @@
                 </div>
             </section>
 
-            <section class="d-panel" aria-label="Skills">
-                <div class="d-panel-head">
+            <section class="d-panel" aria-label="Skills" style="--i:2">
+                <h3>Skills</h3>
+                <p class="sub">The skills we found in your resume</p>
+                <div class="pr-skill-add">
                     <div>
-                        <h3>Skills</h3>
-                        <p class="sub">The skills we found in your resume</p>
+                        <label for="skill-input">Add a skill</label>
+                        <input type="text" id="skill-input" placeholder="For example Python, Docker" autocomplete="off">
                     </div>
-                    <button type="button" class="btn btn-secondary btn-sm" id="add-skill"><i data-lucide="plus" style="width:14px;height:14px"></i>Add skill</button>
+                    <button type="button" class="btn btn-secondary" id="add-skill"><i data-lucide="plus" style="width:14px;height:14px"></i>Add skill</button>
                 </div>
-                <div id="skills-rows" style="margin-top:14px"></div>
-                <p class="d-hint">A flag means our parser could not confirm that skill from your resume text. Please check the spelling or remove it. You cannot confirm a skill yourself, because a person reviews every correction before it is confirmed.</p>
                 <p class="error-text" id="skills-error" role="alert"></p>
+                <p class="cd-vh" id="skills-status" role="status" aria-live="polite"></p>
+                <div id="skills-rows"></div>
+                <p class="d-hint">A flagged skill means our parser could not find it in your resume text. Check the spelling or remove it. You cannot confirm a skill yourself, because a person reviews every correction before it is confirmed.</p>
             </section>
 
-            <section class="d-panel" aria-label="Education">
+            <section class="d-panel" aria-label="Education" style="--i:3">
                 <div class="d-panel-head">
                     <div>
                         <h3>Education</h3>
@@ -56,7 +68,7 @@
                 <div id="education-rows" style="margin-top:14px"></div>
             </section>
 
-            <section class="d-panel" aria-label="Experience">
+            <section class="d-panel" aria-label="Experience" style="--i:4">
                 <div class="d-panel-head">
                     <div>
                         <h3>Experience</h3>
@@ -67,7 +79,7 @@
                 <div id="experience-rows" style="margin-top:14px"></div>
             </section>
 
-            <section class="d-panel" aria-label="Projects">
+            <section class="d-panel" aria-label="Projects" style="--i:5">
                 <div class="d-panel-head">
                     <div>
                         <h3>Projects</h3>
@@ -78,7 +90,7 @@
                 <div id="projects-rows" style="margin-top:14px"></div>
             </section>
 
-            <section class="d-panel" aria-label="Save your corrections">
+            <section class="d-panel" aria-label="Save your corrections" style="--i:6">
                 <div class="d-callout">
                     <i data-lucide="shield-check"></i>
                     <div>
@@ -109,13 +121,25 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/illustrations.js"></script>
+    <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/candidate-shared.js"></script>
     <script>
         const user = guardPage('candidate');
         const GROUP_NAMES = ['education', 'experience', 'projects'];
         const ADD_BUTTONS = { education: 'add-education', experience: 'add-experience', projects: 'add-project' };
+        const REVEAL_KEY_PREFIX = 'soryn-profile-reveal-';
+        const FLAG_TIP = "We couldn't find this in your resume text. Check it or remove it.";
+        const PANEL_STEP_MS = 200;
+        const PANEL_RISE_MS = 360;
+        const CHIP_STEP_MS = 70;
+        const CHIP_POP_MS = 220;
+        const CHIP_STAGGER_CAP = 14;
+        const CHIP_LEAVE_MS = 150;
 
         const GROUPS =
         {
@@ -159,6 +183,9 @@
         let savedProfile = null;
         let draft = null;
         let savedSnapshot = '';
+        let openRows = { education: [], experience: [], projects: [] };
+        let revealing = false;
+        let revealTimer = null;
 
         function el(id)
         {
@@ -228,6 +255,136 @@
             };
         }
 
+        function resetOpenRows()
+        {
+            GROUP_NAMES.forEach(function (name)
+            {
+                openRows[name] = draft[name].map(function ()
+                {
+                    return false;
+                });
+            });
+        }
+
+        function revealKey()
+        {
+            return REVEAL_KEY_PREFIX + String(user.id || user.email);
+        }
+
+        function shouldReveal(profile)
+        {
+            if (!profile.parsedAt)
+            {
+                return false;
+            }
+
+            try
+            {
+                return localStorage.getItem(revealKey()) !== profile.parsedAt;
+            }
+            catch (error)
+            {
+                return false;
+            }
+        }
+
+        function markRevealed(profile)
+        {
+            try
+            {
+                localStorage.setItem(revealKey(), profile.parsedAt);
+            }
+            catch (error)
+            {
+            }
+        }
+
+        function revealLength()
+        {
+            const panelsEnd = 6 * PANEL_STEP_MS + PANEL_RISE_MS;
+            const chipsStart = 2 * PANEL_STEP_MS + 240;
+            const chipCount = Math.min(draft.skills.length, CHIP_STAGGER_CAP);
+            const chipsEnd = chipsStart + chipCount * CHIP_STEP_MS + CHIP_POP_MS;
+
+            return Math.max(panelsEnd, chipsEnd) + 200;
+        }
+
+        function endReveal()
+        {
+            clearTimeout(revealTimer);
+            revealTimer = null;
+            revealing = false;
+            el('profile-form').classList.remove('pr-reveal');
+        }
+
+        function missingFields(name, row)
+        {
+            const group = GROUPS[name];
+
+            return group.fields.filter(function (field)
+            {
+                return group.required.indexOf(field.key) !== -1 && !String(row[field.key] || '').trim();
+            });
+        }
+
+        function missingText(fields)
+        {
+            return 'Please add ' + fields.map(function (field)
+            {
+                return field.label.toLowerCase();
+            }).join(' and ') + ', or remove this entry if it is blank.';
+        }
+
+        function isComplete(name, row)
+        {
+            return missingFields(name, row).length === 0;
+        }
+
+        function strengthInput()
+        {
+            const input =
+            {
+                resumeFileName: savedProfile.resumeFileName,
+                phone: draft.phone.trim(),
+                headline: draft.headline.trim(),
+                skills: draft.skills.filter(function (skill)
+                {
+                    return skill.skill.trim();
+                })
+            };
+
+            GROUP_NAMES.forEach(function (name)
+            {
+                input[name] = draft[name].filter(function (row)
+                {
+                    return isComplete(name, row);
+                });
+            });
+
+            return input;
+        }
+
+        function renderStrength()
+        {
+            const panel = el('strength-panel');
+            const result = CandidateKit.strength(strengthInput());
+            const ring = panel.querySelector('.cd-ring');
+
+            if (ring)
+            {
+                ring.setAttribute('data-p', result.percent);
+                ring.setAttribute('aria-label', 'Profile strength ' + result.percent + ' percent');
+                ring.style.setProperty('--p', result.percent);
+                ring.querySelector('b').textContent = result.percent + '%';
+                panel.querySelector('[data-suggestion]').textContent = result.suggestion;
+                return;
+            }
+
+            panel.innerHTML = CandidateKit.ringHtml(result.percent) +
+                '<div><h3>Profile strength</h3><p data-suggestion>' + Dash.esc(result.suggestion) + '</p></div>';
+            CandidateKit.animateRings(panel);
+        }
+
         function fieldHtml(field, row)
         {
             const value = Dash.esc(row[field.key] || '');
@@ -239,6 +396,33 @@
             }
 
             return '<div' + wide + '><label>' + field.label + '<input type="text" data-field="' + field.key + '" value="' + value + '" placeholder="' + field.placeholder + '"></label></div>';
+        }
+
+        function datesText(row)
+        {
+            if (row.from && row.to)
+            {
+                return row.from + ' to ' + row.to;
+            }
+
+            return row.from || row.to || '';
+        }
+
+        function viewHtml(name, row)
+        {
+            if (name === 'education')
+            {
+                return '<div class="pr-view"><b>' + Dash.esc(row.qualification) + '</b><p>' + Dash.esc(row.institution) + '</p>' +
+                    (datesText(row) ? '<p>' + Dash.esc(datesText(row)) + '</p>' : '') + '</div>';
+            }
+
+            if (name === 'experience')
+            {
+                return '<div class="pr-view"><b>' + Dash.esc(row.role) + '</b><p>' + Dash.esc(row.company) + (datesText(row) ? ', ' + Dash.esc(datesText(row)) : '') + '</p>' +
+                    (row.summary ? '<p>' + Dash.esc(row.summary) + '</p>' : '') + '</div>';
+            }
+
+            return '<div class="pr-view"><b>' + Dash.esc(row.name) + '</b>' + (row.summary ? '<p>' + Dash.esc(row.summary) + '</p>' : '') + '</div>';
         }
 
         function renderHeader()
@@ -262,28 +446,32 @@
                 : '';
         }
 
-        function renderSkills()
+        function renderSkills(newFrom)
         {
             const box = el('skills-rows');
 
             if (!draft.skills.length)
             {
-                box.innerHTML = '<p class="d-hint">No skills yet. Add the skills that best describe your work.</p>';
+                box.innerHTML = '<p class="d-hint" style="margin-top:14px">No skills yet. Add the skills that best describe your work.</p>';
                 return;
             }
 
-            box.innerHTML = draft.skills.map(function (skill, index)
-            {
-                const indicator = skill.verified === true
-                    ? '<span class="d-chip ok" title="Our team confirmed this skill from your resume"><i data-lucide="badge-check" style="width:13px;height:13px"></i>Confirmed</span>'
-                    : '<span class="d-chip warn" title="Our resume parser could not confirm this skill from your resume text. Please check the spelling or remove it. A person reviews your correction before it is confirmed."><i data-lucide="flag" style="width:13px;height:13px"></i>Needs review</span>';
+            const chipsStart = 2 * PANEL_STEP_MS + 240;
 
-                return '<div class="row" style="margin-bottom:10px">' +
-                    '<input type="text" data-skill-input="' + index + '" value="' + Dash.esc(skill.skill) + '" placeholder="For example Python" aria-label="Skill ' + (index + 1) + ' name" style="flex:1;min-width:160px">' +
-                    indicator +
-                    '<button type="button" class="btn btn-secondary btn-sm" data-remove-skill="' + index + '" aria-label="Remove skill ' + (index + 1) + '"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>' +
+            box.innerHTML = '<div class="pr-chips" role="list" aria-label="Your skills">' + draft.skills.map(function (skill, index)
+            {
+                const flagged = skill.verified !== true;
+                const isNew = newFrom !== undefined && index >= newFrom;
+                const delay = revealing ? ' style="--d:' + (chipsStart + Math.min(index, CHIP_STAGGER_CAP) * CHIP_STEP_MS) + 'ms"' : '';
+                const mark = flagged
+                    ? '<span class="pr-mark pr-flag" tabindex="0" role="img" data-tip="' + CandidateKit.attrEsc(FLAG_TIP) + '" aria-label="Needs review. ' + CandidateKit.attrEsc(FLAG_TIP) + '"><i data-lucide="flag"></i></span>'
+                    : '<span class="pr-mark" role="img" aria-label="Confirmed from your resume"><i data-lucide="badge-check"></i></span>';
+
+                return '<div class="pr-chip ' + (flagged ? 'is-flag' : 'is-ok') + (isNew ? ' is-new' : '') + '" role="listitem"' + delay + '>' +
+                    '<span>' + Dash.esc(skill.skill) + '</span>' + mark +
+                    '<button type="button" class="pr-chip-x" data-remove-skill="' + index + '" aria-label="Remove ' + CandidateKit.attrEsc(skill.skill) + '"><i data-lucide="x"></i></button>' +
                     '</div>';
-            }).join('');
+            }).join('') + '</div>';
         }
 
         function renderGroup(name)
@@ -300,16 +488,32 @@
 
             box.innerHTML = rows.map(function (row, index)
             {
-                const fields = group.fields.map(function (field)
+                const editing = openRows[name][index] === true;
+                const label = group.heading.toLowerCase() + ' ' + (index + 1);
+                let body = '';
+
+                if (editing)
                 {
-                    return fieldHtml(field, row);
-                }).join('');
+                    body = '<div class="d-form-grid">' + group.fields.map(function (field)
+                    {
+                        return fieldHtml(field, row);
+                    }).join('') + '</div>' +
+                        '<p class="error-text" data-error></p>' +
+                        '<div class="pr-row-actions"><button type="button" class="btn btn-sm" data-done="' + name + '" data-index="' + index + '"><i data-lucide="check" style="width:14px;height:14px"></i>Done</button></div>';
+                }
+                else
+                {
+                    body = viewHtml(name, row) + '<p class="error-text" data-error></p>';
+                }
+
+                const edit = editing
+                    ? ''
+                    : '<button type="button" class="btn btn-secondary btn-sm" data-edit="' + name + '" data-index="' + index + '" aria-label="Edit ' + label + '"><i data-lucide="pencil" style="width:14px;height:14px"></i>Edit</button>';
 
                 return '<div class="d-q" data-row="' + name + '" data-index="' + index + '">' +
                     '<div class="d-q-head"><p>' + group.heading + ' ' + (index + 1) + '</p>' +
-                    '<div class="d-q-actions"><button type="button" class="btn btn-secondary btn-sm" data-remove="' + name + '" data-index="' + index + '" aria-label="Remove ' + group.heading.toLowerCase() + ' ' + (index + 1) + '"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></div></div>' +
-                    '<div class="d-q-body"><div class="d-form-grid">' + fields + '</div>' +
-                    '<p class="error-text" data-error></p></div></div>';
+                    '<div class="d-q-actions">' + edit + '<button type="button" class="btn btn-secondary btn-sm" data-remove="' + name + '" data-index="' + index + '" aria-label="Remove ' + label + '"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></div></div>' +
+                    '<div class="d-q-body">' + body + '</div></div>';
             }).join('');
         }
 
@@ -321,6 +525,7 @@
             {
                 renderGroup(name);
             });
+            renderStrength();
             Dash.icons();
         }
 
@@ -329,19 +534,11 @@
             draft.phone = el('phone-input').value;
             draft.headline = el('headline-input').value;
 
-            document.querySelectorAll('[data-skill-input]').forEach(function (input, index)
-            {
-                if (draft.skills[index])
-                {
-                    draft.skills[index].skill = input.value;
-                }
-            });
-
             GROUP_NAMES.forEach(function (name)
             {
-                document.querySelectorAll('[data-row="' + name + '"]').forEach(function (rowBox, index)
+                document.querySelectorAll('[data-row="' + name + '"]').forEach(function (rowBox)
                 {
-                    const row = draft[name][index];
+                    const row = draft[name][Number(rowBox.getAttribute('data-index'))];
 
                     if (!row)
                     {
@@ -376,50 +573,246 @@
         function validate()
         {
             clearErrors();
-            let ok = true;
 
-            const blankSkill = draft.skills.some(function (skill)
-            {
-                return !skill.skill.trim();
-            });
-
-            if (blankSkill)
-            {
-                el('skills-error').textContent = 'Every skill needs a name. Please fill in the blank skill or remove that row.';
-                ok = false;
-            }
+            const errors = [];
 
             GROUP_NAMES.forEach(function (name)
             {
-                const group = GROUPS[name];
-
                 draft[name].forEach(function (row, index)
                 {
-                    const missing = group.fields.filter(function (field)
-                    {
-                        return group.required.indexOf(field.key) !== -1 && !String(row[field.key] || '').trim();
-                    });
+                    const missing = missingFields(name, row);
 
-                    if (!missing.length)
+                    if (missing.length)
                     {
-                        return;
+                        errors.push({ name: name, index: index, text: missingText(missing), missing: missing });
                     }
-
-                    const errorBox = document.querySelector('[data-row="' + name + '"][data-index="' + index + '"] [data-error]');
-
-                    if (errorBox)
-                    {
-                        errorBox.textContent = 'Please add ' + missing.map(function (field)
-                        {
-                            return field.label.toLowerCase();
-                        }).join(' and ') + ', or remove this entry if it is blank.';
-                    }
-
-                    ok = false;
                 });
             });
 
-            return ok;
+            if (!errors.length)
+            {
+                return true;
+            }
+
+            const touched = {};
+
+            errors.forEach(function (item)
+            {
+                openRows[item.name][item.index] = true;
+                touched[item.name] = true;
+            });
+
+            Object.keys(touched).forEach(renderGroup);
+            Dash.icons();
+
+            errors.forEach(function (item)
+            {
+                const box = document.querySelector('[data-row="' + item.name + '"][data-index="' + item.index + '"] [data-error]');
+
+                if (box)
+                {
+                    box.textContent = item.text;
+                }
+            });
+
+            const first = errors[0];
+            const firstInput = document.querySelector('[data-row="' + first.name + '"][data-index="' + first.index + '"] [data-field="' + first.missing[0].key + '"]');
+
+            if (firstInput)
+            {
+                firstInput.focus();
+            }
+
+            return false;
+        }
+
+        function announceSkills(text)
+        {
+            el('skills-status').textContent = text;
+        }
+
+        function addSkills()
+        {
+            readForm();
+
+            const input = el('skill-input');
+            const names = input.value.split(',').map(function (part)
+            {
+                return part.trim();
+            }).filter(Boolean);
+
+            el('skills-error').textContent = '';
+
+            if (!names.length)
+            {
+                el('skills-error').textContent = 'Type a skill name first, for example Python. Use commas to add several at once.';
+                input.focus();
+                return;
+            }
+
+            const before = draft.skills.length;
+            const repeats = [];
+
+            names.forEach(function (name)
+            {
+                const lower = name.toLowerCase();
+                const exists = draft.skills.some(function (skill)
+                {
+                    return skill.skill.trim().toLowerCase() === lower;
+                });
+
+                if (exists)
+                {
+                    repeats.push(name);
+                    return;
+                }
+
+                draft.skills.push({ skill: name, verified: false });
+            });
+
+            const added = draft.skills.length - before;
+
+            if (repeats.length)
+            {
+                const list = repeats.length > 1 ? repeats.slice(0, -1).join(', ') + ' and ' + repeats[repeats.length - 1] : repeats[0];
+                el('skills-error').textContent = list + (repeats.length > 1 ? ' are' : ' is') + ' already in your list.';
+            }
+
+            input.value = repeats.join(', ');
+
+            if (added)
+            {
+                renderSkills(before);
+                Dash.icons();
+                renderStrength();
+                announceSkills(added === 1 ? 'Added ' + draft.skills[before].skill + '.' : 'Added ' + added + ' skills.');
+            }
+
+            input.focus();
+        }
+
+        function removeSkillAt(index)
+        {
+            readForm();
+
+            const removed = draft.skills[index];
+
+            if (!removed)
+            {
+                return;
+            }
+
+            draft.skills.splice(index, 1);
+            renderSkills();
+            Dash.icons();
+            renderStrength();
+            announceSkills('Removed ' + removed.skill + '.');
+            el('skill-input').focus();
+        }
+
+        function dropSkill(button)
+        {
+            const chip = button.closest('.pr-chip');
+            const index = Number(button.getAttribute('data-remove-skill'));
+
+            if (!chip || CandidateKit.reducedMotion())
+            {
+                removeSkillAt(index);
+                return;
+            }
+
+            chip.classList.add('is-leaving');
+
+            setTimeout(function ()
+            {
+                if (!chip.parentNode)
+                {
+                    return;
+                }
+
+                removeSkillAt(Array.prototype.indexOf.call(chip.parentNode.children, chip));
+            }, CHIP_LEAVE_MS);
+        }
+
+        function openRow(name, index)
+        {
+            readForm();
+            openRows[name][index] = true;
+            renderGroup(name);
+            Dash.icons();
+
+            const field = document.querySelector('[data-row="' + name + '"][data-index="' + index + '"] [data-field]');
+
+            if (field)
+            {
+                field.focus();
+            }
+        }
+
+        function closeRow(name, index)
+        {
+            readForm();
+
+            const missing = missingFields(name, draft[name][index]);
+            const box = document.querySelector('[data-row="' + name + '"][data-index="' + index + '"] [data-error]');
+
+            if (missing.length)
+            {
+                if (box)
+                {
+                    box.textContent = missingText(missing);
+                }
+
+                return;
+            }
+
+            openRows[name][index] = false;
+            renderGroup(name);
+            Dash.icons();
+            renderStrength();
+
+            const edit = document.querySelector('[data-edit="' + name + '"][data-index="' + index + '"]');
+
+            if (edit)
+            {
+                edit.focus();
+            }
+        }
+
+        function addRow(name)
+        {
+            readForm();
+            draft[name].push(emptyRow(name));
+            openRows[name].push(true);
+            renderGroup(name);
+            Dash.icons();
+            renderStrength();
+
+            const boxes = document.querySelectorAll('[data-row="' + name + '"]');
+            const last = boxes[boxes.length - 1];
+            const firstField = last ? last.querySelector('[data-field]') : null;
+
+            if (firstField)
+            {
+                firstField.focus();
+            }
+        }
+
+        function removeRow(name, index)
+        {
+            readForm();
+            draft[name].splice(index, 1);
+            openRows[name].splice(index, 1);
+            renderGroup(name);
+            Dash.icons();
+            renderStrength();
+
+            const next = document.getElementById(ADD_BUTTONS[name]);
+
+            if (next)
+            {
+                next.focus();
+            }
         }
 
         async function load()
@@ -432,8 +825,25 @@
                 savedProfile = await Api.get('/api/candidate/profile');
                 draft = buildDraft(savedProfile);
                 savedSnapshot = JSON.stringify(draft);
+                resetOpenRows();
                 el('load-box').innerHTML = '';
+
+                const play = shouldReveal(savedProfile) && !CandidateKit.reducedMotion();
+
+                if (savedProfile.parsedAt)
+                {
+                    markRevealed(savedProfile);
+                }
+
                 el('profile-form').classList.remove('hidden');
+
+                if (play)
+                {
+                    revealing = true;
+                    el('profile-form').classList.add('pr-reveal');
+                    revealTimer = setTimeout(endReveal, revealLength());
+                }
+
                 renderAll();
             }
             catch (error)
@@ -445,6 +855,7 @@
         async function save(event)
         {
             event.preventDefault();
+            endReveal();
             el('cancel-confirm').classList.add('hidden');
             readForm();
 
@@ -460,6 +871,7 @@
                 savedProfile = await Api.put('/api/candidate/profile', buildPayload());
                 draft = buildDraft(savedProfile);
                 savedSnapshot = JSON.stringify(draft);
+                resetOpenRows();
                 renderAll();
                 showToast('Your corrections were saved and sent for review.', 'success');
             }
@@ -469,38 +881,6 @@
             }
 
             Dash.setBusy(el('save-btn'), false);
-        }
-
-        function addSkill()
-        {
-            readForm();
-            draft.skills.push({ skill: '', verified: false });
-            renderSkills();
-            Dash.icons();
-
-            const inputs = document.querySelectorAll('[data-skill-input]');
-
-            if (inputs.length)
-            {
-                inputs[inputs.length - 1].focus();
-            }
-        }
-
-        function addRow(name)
-        {
-            readForm();
-            draft[name].push(emptyRow(name));
-            renderGroup(name);
-            Dash.icons();
-
-            const boxes = document.querySelectorAll('[data-row="' + name + '"]');
-            const last = boxes[boxes.length - 1];
-            const firstField = last ? last.querySelector('[data-field]') : null;
-
-            if (firstField)
-            {
-                firstField.focus();
-            }
         }
 
         if (user)
@@ -520,14 +900,35 @@
             });
 
             el('profile-form').addEventListener('submit', save);
-            el('add-skill').addEventListener('click', addSkill);
+            el('add-skill').addEventListener('click', addSkills);
+
+            el('skill-input').addEventListener('keydown', function (event)
+            {
+                if (event.key === 'Enter')
+                {
+                    event.preventDefault();
+                    addSkills();
+                }
+            });
 
             GROUP_NAMES.forEach(function (name)
             {
                 el(ADD_BUTTONS[name]).addEventListener('click', function ()
                 {
+                    endReveal();
                     addRow(name);
                 });
+            });
+
+            el('profile-form').addEventListener('input', function (event)
+            {
+                if (event.target.id === 'skill-input')
+                {
+                    return;
+                }
+
+                readForm();
+                renderStrength();
             });
 
             el('profile-form').addEventListener('click', function (event)
@@ -536,10 +937,25 @@
 
                 if (skillButton)
                 {
-                    readForm();
-                    draft.skills.splice(Number(skillButton.getAttribute('data-remove-skill')), 1);
-                    renderSkills();
-                    Dash.icons();
+                    endReveal();
+                    dropSkill(skillButton);
+                    return;
+                }
+
+                const editButton = event.target.closest('[data-edit]');
+
+                if (editButton)
+                {
+                    endReveal();
+                    openRow(editButton.getAttribute('data-edit'), Number(editButton.getAttribute('data-index')));
+                    return;
+                }
+
+                const doneButton = event.target.closest('[data-done]');
+
+                if (doneButton)
+                {
+                    closeRow(doneButton.getAttribute('data-done'), Number(doneButton.getAttribute('data-index')));
                     return;
                 }
 
@@ -547,11 +963,8 @@
 
                 if (rowButton)
                 {
-                    const name = rowButton.getAttribute('data-remove');
-                    readForm();
-                    draft[name].splice(Number(rowButton.getAttribute('data-index')), 1);
-                    renderGroup(name);
-                    Dash.icons();
+                    endReveal();
+                    removeRow(rowButton.getAttribute('data-remove'), Number(rowButton.getAttribute('data-index')));
                 }
             });
 
@@ -568,7 +981,9 @@
 
             el('discard-btn').addEventListener('click', function ()
             {
+                endReveal();
                 draft = buildDraft(savedProfile);
+                resetOpenRows();
                 renderAll();
                 el('cancel-confirm').classList.add('hidden');
                 showToast('Your saved profile was restored.', 'info');

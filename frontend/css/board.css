@@ -1,0 +1,386 @@
+/* Applicants pipeline board. Loaded after dashboard.css, uses the style.css tokens. */
+
+.bd-seg
+{
+    display: inline-flex;
+    padding: 3px;
+    background: var(--neutral-soft, #EEF1F5);
+    border: 1px solid var(--line, #DFE3EA);
+    border-radius: var(--r-ctl, 6px);
+}
+
+.bd-seg button
+{
+    min-height: 32px;
+    padding: 0 14px;
+    background: none;
+    color: var(--muted, #5B6677);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 140ms ease, color 140ms ease;
+}
+
+.bd-seg button:hover
+{
+    color: var(--ink, #17233A);
+}
+
+.bd-seg button[aria-pressed="true"]
+{
+    background: var(--surface, #FFFFFF);
+    color: var(--ink, #17233A);
+    box-shadow: 0 0 0 1px var(--line-strong, #C9D0DB);
+}
+
+.bd-seg button:focus-visible
+{
+    outline: 2px solid var(--ink, #17233A);
+    outline-offset: 2px;
+}
+
+.bd-note
+{
+    margin: 6px 0 12px;
+    color: var(--muted, #5B6677);
+    font-size: 0.88rem;
+}
+
+.bd-scroll
+{
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 12px;
+    overflow-x: auto;
+}
+
+.bd-col
+{
+    flex: 0 0 268px;
+    min-height: 140px;
+    padding: 10px;
+    background: var(--neutral-soft, #EEF1F5);
+    border: 2px solid transparent;
+    border-radius: var(--r-panel, 14px);
+    transition: border-color 140ms ease, background 140ms ease, opacity 140ms ease;
+}
+
+.bd-head
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 2px 4px 10px;
+}
+
+.bd-head h4
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ink, #17233A);
+}
+
+.bd-head h4::before
+{
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: var(--muted, #5B6677);
+    border-radius: 50%;
+}
+
+.bd-col.tone-ok .bd-head h4::before
+{
+    background: var(--match, #0F766E);
+}
+
+.bd-col.tone-warn .bd-head h4::before
+{
+    background: var(--gap, #B45309);
+}
+
+.bd-col.tone-bad .bd-head h4::before
+{
+    background: var(--absent, #B42318);
+}
+
+.bd-count
+{
+    min-width: 24px;
+    padding: 1px 8px;
+    background: var(--surface, #FFFFFF);
+    color: var(--muted, #5B6677);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: center;
+    border-radius: 999px;
+}
+
+.bd-cards
+{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bd-card
+{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--line, #DFE3EA);
+    border-radius: var(--r-ctl, 6px);
+    cursor: grab;
+    transition: border-color 140ms ease, opacity 140ms ease;
+}
+
+.bd-card:hover
+{
+    border-color: var(--line-strong, #C9D0DB);
+}
+
+.bd-card.is-final
+{
+    cursor: default;
+}
+
+.bd-card.is-dragging
+{
+    opacity: 0.45;
+    cursor: grabbing;
+}
+
+.bd-top
+{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.bd-name
+{
+    overflow: hidden;
+    color: var(--ink, #17233A);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bd-score
+{
+    font-family: var(--font-display, "Bricolage Grotesque", system-ui, sans-serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.bd-none
+{
+    color: var(--muted, #5B6677);
+    font-size: 0.78rem;
+}
+
+.bd-track
+{
+    height: 6px;
+    overflow: hidden;
+    background: var(--neutral-soft, #EEF1F5);
+    border-radius: 999px;
+}
+
+.bd-track i
+{
+    display: block;
+    height: 100%;
+    background: var(--match, #0F766E);
+    border-radius: 999px;
+}
+
+.bd-track i.mid
+{
+    background: var(--gap, #B45309);
+}
+
+.bd-track i.low
+{
+    background: var(--absent, #B42318);
+}
+
+.bd-chips
+{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.bd-chip
+{
+    padding: 2px 8px;
+    color: var(--match, #0F766E);
+    font-size: 0.76rem;
+    font-weight: 600;
+    border: 1px solid var(--match, #0F766E);
+    border-radius: 999px;
+}
+
+.bd-meta
+{
+    color: var(--muted, #5B6677);
+    font-size: 0.8rem;
+}
+
+.bd-move
+{
+    width: 100%;
+    min-height: 36px;
+    padding: 0 8px;
+    background: var(--surface, #FFFFFF);
+    color: var(--ink, #17233A);
+    font-family: inherit;
+    font-size: 0.85rem;
+    border: 1px solid var(--line-strong, #C9D0DB);
+    border-radius: var(--r-ctl, 6px);
+}
+
+.bd-move:focus-visible,
+.bd-name:focus-visible
+{
+    outline: 2px solid var(--ink, #17233A);
+    outline-offset: 2px;
+}
+
+.bd-final
+{
+    color: var(--muted, #5B6677);
+    font-size: 0.8rem;
+}
+
+.bd-empty
+{
+    padding: 14px 8px;
+    color: var(--muted, #5B6677);
+    font-size: 0.84rem;
+    line-height: 1.4;
+    text-align: center;
+    border: 1px dashed var(--line-strong, #C9D0DB);
+    border-radius: var(--r-ctl, 6px);
+}
+
+/* drop targets while a card is being dragged */
+
+.bd-col.can-drop
+{
+    border-color: var(--line-strong, #C9D0DB);
+    border-style: dashed;
+}
+
+.bd-col.can-drop.is-over
+{
+    background: var(--surface, #FFFFFF);
+    border-color: var(--match, #0F766E);
+}
+
+.bd-col.no-drop
+{
+    opacity: 0.55;
+}
+
+.bd-col.no-drop.is-over
+{
+    border-color: var(--absent, #B42318);
+    opacity: 0.8;
+}
+
+.bd-shake
+{
+    animation: bd-shake 400ms ease;
+}
+
+@keyframes bd-shake
+{
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(3px); }
+}
+
+/* reason dialog */
+
+.bd-reason
+{
+    margin-top: 16px;
+}
+
+.bd-reason label
+{
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.bd-reason textarea
+{
+    width: 100%;
+    resize: vertical;
+}
+
+.bd-error
+{
+    min-height: 1.2em;
+    margin-top: 6px;
+}
+
+/* loading */
+
+.bd-skel
+{
+    height: 96px;
+    margin-bottom: 8px;
+    background: var(--surface, #FFFFFF);
+    border-radius: var(--r-ctl, 6px);
+    animation: bd-pulse 1.1s ease-in-out infinite alternate;
+}
+
+.bd-skel.head
+{
+    height: 20px;
+    width: 60%;
+}
+
+@keyframes bd-pulse
+{
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+}
+
+@media (max-width: 600px)
+{
+    .bd-col
+    {
+        flex-basis: 82vw;
+    }
+}
+
+@media (prefers-reduced-motion: reduce)
+{
+    .bd-shake,
+    .bd-skel,
+    .bd-col,
+    .bd-card
+    {
+        animation: none !important;
+        transition: none !important;
+    }
+}

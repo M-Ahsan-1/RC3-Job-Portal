@@ -1,0 +1,524 @@
+/* Login and register. Loaded after style.css, uses its tokens. */
+
+:root
+{
+    --stage-bg: #17233A;
+    --stage-ink: #FFFFFF;
+    --stage-muted: #B7C1D3;
+}
+
+@media (prefers-color-scheme: dark)
+{
+    :root:not([data-theme="light"])
+    {
+        --stage-bg: #0A0F1A;
+    }
+}
+
+:root[data-theme="dark"]
+{
+    --stage-bg: #0A0F1A;
+}
+
+/* shell: stage on the left, form on the right */
+
+.auth-shell
+{
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    min-height: 100vh;
+}
+
+.auth-stage
+{
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-5);
+    padding: var(--sp-6) 48px;
+    background: var(--stage-bg);
+    color: var(--stage-ink);
+}
+
+.stage-tagline
+{
+    max-width: 18ch;
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 2.6vw, 2.5rem);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.stage-line
+{
+    max-width: 40ch;
+    margin-top: var(--sp-3);
+    color: var(--stage-muted);
+    transition: opacity 160ms ease;
+}
+
+.stage-line.swap
+{
+    opacity: 0;
+}
+
+.scene-wrap
+{
+    width: min(100%, 560px);
+    margin-top: auto;
+}
+
+.auth-panel
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-6) var(--sp-5);
+    background: var(--paper);
+}
+
+.auth-form
+{
+    width: 100%;
+    max-width: 380px;
+}
+
+.auth-form h1
+{
+    font-size: var(--fs-xl);
+}
+
+.auth-form .subtitle
+{
+    margin: 6px 0 var(--sp-5);
+    color: var(--muted);
+}
+
+.auth-form .auth-footer
+{
+    margin-top: var(--sp-5);
+}
+
+.auth-form h2
+{
+    margin-top: var(--sp-4);
+}
+
+/* the annotated resume scene */
+
+.scene svg
+{
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 46vh;
+}
+
+.sc-text
+{
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    fill: #17233A;
+}
+
+.sc-chip-text
+{
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    fill: #CFF7F1;
+    text-anchor: middle;
+}
+
+.sc-ring-num
+{
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    fill: #FFFFFF;
+    text-anchor: middle;
+}
+
+.sc-ring-label
+{
+    font-family: var(--font-ui);
+    font-size: 11px;
+    fill: #9AA6BA;
+    text-anchor: middle;
+}
+
+.sc-hl
+{
+    transform-box: fill-box;
+    transform-origin: left center;
+}
+
+.sc-thread
+{
+    fill: none;
+    stroke: #FFC800;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+}
+
+.sc-ring-fill
+{
+    stroke-dasharray: 86 100;
+}
+
+/* default state is the finished picture, .play runs the sequence once */
+
+.scene.play .sc-hl
+{
+    animation: sc-sweep 600ms var(--ease) calc(var(--scene-offset, 0s) + var(--d, 0s)) both;
+}
+
+.scene.play .sc-thread
+{
+    animation: sc-draw 500ms ease-in-out calc(var(--scene-offset, 0s) + var(--d, 0s)) both;
+}
+
+.scene.play .sc-chip
+{
+    animation: sc-pop 360ms var(--ease) calc(var(--scene-offset, 0s) + var(--d, 0s)) both;
+}
+
+.scene.play .sc-ring-fill
+{
+    animation: sc-ring 900ms ease-out calc(var(--scene-offset, 0s) + var(--d, 0s)) both;
+}
+
+@keyframes sc-sweep
+{
+    from { transform: scaleX(0); }
+}
+
+@keyframes sc-draw
+{
+    from { stroke-dashoffset: 1; }
+}
+
+@keyframes sc-pop
+{
+    from { opacity: 0; transform: translateX(-10px); }
+}
+
+@keyframes sc-ring
+{
+    from { stroke-dasharray: 0 100; }
+}
+
+/* password field */
+
+.pw-wrap
+{
+    position: relative;
+}
+
+.pw-wrap input
+{
+    padding-right: 76px;
+}
+
+.pw-toggle
+{
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    min-height: 36px;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    border-radius: var(--r-ctl);
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.pw-toggle:hover
+{
+    color: var(--ink);
+    background: var(--neutral-soft);
+}
+
+.meter
+{
+    height: 8px;
+    margin-top: 8px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+}
+
+.meter-fill
+{
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--mark);
+    transform: scaleX(calc(var(--value, 0) / 100));
+    transform-origin: left center;
+    transition: transform 200ms var(--ease);
+}
+
+.meter-row
+{
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-top: 6px;
+    font-size: var(--fs-xs);
+}
+
+.meter-row .field-hint
+{
+    margin-top: 0;
+}
+
+/* register: steps and role cards */
+
+.steps
+{
+    display: flex;
+    gap: 6px;
+}
+
+.step-seg
+{
+    position: relative;
+    flex: 1;
+    height: 6px;
+    overflow: hidden;
+    background: var(--line);
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.step-seg::after
+{
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--mark);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--t-slow) var(--ease);
+}
+
+.step-seg.done::after
+{
+    transform: scaleX(1);
+}
+
+.step-label
+{
+    margin: 8px 0 var(--sp-4);
+    font-size: var(--fs-xs);
+    color: var(--muted);
+}
+
+.role-group
+{
+    min-width: 0;
+    margin-bottom: var(--sp-4);
+    padding: 0;
+    border: 0;
+}
+
+.role-group legend
+{
+    margin-bottom: 8px;
+    padding: 0;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+}
+
+.role-cards
+{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-3);
+}
+
+.role-card
+{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-panel);
+    cursor: pointer;
+    transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+}
+
+.role-card:hover
+{
+    background: var(--neutral-soft);
+}
+
+.role-card:has(input:checked)
+{
+    background: var(--neutral-soft);
+    border-color: var(--ink);
+    box-shadow: 0 0 0 1px var(--ink);
+}
+
+.role-card:has(input:focus-visible)
+{
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+}
+
+.role-card input[type="radio"]
+{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.role-art
+{
+    height: 64px;
+    color: var(--ink);
+}
+
+.role-art svg
+{
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.role-title
+{
+    font-size: var(--fs-sm);
+    font-weight: 600;
+}
+
+.role-sub
+{
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+    color: var(--muted);
+}
+
+.rc-hl
+{
+    transform-box: fill-box;
+    transform-origin: left center;
+}
+
+.rc-check
+{
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+}
+
+.role-card:has(input:checked) .rc-hl
+{
+    animation: sc-sweep 500ms var(--ease) both;
+}
+
+.role-card:has(input:checked) .rc-check
+{
+    animation: sc-draw 500ms ease-out 150ms both;
+}
+
+.auth-actions
+{
+    display: flex;
+    gap: 10px;
+    margin-top: var(--sp-2);
+}
+
+.auth-actions .btn:last-child
+{
+    flex: 1;
+}
+
+/* register: success */
+
+.success
+{
+    padding: var(--sp-6) 0;
+    text-align: center;
+}
+
+.success p
+{
+    margin: 8px auto 0;
+    color: var(--muted);
+}
+
+.success .wordmark.sweep .wm-mark::after
+{
+    animation-iteration-count: 1;
+}
+
+/* mobile: the stage turns into a short header band */
+
+@media (max-width: 900px)
+{
+    .auth-shell
+    {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .auth-stage
+    {
+        gap: var(--sp-3);
+        padding: var(--sp-4) var(--sp-5);
+    }
+
+    .scene-wrap,
+    .stage-line
+    {
+        display: none;
+    }
+
+    .stage-tagline
+    {
+        max-width: none;
+        font-size: 1.15rem;
+    }
+
+    .auth-panel
+    {
+        align-items: flex-start;
+        padding: var(--sp-5) var(--sp-4) var(--sp-7);
+    }
+}
+
+@media (max-width: 420px)
+{
+    .role-cards
+    {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce)
+{
+    .scene.play *,
+    .role-card .rc-hl,
+    .role-card .rc-check
+    {
+        animation: none !important;
+    }
+}

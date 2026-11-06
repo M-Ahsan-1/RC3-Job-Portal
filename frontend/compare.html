@@ -3,116 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compare Applicants - RC3 Job Portal</title>
+    <title>Compare applicants – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
-    <style>
-        #compare
-        {
-            margin-bottom: 16px;
-        }
-
-        .c-head
-        {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .c-email
-        {
-            font-size: 0.8rem;
-            color: #64748b;
-            margin: 2px 0 10px;
-            word-break: break-all;
-        }
-
-        .c-job
-        {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.82rem;
-            color: #475569;
-            margin-bottom: 10px;
-        }
-
-        .c-job svg
-        {
-            width: 14px;
-            height: 14px;
-            flex: none;
-            color: #94a3b8;
-        }
-
-        .c-status
-        {
-            margin-bottom: 16px;
-        }
-
-        .c-total
-        {
-            padding: 14px 16px;
-        }
-
-        .c-total .d-total-num
-        {
-            font-size: 2rem;
-        }
-
-        .c-explain
-        {
-            font-size: 0.85rem;
-            color: #475569;
-            line-height: 1.6;
-        }
-
-        .c-claims
-        {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            flex-wrap: wrap;
-            margin-top: 16px;
-            padding-top: 14px;
-            border-top: 1px solid #eef0f6;
-            font-size: 0.82rem;
-            color: #475569;
-        }
-
-        .c-claims svg
-        {
-            width: 15px;
-            height: 15px;
-            flex: none;
-            color: #b45309;
-        }
-
-        .c-claims a
-        {
-            margin-left: auto;
-            white-space: nowrap;
-        }
-
-        @media (max-width: 1000px)
-        {
-            .d-compare
-            {
-                grid-template-columns: minmax(0, 1fr) !important;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/pages.css">
 </head>
 <body class="theme-recruiter">
+    <script src="js/brand.js"></script>
+    <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
         <section class="d-panel" aria-label="Comparison controls">
             <div class="d-panel-head">
                 <div>
-                    <h3>Side-by-side comparison</h3>
+                    <h3>Side by side comparison</h3>
                     <p class="sub" id="compare-sub">Compare 2 or 3 applicants on evidence, scores and gaps</p>
                 </div>
                 <div class="row">
@@ -123,7 +31,9 @@
         </section>
 
         <div id="notice"></div>
-        <div class="d-compare" id="compare"></div>
+        <div class="cmp-tabs" id="cmp-tabs" role="tablist" aria-label="Applicants"></div>
+        <div id="compare"></div>
+        <p class="cmp-foot hidden" id="cmp-foot">The best value in each row is in bold. AI assessment. You make the final decision.</p>
 
         <section class="d-panel hidden" id="missing-panel" aria-label="Missing information">
             <div class="d-panel-head">
@@ -137,26 +47,31 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/illustrations.js"></script>
+    <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
     <script>
         const user = guardPage('recruiter');
 
+        let activeCol = 0;
+
         function parseIds(raw)
         {
             return String(raw || '').split(',').map(function (part)
             {
-                return Number(part.trim());
+                return part.trim();
             }).filter(function (id)
             {
-                return id > 0;
+                return id !== '' && id !== '0';
             });
         }
 
-        function detailHref(applicant)
+        function detailHref(applicant, tab)
         {
-            return 'applicant-detail.html?id=' + encodeURIComponent(applicant.id) + '&jobId=' + encodeURIComponent(applicant.jobId);
+            return 'applicant-detail.html?id=' + encodeURIComponent(applicant.id) + '&jobId=' + encodeURIComponent(applicant.jobId) + (tab ? '&tab=' + tab : '');
         }
 
         function percent(value)
@@ -170,80 +85,341 @@
             return score === null || score === undefined ? null : Number(score);
         }
 
+        function norm(value)
+        {
+            const number = Number(value);
+
+            if (value === null || value === undefined || !Number.isFinite(number))
+            {
+                return null;
+            }
+
+            return number > 0 && number <= 1 ? number * 100 : number;
+        }
+
+        function metricsOf(applicant)
+        {
+            const json = applicant.score_json;
+
+            if (!json)
+            {
+                return null;
+            }
+
+            const breakdown = json.breakdown || {};
+
+            return {
+                total: scoreOf(applicant),
+                skills: norm(breakdown.skills),
+                experience: norm(breakdown.experience),
+                projects: norm(breakdown.projects),
+                qualifications: norm(breakdown.qualifications),
+                matched: (json.matched_skills || []).length,
+                gaps: (json.gaps || []).length,
+                claims: (json.unsupported_claims || []).length
+            };
+        }
+
+        function bestSet(values, higherIsBetter)
+        {
+            const set = new Set();
+            const real = values.filter(function (value)
+            {
+                return value !== null && value !== undefined;
+            });
+
+            if (real.length < 2)
+            {
+                return set;
+            }
+
+            const best = higherIsBetter ? Math.max.apply(null, real) : Math.min.apply(null, real);
+            const worst = higherIsBetter ? Math.min.apply(null, real) : Math.max.apply(null, real);
+
+            if (best === worst)
+            {
+                return set;
+            }
+
+            values.forEach(function (value, index)
+            {
+                if (value === best)
+                {
+                    set.add(index);
+                }
+            });
+
+            return set;
+        }
+
         function leaderId(applicants)
         {
             let best = null;
             let bestScore = -1;
 
-            for (let i = 0; i < applicants.length; i++)
+            applicants.forEach(function (applicant)
             {
-                const score = scoreOf(applicants[i]);
+                const score = scoreOf(applicant);
 
                 if (score !== null && score > bestScore)
                 {
                     bestScore = score;
-                    best = applicants[i].id;
+                    best = applicant.id;
                 }
-            }
+            });
 
             return best;
         }
 
-        function columnHtml(applicant, jobTitle, isLeader)
+        function cellHtml(index, inner, best, extra)
         {
-            const json = applicant.score_json;
+            return '<div role="cell" class="cmp-cell' + (best ? ' best' : '') + (extra ? ' ' + extra : '') + '" data-c="' + index + '">' +
+                inner + (best ? '<span class="d-sr"> Best in this row</span>' : '') + '</div>';
+        }
 
-            let html = '<div class="d-compare-col' + (isLeader ? ' leader' : '') + '">';
-            html += '<div class="c-head"><h4>' + Dash.esc(applicant.candidateName) + '</h4>' + (isLeader ? Dash.badge('Highest score', 'ok') : '') + '</div>';
-            html += '<p class="c-email">' + Dash.esc(applicant.email) + '</p>';
-            html += '<p class="c-job"><i data-lucide="briefcase"></i>' + Dash.esc(jobTitle || 'Unknown role') + '</p>';
-            html += '<div class="c-status">' + Dash.badge(applicant.status, Dash.statusTone(applicant.status)) + '</div>';
+        function rowHtml(label, cells, className)
+        {
+            return '<div role="row" class="cmp-row ' + (className || '') + '"><div role="rowheader">' + Dash.esc(label) + '</div>' + cells.join('') + '</div>';
+        }
 
-            if (!json)
+        function emptyCell()
+        {
+            return '<span class="cmp-none">Not assessed</span>';
+        }
+
+        function numberRow(label, metrics, key, higherIsBetter, big)
+        {
+            const values = metrics.map(function (item)
             {
-                html += '<div class="d-total c-total"><span class="d-total-num">–</span><div><b>Not assessed yet</b><p>Scores and evidence appear once the resume has been assessed.</p></div></div>';
-                html += Dash.callout('info', '', '<p>This application has no AI assessment yet, so there is no score, skill evidence or explanation to compare.</p>');
-                html += '<div class="c-claims"><span>No assessment data to review.</span><a href="' + detailHref(applicant) + '">Open applicant</a></div>';
-                return html + '</div>';
-            }
+                return item ? item[key] : null;
+            });
+            const best = bestSet(values, higherIsBetter);
 
-            const breakdown = json.breakdown || {};
-            const overridden = applicant.overrideScore !== null && applicant.overrideScore !== undefined;
-            const score = scoreOf(applicant);
-
-            html += '<div class="d-total c-total"><span class="d-total-num">' + (score === null ? '–' : score) + '</span><div><b>Effective score</b><p>' + (overridden ? 'Recruiter override of ' + Number(applicant.score) : 'Out of 100 from the AI assessment') + '</p></div></div>';
-            html += '<div class="d-group-title">Score breakdown</div>';
-            html += Dash.scoreBar('Skills', breakdown.skills) +
-                Dash.scoreBar('Experience', breakdown.experience) +
-                Dash.scoreBar('Projects', breakdown.projects) +
-                Dash.scoreBar('Qualifications', breakdown.qualifications);
-
-            const matched = json.matched_skills || [];
-            html += '<div class="d-group-title">Matched skills</div>';
-            html += matched.length
-                ? '<div class="d-chips">' + matched.map(function (skill)
+            return rowHtml(label, values.map(function (value, index)
+            {
+                if (value === null || value === undefined)
                 {
-                    return '<span class="d-chip ok">' + Dash.esc(skill.skill) + ' · ' + percent(skill.similarity) + '</span>';
-                }).join('') + '</div>'
-                : '<p class="muted">No matched skills evidenced.</p>';
+                    return cellHtml(index, emptyCell(), false);
+                }
 
-            const gaps = json.gaps || [];
-            html += '<div class="d-group-title">Skill gaps</div>';
-            html += gaps.length
-                ? '<div class="d-chips">' + gaps.map(function (gap)
+                return cellHtml(index, '<span class="cmp-num">' + Math.round(value) + '</span>', best.has(index), big ? 'cmp-big' : '');
+            }), big ? 'cmp-total' : '');
+        }
+
+        function barRow(label, metrics, key)
+        {
+            const values = metrics.map(function (item)
+            {
+                return item ? item[key] : null;
+            });
+            const best = bestSet(values, true);
+
+            return rowHtml(label, values.map(function (value, index)
+            {
+                if (value === null || value === undefined)
                 {
-                    const absent = gap.label === 'confirmed_absent';
-                    return '<span class="d-chip ' + (absent ? 'bad' : 'warn') + '">' + Dash.esc(gap.skill) + ' · ' + (absent ? 'Confirmed absent' : 'No evidence') + '</span>';
-                }).join('') + '</div>'
-                : '<p class="muted">No gaps found for this role.</p>';
+                    return cellHtml(index, emptyCell(), false);
+                }
 
-            html += '<div class="d-group-title">AI explanation</div>';
-            html += '<p class="c-explain">' + Dash.esc(json.explanation || 'No explanation was saved for this assessment.') + '</p>';
+                const width = Math.max(0, Math.min(100, value)) / 100;
 
-            const claims = (json.unsupported_claims || []).length;
-            html += '<div class="c-claims"><i data-lucide="flag"></i><span>' + claims + (claims === 1 ? ' unsupported claim' : ' unsupported claims') + '</span><a href="' + detailHref(applicant) + '&tab=fairness">Fairness &amp; evidence</a></div>';
+                return cellHtml(index, '<span class="cmp-num">' + Math.round(value) + '</span><span class="cmp-bar" aria-hidden="true"><i style="--w:' + width + '"></i></span>', best.has(index));
+            }));
+        }
 
-            return html + '</div>';
+        function uniqueSkills(applicants)
+        {
+            const counts = {};
+
+            applicants.forEach(function (applicant)
+            {
+                const json = applicant.score_json;
+                const seen = {};
+
+                ((json && json.matched_skills) || []).forEach(function (skill)
+                {
+                    seen[String(skill.skill).toLowerCase()] = true;
+                });
+
+                Object.keys(seen).forEach(function (name)
+                {
+                    counts[name] = (counts[name] || 0) + 1;
+                });
+            });
+
+            return counts;
+        }
+
+        function skillsRow(applicants, metrics)
+        {
+            const counts = uniqueSkills(applicants);
+            const values = metrics.map(function (item)
+            {
+                return item ? item.matched : null;
+            });
+            const best = bestSet(values, true);
+
+            return rowHtml('Matched skills', applicants.map(function (applicant, index)
+            {
+                const json = applicant.score_json;
+
+                if (!json)
+                {
+                    return cellHtml(index, emptyCell(), false);
+                }
+
+                const matched = json.matched_skills || [];
+                const chips = matched.length
+                    ? '<div class="d-chips">' + matched.map(function (skill)
+                    {
+                        const shared = applicants.length > 1 && counts[String(skill.skill).toLowerCase()] === applicants.length;
+                        return '<span class="d-chip ' + (shared ? 'ok' : 'info') + '">' + Dash.esc(skill.skill) + ' ' + percent(skill.similarity) + '</span>';
+                    }).join('') + '</div>'
+                    : '<span class="cmp-none">No matched skills evidenced.</span>';
+
+                return cellHtml(index, '<span class="cmp-count">' + matched.length + (matched.length === 1 ? ' skill' : ' skills') + '</span>' + chips, best.has(index));
+            }));
+        }
+
+        function gapsRow(applicants, metrics)
+        {
+            const values = metrics.map(function (item)
+            {
+                return item ? item.gaps : null;
+            });
+            const best = bestSet(values, false);
+
+            return rowHtml('Skill gaps', applicants.map(function (applicant, index)
+            {
+                const json = applicant.score_json;
+
+                if (!json)
+                {
+                    return cellHtml(index, emptyCell(), false);
+                }
+
+                const gaps = json.gaps || [];
+                const chips = gaps.length
+                    ? '<div class="d-chips">' + gaps.map(function (gap)
+                    {
+                        const absent = gap.label === 'confirmed_absent';
+                        return '<span class="d-chip ' + (absent ? 'bad' : 'warn') + '">' + Dash.esc(gap.skill) + ' ' + (absent ? 'Confirmed absent' : 'No evidence found') + '</span>';
+                    }).join('') + '</div>'
+                    : '<span class="cmp-none">No gaps found for this role.</span>';
+
+                return cellHtml(index, '<span class="cmp-count">' + gaps.length + (gaps.length === 1 ? ' gap' : ' gaps') + '</span>' + chips, best.has(index));
+            }));
+        }
+
+        function claimsRow(applicants, metrics)
+        {
+            const values = metrics.map(function (item)
+            {
+                return item ? item.claims : null;
+            });
+            const best = bestSet(values, false);
+
+            return rowHtml('Unsupported claims', applicants.map(function (applicant, index)
+            {
+                if (!applicant.score_json)
+                {
+                    return cellHtml(index, emptyCell(), false);
+                }
+
+                const claims = values[index];
+
+                return cellHtml(index, '<span class="cmp-count">' + claims + (claims === 1 ? ' claim' : ' claims') + ' to review</span>' +
+                    '<a href="' + detailHref(applicant, 'evidence') + '">Open evidence</a>', best.has(index));
+            }));
+        }
+
+        function explainRow(applicants)
+        {
+            return rowHtml('AI explanation', applicants.map(function (applicant, index)
+            {
+                const json = applicant.score_json;
+
+                if (!json)
+                {
+                    return cellHtml(index, emptyCell(), false);
+                }
+
+                return cellHtml(index, '<p class="cmp-text">' + Dash.esc(json.explanation || 'No explanation was saved for this assessment.') + '</p>', false);
+            }));
+        }
+
+        function headerHtml(applicants, titles, leader)
+        {
+            return '<div role="row" class="cmp-row cmp-head"><div role="columnheader"><span class="d-sr">Criterion</span></div>' +
+                applicants.map(function (applicant, index)
+                {
+                    return '<div role="columnheader" class="cmp-cell" data-c="' + index + '">' +
+                        '<h4>' + Dash.esc(applicant.candidateName) + '</h4>' +
+                        '<p class="c-email">' + Dash.esc(applicant.email) + '</p>' +
+                        '<p class="c-role">' + Dash.esc(titles[applicant.jobId] || 'Unknown role') + '</p>' +
+                        '<div class="d-chips">' + Dash.badge(applicant.status, Dash.statusTone(applicant.status)) +
+                        (applicant.id === leader ? Dash.badge('Highest score', 'ok') : '') + '</div>' +
+                    '</div>';
+                }).join('') + '</div>';
+        }
+
+        function linkRow(applicants)
+        {
+            return rowHtml('Full profile', applicants.map(function (applicant, index)
+            {
+                return cellHtml(index, '<a class="btn btn-secondary btn-sm" href="' + detailHref(applicant) + '">Open applicant</a>', false);
+            }));
+        }
+
+        function applyColumn()
+        {
+            document.querySelectorAll('#compare [data-c]').forEach(function (cell)
+            {
+                cell.classList.toggle('off', Number(cell.getAttribute('data-c')) !== activeCol);
+            });
+
+            document.querySelectorAll('#cmp-tabs button').forEach(function (tab)
+            {
+                const on = Number(tab.getAttribute('data-tab')) === activeCol;
+                tab.setAttribute('aria-selected', on ? 'true' : 'false');
+                tab.tabIndex = on ? 0 : -1;
+            });
+        }
+
+        function renderTabs(applicants)
+        {
+            const tabs = document.getElementById('cmp-tabs');
+
+            tabs.innerHTML = applicants.map(function (applicant, index)
+            {
+                return '<button type="button" role="tab" data-tab="' + index + '">' + Dash.esc(String(applicant.candidateName).split(' ')[0]) + '</button>';
+            }).join('');
+
+            tabs.onclick = function (event)
+            {
+                const tab = event.target.closest('[data-tab]');
+
+                if (tab)
+                {
+                    activeCol = Number(tab.getAttribute('data-tab'));
+                    applyColumn();
+                }
+            };
+
+            tabs.onkeydown = function (event)
+            {
+                const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+
+                if (!step)
+                {
+                    return;
+                }
+
+                event.preventDefault();
+                activeCol = (activeCol + step + applicants.length) % applicants.length;
+                applyColumn();
+                tabs.querySelector('[data-tab="' + activeCol + '"]').focus();
+            };
         }
 
         function renderMissing(missing)
@@ -257,7 +433,7 @@
 
             if (!rows.length)
             {
-                box.innerHTML = Dash.empty('scale', 'Nothing sets these applicants apart — they evidence the same matched skills.');
+                box.innerHTML = Dash.empty('scale', 'Nothing sets these applicants apart. They evidence the same matched skills.');
                 panel.classList.remove('hidden');
                 return;
             }
@@ -309,12 +485,31 @@
             const applicants = data.applicants || [];
             const box = document.getElementById('compare');
             const leader = leaderId(applicants);
-
-            box.style.gridTemplateColumns = 'repeat(' + applicants.length + ', minmax(0,1fr))';
-            box.innerHTML = applicants.map(function (applicant)
+            const metrics = applicants.map(metricsOf);
+            const overrides = applicants.some(function (applicant)
             {
-                return columnHtml(applicant, titles[applicant.jobId], applicant.id === leader);
-            }).join('');
+                return applicant.overrideScore !== null && applicant.overrideScore !== undefined;
+            });
+
+            activeCol = 0;
+
+            box.innerHTML = '<div class="cmp" role="table" aria-label="Applicant comparison" style="--n:' + applicants.length + '">' +
+                headerHtml(applicants, titles, leader) +
+                numberRow(overrides ? 'Effective score' : 'Score', metrics, 'total', true, true) +
+                barRow('Skills', metrics, 'skills') +
+                barRow('Experience', metrics, 'experience') +
+                barRow('Projects', metrics, 'projects') +
+                barRow('Qualifications', metrics, 'qualifications') +
+                skillsRow(applicants, metrics) +
+                gapsRow(applicants, metrics) +
+                claimsRow(applicants, metrics) +
+                explainRow(applicants) +
+                linkRow(applicants) +
+                '</div>';
+
+            renderTabs(applicants);
+            applyColumn();
+            document.getElementById('cmp-foot').classList.remove('hidden');
 
             const shared = applicants.length > 1 && applicants.every(function (applicant)
             {
@@ -341,6 +536,13 @@
             renderMissing(data.missing_information);
         }
 
+        function clearComparison()
+        {
+            document.getElementById('compare').innerHTML = '';
+            document.getElementById('cmp-tabs').innerHTML = '';
+            document.getElementById('cmp-foot').classList.add('hidden');
+        }
+
         async function load()
         {
             const ids = parseIds(Dash.param('ids'));
@@ -348,31 +550,29 @@
             const box = document.getElementById('compare');
 
             document.getElementById('missing-panel').classList.add('hidden');
+            clearComparison();
 
             if (ids.length < 2)
             {
-                box.innerHTML = '';
-                box.style.gridTemplateColumns = '';
                 notice.innerHTML = Dash.empty('users', 'Select 2 or 3 applicants first, then compare them side by side here.', '<a class="btn btn-sm" href="jobs.html">Browse jobs and applicants</a>');
                 Dash.icons();
                 return;
             }
 
             notice.innerHTML = '';
-            box.style.gridTemplateColumns = 'repeat(' + ids.length + ', minmax(0,1fr))';
             box.innerHTML = Dash.skeletons(ids.length);
 
             try
             {
                 const data = await Api.get('/api/compare?ids=' + encodeURIComponent(ids.join(',')));
                 const titles = await fetchJobTitles(data.applicants || []);
+
                 renderComparison(data, titles);
                 showToast('Comparison ready.', 'success');
             }
             catch (error)
             {
                 box.innerHTML = '';
-                box.style.gridTemplateColumns = '';
                 Dash.failInto(notice, error.message, error.status === 400 || error.status === 404 ? null : load);
             }
 
@@ -386,7 +586,7 @@
                 user: user,
                 logo: 'search',
                 title: 'Compare Applicants',
-                subtitle: 'Side-by-side evidence, scores and gaps',
+                subtitle: 'Side by side evidence, scores and gaps',
                 search: true,
                 items: Dash.RECRUITER_NAV,
                 active: 'search.html',

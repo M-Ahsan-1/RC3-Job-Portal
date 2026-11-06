@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Applicants - RC3 Job Portal</title>
+    <title>Applicants – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/board.css">
 </head>
 <body class="theme-recruiter">
+    <script src="js/brand.js"></script>
+    <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
         <section class="d-panel" aria-label="Job">
             <div class="d-panel-head">
@@ -41,19 +47,29 @@
                     </select>
                 </div>
                 <button class="btn btn-secondary btn-sm" id="clear-filters" type="button">Clear filters</button>
+                <div class="bd-seg" role="group" aria-label="Applicant view">
+                    <button type="button" id="view-table" aria-pressed="true">Table</button>
+                    <button type="button" id="view-board" aria-pressed="false">Board</button>
+                </div>
                 <div class="d-spacer"></div>
                 <span class="d-hint" id="select-hint">Select 2 or 3 applicants to compare</span>
                 <button class="btn btn-sm" id="compare-btn" type="button" disabled><i data-lucide="git-compare"></i>Compare selected</button>
             </div>
             <p class="sub" id="summary"></p>
+            <p class="bd-note hidden" id="board-note">Ranked by AI assessment. You make the final decision.</p>
             <div id="list"></div>
+            <div id="board" class="hidden"></div>
         </section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/illustrations.js"></script>
+    <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/board.js"></script>
     <script>
         const user = guardPage('recruiter');
         const jobId = Dash.intParam('jobId', 0);
@@ -70,6 +86,8 @@
 
         function fatalList(message, canRetry)
         {
+            Board.showList();
+
             el('toolbar').classList.add('hidden');
             el('summary').textContent = '';
 
@@ -292,6 +310,7 @@
             });
 
             renderSummary(rows);
+            Board.render(rows, applicants.length);
 
             if (!applicants.length)
             {
@@ -412,6 +431,7 @@
             el('toolbar').classList.remove('hidden');
             el('summary').textContent = '';
             el('list').innerHTML = Dash.skeletons(3);
+            Board.showSkeleton();
 
             try
             {
@@ -443,6 +463,20 @@
 
         if (user)
         {
+            Board.init(
+            {
+                jobId: jobId,
+                onMoved: function (updated)
+                {
+                    applicants = applicants.map(function (item)
+                    {
+                        return String(item.id) === String(updated.id) ? updated : item;
+                    });
+
+                    render();
+                }
+            });
+
             el('list').addEventListener('click', function (event)
             {
                 const overrideButton = event.target.closest('[data-override]');

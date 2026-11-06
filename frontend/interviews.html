@@ -3,17 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interviews - RC3 Job Portal</title>
+    <title>Interviews – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/pages.css">
 </head>
 <body class="theme-recruiter">
+    <script src="js/brand.js"></script>
+    <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
         <div class="d-callout">
             <i data-lucide="bot"></i>
-            <div><b>Humans decide, AI informs</b>AI matching and assessment scores help you prepare for each interview, but every reschedule, every piece of feedback and every final decision on this page is made by you.</div>
+            <div><b>Humans decide, AI informs</b>AI assessment scores help you prepare for each interview, but every reschedule, every piece of feedback and every final decision on this page is made by you.</div>
         </div>
 
         <section class="d-kpis" id="kpis" aria-label="Interview numbers"></section>
@@ -25,7 +31,26 @@
         <div id="past"></div>
     </div>
 
+    <dialog class="pg-dialog" id="decision-dialog" aria-labelledby="dec-title">
+        <form id="decision-form" novalidate>
+            <h3 id="dec-title">Final decision</h3>
+            <p class="sub" id="dec-sub"></p>
+            <div class="d-field">
+                <label for="dec-reason" id="dec-label">Reason</label>
+                <textarea id="dec-reason" placeholder="This reason is saved with the decision and kept in the audit trail."></textarea>
+                <div class="error-text" id="dec-error" role="alert"></div>
+            </div>
+            <div class="d-actions">
+                <button class="btn btn-sm" type="submit" id="dec-confirm">Confirm decision</button>
+                <button class="btn btn-secondary btn-sm" type="button" id="dec-cancel">Cancel</button>
+            </div>
+        </form>
+    </dialog>
+
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/illustrations.js"></script>
+    <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
@@ -54,9 +79,12 @@
             interviews: [],
             openReschedule: null,
             openFeedback: null,
-            decision: null,
-            decisionNote: null
+            decisionNote: null,
+            focus: null
         };
+
+        let pendingDecision = null;
+        let decisionOpener = null;
 
         function findInterview(id)
         {
@@ -92,22 +120,61 @@
             return String(value || '').charAt(0).toUpperCase() + String(value || '').slice(1);
         }
 
-        function toLocalInput(iso)
+        function pad(value)
+        {
+            return value < 10 ? '0' + value : String(value);
+        }
+
+        function toDateInput(iso)
         {
             const date = new Date(iso);
+            return isNaN(date.getTime()) ? '' : date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+        }
 
-            if (isNaN(date.getTime()))
+        function toTimeInput(iso)
+        {
+            const date = new Date(iso);
+            return isNaN(date.getTime()) ? '' : pad(date.getHours()) + ':' + pad(date.getMinutes());
+        }
+
+        function clock(date)
+        {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function timeRange(iso, minutes)
+        {
+            const start = new Date(iso);
+            const end = new Date(start.getTime() + (Number(minutes) || 0) * 60000);
+            return clock(start) + ' to ' + clock(end);
+        }
+
+        function startOfDay(date)
+        {
+            return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        }
+
+        function dayLabel(iso)
+        {
+            const date = new Date(iso);
+            const diff = Math.round((startOfDay(date) - startOfDay(new Date())) / 86400000);
+
+            if (diff === 0)
             {
-                return '';
+                return 'Today';
             }
 
-            const pad = function (value)
+            if (diff === 1)
             {
-                return value < 10 ? '0' + value : String(value);
-            };
+                return 'Tomorrow';
+            }
 
-            return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
-                'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+            if (diff === -1)
+            {
+                return 'Yesterday';
+            }
+
+            return date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
         }
 
         function overlaps(startA, minutesA, startB, minutesB)
@@ -137,12 +204,12 @@
 
                 if (existing.interviewer === payload.interviewer)
                 {
-                    conflicts.push({ type: 'interviewer', name: existing.interviewer, scheduled_at: existing.scheduled_at, duration_minutes: existing.duration_minutes, with: existing.candidateName });
+                    conflicts.push({ name: existing.interviewer, scheduled_at: existing.scheduled_at, duration_minutes: existing.duration_minutes, with: existing.candidateName });
                 }
 
                 if (existing.applicationId === interview.applicationId)
                 {
-                    conflicts.push({ type: 'candidate', name: existing.candidateName, scheduled_at: existing.scheduled_at, duration_minutes: existing.duration_minutes, with: existing.interviewer });
+                    conflicts.push({ name: existing.candidateName, scheduled_at: existing.scheduled_at, duration_minutes: existing.duration_minutes, with: existing.interviewer });
                 }
             });
 
@@ -156,17 +223,10 @@
                 return '<p>Another interview overlaps this slot.</p>';
             }
 
-            return '<ul style="margin:0 0 12px 18px;padding:0">' + conflicts.map(function (conflict)
+            return '<ul class="pg-conflict-list">' + conflicts.map(function (conflict)
             {
-                const when = Dash.esc(Dash.dateTime(conflict.scheduled_at));
-                const minutes = Dash.esc(conflict.duration_minutes);
-
-                if (conflict.type === 'interviewer')
-                {
-                    return '<li><strong>' + Dash.esc(conflict.name) + '</strong> is already interviewing ' + Dash.esc(conflict.with) + ' at ' + when + ' for ' + minutes + ' minutes.</li>';
-                }
-
-                return '<li><strong>' + Dash.esc(conflict.name) + '</strong> already has an interview with ' + Dash.esc(conflict.with) + ' at ' + when + ' for ' + minutes + ' minutes.</li>';
+                return '<li><strong>' + Dash.esc(conflict.name) + '</strong> already has an interview from ' +
+                    Dash.esc(timeRange(conflict.scheduled_at, conflict.duration_minutes)) + ' with ' + Dash.esc(conflict.with) + '.</li>';
             }).join('') + '</ul>';
         }
 
@@ -187,26 +247,107 @@
                 kpiCard('message-square', awaiting, 'Awaiting feedback');
         }
 
-        function typeOptionsHtml(selected)
+        function wireRadioGroup(group, onChange)
         {
-            return Object.keys(TYPE_LABELS).map(function (type)
+            const buttons = Array.from(group.querySelectorAll('[role="radio"]'));
+
+            if (!buttons.length)
             {
-                return '<option value="' + type + '"' + (type === selected ? ' selected' : '') + '>' + TYPE_LABELS[type] + '</option>';
-            }).join('');
+                return;
+            }
+
+            function choose(button, moveFocus)
+            {
+                buttons.forEach(function (other)
+                {
+                    const on = other === button;
+                    other.setAttribute('aria-checked', on ? 'true' : 'false');
+                    other.tabIndex = on ? 0 : -1;
+                });
+
+                if (moveFocus)
+                {
+                    button.focus();
+                }
+
+                onChange(button);
+            }
+
+            const checked = buttons.filter(function (button)
+            {
+                return button.getAttribute('aria-checked') === 'true';
+            })[0];
+
+            buttons.forEach(function (button)
+            {
+                button.tabIndex = (checked ? button === checked : button === buttons[0]) ? 0 : -1;
+
+                button.addEventListener('click', function ()
+                {
+                    choose(button, false);
+                });
+
+                button.addEventListener('keydown', function (event)
+                {
+                    const at = buttons.indexOf(button);
+                    let next = -1;
+
+                    if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+                    {
+                        next = (at + 1) % buttons.length;
+                    }
+                    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+                    {
+                        next = (at - 1 + buttons.length) % buttons.length;
+                    }
+                    else if (event.key === 'Home')
+                    {
+                        next = 0;
+                    }
+                    else if (event.key === 'End')
+                    {
+                        next = buttons.length - 1;
+                    }
+
+                    if (next === -1)
+                    {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    choose(buttons[next], true);
+                });
+            });
+        }
+
+        function typeSegmentHtml(interview)
+        {
+            const current = interview.interview_type || 'technical';
+
+            return '<div class="pg-seg" role="radiogroup" aria-labelledby="rs-type-label-' + interview.id + '" data-type-group data-value="' + Dash.esc(current) + '">' +
+                Object.keys(TYPE_LABELS).map(function (type)
+                {
+                    return '<button type="button" role="radio" aria-checked="' + (type === current ? 'true' : 'false') + '" data-value="' + type + '">' + TYPE_LABELS[type] + '</button>';
+                }).join('') + '</div>';
         }
 
         function rescheduleFormHtml(interview)
         {
-            return '<div class="d-compare-col" style="margin-top:16px">' +
+            return '<div class="d-compare-col pg-open" style="margin-top:16px">' +
                 '<form data-reschedule-form novalidate>' +
                     '<div class="d-form-grid">' +
                         '<div class="d-field">' +
-                            '<label for="rs-when-' + interview.id + '">Date and time</label>' +
-                            '<input type="datetime-local" id="rs-when-' + interview.id + '" data-when value="' + Dash.esc(toLocalInput(interview.scheduled_at)) + '">' +
-                            '<div class="error-text" data-error="when"></div>' +
+                            '<label for="rs-date-' + interview.id + '">Date</label>' +
+                            '<input type="date" id="rs-date-' + interview.id + '" data-date value="' + Dash.esc(toDateInput(interview.scheduled_at)) + '">' +
+                            '<div class="error-text" data-error="date"></div>' +
                         '</div>' +
                         '<div class="d-field">' +
-                            '<label for="rs-duration-' + interview.id + '">Duration (minutes)</label>' +
+                            '<label for="rs-time-' + interview.id + '">Start time</label>' +
+                            '<input type="time" id="rs-time-' + interview.id + '" data-time value="' + Dash.esc(toTimeInput(interview.scheduled_at)) + '">' +
+                            '<div class="error-text" data-error="time"></div>' +
+                        '</div>' +
+                        '<div class="d-field">' +
+                            '<label for="rs-duration-' + interview.id + '">Duration in minutes</label>' +
                             '<input type="number" id="rs-duration-' + interview.id + '" data-duration min="15" max="240" step="5" value="' + Dash.esc(interview.duration_minutes) + '">' +
                             '<div class="error-text" data-error="duration"></div>' +
                         '</div>' +
@@ -215,15 +356,15 @@
                             '<input type="text" id="rs-interviewer-' + interview.id + '" data-interviewer value="' + Dash.esc(interview.interviewer) + '">' +
                             '<div class="error-text" data-error="interviewer"></div>' +
                         '</div>' +
-                        '<div class="d-field">' +
-                            '<label for="rs-type-' + interview.id + '">Interview type</label>' +
-                            '<select id="rs-type-' + interview.id + '" data-type>' + typeOptionsHtml(interview.interview_type) + '</select>' +
+                        '<div class="d-field full">' +
+                            '<span id="rs-type-label-' + interview.id + '" class="label">Interview type</span>' +
+                            typeSegmentHtml(interview) +
                         '</div>' +
                     '</div>' +
-                    '<div data-conflicts></div>' +
+                    '<div data-conflicts aria-live="polite"></div>' +
                     '<div class="error-text" data-form-error role="alert"></div>' +
                     '<div class="d-actions">' +
-                        '<button class="btn btn-sm" type="submit" data-submit-reschedule><i data-lucide="save"></i>Save changes</button>' +
+                        '<button class="btn btn-sm" type="submit" data-submit-reschedule><i data-lucide="save"></i>Save new time</button>' +
                         '<button class="btn btn-secondary btn-sm" type="button" data-open="reschedule">Cancel</button>' +
                     '</div>' +
                 '</form>' +
@@ -234,13 +375,13 @@
         {
             const buttons = [1, 2, 3, 4, 5].map(function (level)
             {
-                return '<button type="button" role="radio" aria-checked="' + (level === value ? 'true' : 'false') + '" data-value="' + level + '"' +
+                return '<button type="button" role="radio" aria-label="' + level + ' out of 5" aria-checked="' + (level === value ? 'true' : 'false') + '" data-value="' + level + '"' +
                     (value && level <= value ? ' class="on"' : '') + '>' + level + '</button>';
             }).join('');
 
             return '<div class="d-field" data-rating="' + key + '" data-label="' + Dash.esc(label) + '"' + (value ? ' data-value="' + value + '"' : '') + '>' +
                 '<label id="fb-' + key + '-' + interview.id + '">' + Dash.esc(label) + '</label>' +
-                '<div class="d-rating" role="radiogroup" aria-labelledby="fb-' + key + '-' + interview.id + '">' + buttons + '</div>' +
+                '<div class="d-rating pg-rating" role="radiogroup" aria-labelledby="fb-' + key + '-' + interview.id + '">' + buttons + '</div>' +
                 '<p class="d-sr" aria-live="polite" data-live>' + Dash.esc(label + ': ' + (value ? value + ' out of 5' : 'not rated yet')) + '</p>' +
                 '<div class="error-text" data-error></div>' +
             '</div>';
@@ -256,10 +397,10 @@
                 return feedback ? feedback[key] : 0;
             };
 
-            return '<div class="d-compare-col" style="margin-top:16px">' +
+            return '<div class="d-compare-col pg-open" style="margin-top:16px">' +
                 '<form data-feedback-form novalidate>' +
                     '<h3>' + (feedback ? 'Edit feedback' : 'Interview feedback') + '</h3>' +
-                    '<p class="sub">Rate each area from 1 (poor) to 5 (excellent).</p>' +
+                    '<p class="sub">Rate each area from 1 (poor) to 5 (excellent). Use the arrow keys to change a rating.</p>' +
                     '<div class="d-form-grid">' +
                         ratingFieldHtml(interview, 'technical', 'Technical', ratingValue('technical')) +
                         ratingFieldHtml(interview, 'communication', 'Communication', ratingValue('communication')) +
@@ -310,40 +451,14 @@
 
         function decisionRegionHtml(interview)
         {
-            const active = state.decision && state.decision.interviewId === interview.id;
-
-            let html = '<div class="d-compare-col" style="margin-top:16px" data-decision="' + interview.id + '">' +
+            return '<div class="d-compare-col" style="margin-top:16px">' +
                 '<h3>Final decision</h3>' +
-                '<p class="sub">Record the outcome for ' + Dash.esc(interview.candidateName) + '. The candidate is notified as soon as you confirm.</p>';
-
-            if (active)
-            {
-                const selected = state.decision.decision;
-                const selectedClass = selected === 'Selected' ? 'btn-success' : 'btn-danger';
-                const question = selected === 'Selected' ? 'Why are you selecting this candidate?' : 'Why are you rejecting this candidate?';
-
-                html += '<div class="d-field">' +
-                        '<label for="dec-reason-' + interview.id + '">' + question + '</label>' +
-                        '<textarea id="dec-reason-' + interview.id + '" data-reason placeholder="This reason is saved with the decision and kept in the audit trail."></textarea>' +
-                        '<div class="error-text" data-decision-error role="alert"></div>' +
-                    '</div>' +
-                    '<div class="d-actions">' +
-                        '<button class="btn ' + selectedClass + ' btn-sm" type="button" data-confirm-decision="' + selected + '">' +
-                            '<i data-lucide="' + (selected === 'Selected' ? 'user-check' : 'user-x') + '"></i>' +
-                            (selected === 'Selected' ? 'Confirm selection' : 'Confirm rejection') +
-                        '</button>' +
-                        '<button class="btn btn-secondary btn-sm" type="button" data-cancel-decision>Cancel</button>' +
-                    '</div>';
-            }
-            else
-            {
-                html += '<div class="d-actions">' +
-                        '<button class="btn btn-success btn-sm" type="button" data-start-decision="Selected"><i data-lucide="user-check"></i>Select candidate</button>' +
-                        '<button class="btn btn-danger btn-sm" type="button" data-start-decision="Rejected"><i data-lucide="user-x"></i>Reject</button>' +
-                    '</div>';
-            }
-
-            return html + '</div>';
+                '<p class="sub">Record the outcome for ' + Dash.esc(interview.candidateName) + '. The candidate is notified as soon as you confirm.</p>' +
+                '<div class="d-actions">' +
+                    '<button class="btn btn-success btn-sm" type="button" data-start-decision="Selected"><i data-lucide="user-check"></i>Select candidate</button>' +
+                    '<button class="btn btn-danger btn-sm" type="button" data-start-decision="Rejected"><i data-lucide="user-x"></i>Reject candidate</button>' +
+                '</div>' +
+            '</div>';
         }
 
         function feedbackToggleHtml(interview)
@@ -373,9 +488,9 @@
 
             let html = '<section class="d-panel" data-interview="' + interview.id + '">' +
                 '<div class="d-panel-head">' +
-                    '<div><h3>' + Dash.esc(interview.candidateName) + '</h3>' +
-                    '<p class="sub">' + Dash.esc(interview.jobTitle) + ' &middot; Interviewer ' + Dash.esc(interview.interviewer) +
-                    ' &middot; ' + Dash.esc(Dash.dateTime(interview.scheduled_at)) + ' &middot; ' + Dash.esc(interview.duration_minutes) + ' min</p></div>' +
+                    '<div><h3 class="pg-iv-title" tabindex="-1">' + Dash.esc(interview.candidateName) + '</h3>' +
+                    '<p class="sub"><span class="pg-iv-time">' + Dash.esc(timeRange(interview.scheduled_at, interview.duration_minutes)) + '</span> &middot; ' +
+                    Dash.esc(interview.jobTitle) + ' &middot; Interviewer ' + Dash.esc(interview.interviewer) + '</p></div>' +
                     '<div class="d-meta">' + Dash.badge(typeLabel(interview.interview_type), 'neutral') + statusBadge + lateBadge + '</div>' +
                 '</div>';
 
@@ -420,30 +535,81 @@
             return html + '</section>';
         }
 
+        function dayGroups(list)
+        {
+            const groups = [];
+            const byKey = {};
+
+            list.forEach(function (interview)
+            {
+                const key = toDateInput(interview.scheduled_at);
+
+                if (!byKey[key])
+                {
+                    byKey[key] = { label: dayLabel(interview.scheduled_at), items: [] };
+                    groups.push(byKey[key]);
+                }
+
+                byKey[key].items.push(interview);
+            });
+
+            return groups;
+        }
+
+        function groupedHtml(list)
+        {
+            return dayGroups(list).map(function (group)
+            {
+                return '<div class="pg-day"><h2 class="pg-day-title">' + Dash.esc(group.label) +
+                    '<span>' + group.items.length + (group.items.length === 1 ? ' interview' : ' interviews') + '</span></h2>' +
+                    group.items.map(cardHtml).join('') + '</div>';
+            }).join('');
+        }
+
+        function byTime(direction)
+        {
+            return function (a, b)
+            {
+                return direction * (new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+            };
+        }
+
         function render()
         {
             renderKpis();
 
-            const upcoming = state.interviews.filter(isUpcoming);
-            const past = state.interviews.filter(function (interview) { return !isUpcoming(interview); });
+            const upcoming = state.interviews.filter(isUpcoming).sort(byTime(1));
+            const past = state.interviews.filter(function (interview) { return !isUpcoming(interview); }).sort(byTime(-1));
 
             document.getElementById('past-title').classList.toggle('hidden', !past.length);
             document.getElementById('upcoming').innerHTML = upcoming.length
-                ? upcoming.map(cardHtml).join('')
+                ? groupedHtml(upcoming)
                 : Dash.empty('calendar-clock', 'No upcoming interviews. Schedule one from an applicant page.',
-                    '<a class="btn btn-sm" href="applicants.html">Go to applicants</a>');
-            document.getElementById('past').innerHTML = past.map(cardHtml).join('');
+                    '<a class="btn btn-sm" href="jobs.html">Go to jobs and applicants</a>');
+            document.getElementById('past').innerHTML = groupedHtml(past);
 
             wire();
             Dash.icons();
+
+            if (state.focus)
+            {
+                const target = document.querySelector(state.focus);
+
+                if (target)
+                {
+                    target.focus();
+                }
+
+                state.focus = null;
+            }
         }
 
         function wire()
         {
             document.querySelectorAll('[data-interview]').forEach(function (card)
             {
-                const id = Number(card.getAttribute('data-interview'));
-                const interview = findInterview(id);
+                const id = card.getAttribute('data-interview');
+                const interview = findInterview(Number.isNaN(Number(id)) ? id : Number(id));
 
                 if (!interview)
                 {
@@ -455,14 +621,19 @@
                     button.addEventListener('click', function ()
                     {
                         const what = button.getAttribute('data-open');
+                        const base = '[data-interview="' + id + '"] ';
 
                         if (what === 'reschedule')
                         {
-                            state.openReschedule = state.openReschedule === id ? null : id;
+                            const opening = state.openReschedule !== interview.id;
+                            state.openReschedule = opening ? interview.id : null;
+                            state.focus = base + (opening ? '[data-date]' : '[data-open="reschedule"]');
                         }
                         else
                         {
-                            state.openFeedback = state.openFeedback === id ? null : id;
+                            const opening = state.openFeedback !== interview.id;
+                            state.openFeedback = opening ? interview.id : null;
+                            state.focus = base + (opening ? '[data-rating] [role="radio"]' : '[data-open="feedback"]');
                         }
 
                         render();
@@ -471,7 +642,14 @@
 
                 wireReschedule(card, interview);
                 wireFeedback(card, interview);
-                wireDecision(card, interview);
+
+                card.querySelectorAll('[data-start-decision]').forEach(function (button)
+                {
+                    button.addEventListener('click', function ()
+                    {
+                        openDecision(interview, button.getAttribute('data-start-decision'), button);
+                    });
+                });
             });
         }
 
@@ -484,46 +662,68 @@
                 return;
             }
 
+            const group = form.querySelector('[data-type-group]');
+
+            wireRadioGroup(group, function (button)
+            {
+                group.setAttribute('data-value', button.getAttribute('data-value'));
+            });
+
+            form.addEventListener('keydown', function (event)
+            {
+                if (event.key === 'Escape')
+                {
+                    state.openReschedule = null;
+                    state.focus = '[data-interview="' + card.getAttribute('data-interview') + '"] [data-open="reschedule"]';
+                    render();
+                }
+            });
+
             form.addEventListener('submit', function (event)
             {
                 event.preventDefault();
 
-                const when = form.querySelector('[data-when]').value;
+                const date = form.querySelector('[data-date]').value;
+                const time = form.querySelector('[data-time]').value;
                 const duration = Number(form.querySelector('[data-duration]').value);
                 const interviewer = form.querySelector('[data-interviewer]').value.trim();
-                const whenError = form.querySelector('[data-error="when"]');
-                const durationError = form.querySelector('[data-error="duration"]');
-                const interviewerError = form.querySelector('[data-error="interviewer"]');
+                const errors =
+                {
+                    date: form.querySelector('[data-error="date"]'),
+                    time: form.querySelector('[data-error="time"]'),
+                    duration: form.querySelector('[data-error="duration"]'),
+                    interviewer: form.querySelector('[data-error="interviewer"]')
+                };
                 let valid = true;
 
-                if (!when || isNaN(new Date(when).getTime()))
+                errors.date.textContent = date ? '' : 'Please pick a date for the interview.';
+                errors.time.textContent = time ? '' : 'Please pick a start time.';
+                errors.duration.textContent = '';
+                errors.interviewer.textContent = '';
+
+                if (!date || !time)
                 {
-                    whenError.textContent = 'Please pick a valid date and time for the interview.';
                     valid = false;
                 }
-                else
+
+                const when = new Date(date + 'T' + time);
+
+                if (date && time && isNaN(when.getTime()))
                 {
-                    whenError.textContent = '';
+                    errors.date.textContent = 'That date and time is not valid. Check both and try again.';
+                    valid = false;
                 }
 
                 if (!Number.isFinite(duration) || duration < 15 || duration > 240)
                 {
-                    durationError.textContent = 'Interview length must be between 15 and 240 minutes.';
+                    errors.duration.textContent = 'Interview length must be between 15 and 240 minutes.';
                     valid = false;
-                }
-                else
-                {
-                    durationError.textContent = '';
                 }
 
                 if (!interviewer)
                 {
-                    interviewerError.textContent = 'Please say who will run the interview.';
+                    errors.interviewer.textContent = 'Please say who will run the interview.';
                     valid = false;
-                }
-                else
-                {
-                    interviewerError.textContent = '';
                 }
 
                 if (!valid)
@@ -533,10 +733,10 @@
 
                 const payload =
                 {
-                    scheduled_at: new Date(when).toISOString(),
+                    scheduled_at: when.toISOString(),
                     duration_minutes: duration,
                     interviewer: interviewer,
-                    interview_type: form.querySelector('[data-type]').value
+                    interview_type: group.getAttribute('data-value')
                 };
 
                 submitReschedule(card, interview, payload, false, form.querySelector('[data-submit-reschedule]'));
@@ -569,10 +769,12 @@
             {
                 const result = await Api.put('/api/interviews/' + interview.id, body);
                 const kept = (result.conflicts || []).length;
+
                 showToast(kept
                     ? 'Interview rescheduled with ' + kept + ' intentional ' + (kept === 1 ? 'clash' : 'clashes') + '.'
                     : 'Interview rescheduled.', 'success');
                 state.openReschedule = null;
+                state.focus = '[data-interview="' + interview.id + '"] .pg-iv-title';
                 await load();
             }
             catch (error)
@@ -585,20 +787,27 @@
 
                     conflictBox.innerHTML = Dash.callout('triangle-alert', error.message,
                         conflictListHtml(conflicts) +
-                        '<button class="btn btn-danger btn-sm" type="button" data-force-reschedule style="margin-top:4px">Reschedule anyway</button>',
-                        'bad');
+                        '<div class="pg-conflict-actions">' +
+                            '<button class="btn btn-secondary btn-sm" type="button" data-pick-another>Pick another time</button>' +
+                            '<button class="btn btn-danger btn-sm" type="button" data-force-reschedule>Schedule anyway</button>' +
+                        '</div>',
+                        'warn');
                     Dash.icons();
+
+                    conflictBox.querySelector('[data-pick-another]').addEventListener('click', function ()
+                    {
+                        conflictBox.innerHTML = '';
+                        card.querySelector('[data-time]').focus();
+                    });
 
                     const forceButton = conflictBox.querySelector('[data-force-reschedule]');
 
-                    if (forceButton)
+                    forceButton.addEventListener('click', function ()
                     {
-                        forceButton.addEventListener('click', function ()
-                        {
-                            submitReschedule(card, interview, payload, true, forceButton);
-                        });
-                    }
+                        submitReschedule(card, interview, payload, true, forceButton);
+                    });
 
+                    forceButton.parentNode.querySelector('[data-pick-another]').focus();
                     return;
                 }
 
@@ -611,23 +820,19 @@
             card.querySelectorAll('[data-rating]').forEach(function (field)
             {
                 const label = field.getAttribute('data-label');
+                const group = field.querySelector('.d-rating');
 
-                field.querySelectorAll('.d-rating button').forEach(function (button)
+                wireRadioGroup(group, function (button)
                 {
-                    button.addEventListener('click', function ()
-                    {
-                        const value = Number(button.getAttribute('data-value'));
+                    const value = Number(button.getAttribute('data-value'));
 
-                        field.setAttribute('data-value', String(value));
-                        field.querySelectorAll('.d-rating button').forEach(function (other)
-                        {
-                            const otherValue = Number(other.getAttribute('data-value'));
-                            other.classList.toggle('on', otherValue <= value);
-                            other.setAttribute('aria-checked', otherValue === value ? 'true' : 'false');
-                        });
-                        field.querySelector('[data-live]').textContent = label + ': ' + value + ' out of 5';
-                        field.querySelector('[data-error]').textContent = '';
+                    field.setAttribute('data-value', String(value));
+                    group.querySelectorAll('button').forEach(function (other)
+                    {
+                        other.classList.toggle('on', Number(other.getAttribute('data-value')) <= value);
                     });
+                    field.querySelector('[data-live]').textContent = label + ': ' + value + ' out of 5';
+                    field.querySelector('[data-error]').textContent = '';
                 });
             });
 
@@ -698,6 +903,7 @@
                 await Api.post('/api/interviews/' + interview.id + '/feedback', body);
                 showToast('Feedback saved for ' + interview.candidateName + '.', 'success');
                 state.openFeedback = null;
+                state.focus = '[data-interview="' + interview.id + '"] .pg-iv-title';
                 await load();
             }
             catch (error)
@@ -707,77 +913,66 @@
             }
         }
 
-        function wireDecision(card, interview)
+        function openDecision(interview, decision, opener)
         {
-            card.querySelectorAll('[data-start-decision]').forEach(function (button)
-            {
-                button.addEventListener('click', function ()
-                {
-                    state.decision = { interviewId: interview.id, decision: button.getAttribute('data-start-decision') };
-                    render();
+            const dialog = document.getElementById('decision-dialog');
+            const selecting = decision === 'Selected';
+            const confirm = document.getElementById('dec-confirm');
 
-                    const reason = document.querySelector('[data-interview="' + interview.id + '"] [data-reason]');
+            pendingDecision = { interview: interview, decision: decision };
+            decisionOpener = opener;
 
-                    if (reason)
-                    {
-                        reason.focus();
-                    }
-                });
-            });
+            document.getElementById('dec-title').textContent = selecting ? 'Select this candidate' : 'Reject this candidate';
+            document.getElementById('dec-sub').textContent = 'The decision for ' + interview.candidateName + ' is audited and the candidate is notified.';
+            document.getElementById('dec-label').textContent = selecting ? 'Why are you selecting this candidate?' : 'Why are you rejecting this candidate?';
+            document.getElementById('dec-reason').value = '';
+            document.getElementById('dec-error').textContent = '';
+            confirm.className = 'btn btn-sm ' + (selecting ? 'btn-success' : 'btn-danger');
+            confirm.textContent = selecting ? 'Confirm selection' : 'Confirm rejection';
+            Dash.setBusy(confirm, false);
 
-            const cancelButton = card.querySelector('[data-cancel-decision]');
-
-            if (cancelButton)
-            {
-                cancelButton.addEventListener('click', function ()
-                {
-                    state.decision = null;
-                    render();
-                });
-            }
-
-            const confirmButton = card.querySelector('[data-confirm-decision]');
-
-            if (confirmButton)
-            {
-                confirmButton.addEventListener('click', function ()
-                {
-                    submitDecision(card, interview, confirmButton);
-                });
-            }
+            dialog.showModal();
+            document.getElementById('dec-reason').focus();
         }
 
-        async function submitDecision(card, interview, button)
+        async function submitDecision()
         {
-            const errorBox = card.querySelector('[data-decision-error]');
-            const reason = card.querySelector('[data-reason]').value.trim();
+            const reasonInput = document.getElementById('dec-reason');
+            const errorBox = document.getElementById('dec-error');
+            const confirm = document.getElementById('dec-confirm');
+            const reason = reasonInput.value.trim();
 
             errorBox.textContent = '';
 
             if (!reason)
             {
                 errorBox.textContent = 'Please give a reason for the final decision. The candidate is notified and the decision is audited.';
+                reasonInput.focus();
                 return;
             }
 
-            Dash.setBusy(button, true);
+            const interview = pendingDecision.interview;
+
+            Dash.setBusy(confirm, true);
 
             try
             {
                 const result = await Api.post('/api/applications/' + interview.applicationId + '/decision',
                 {
-                    decision: state.decision.decision,
+                    decision: pendingDecision.decision,
                     reason: reason
                 });
 
-                showToast('Final decision recorded.', 'success');
+                showToast('Decision recorded. Candidate notified.', 'success');
                 state.decisionNote = { interviewId: interview.id, message: result.notification };
-                state.decision = null;
+                state.focus = '[data-interview="' + interview.id + '"] .pg-iv-title';
+                decisionOpener = null;
+                document.getElementById('decision-dialog').close();
                 await load();
             }
             catch (error)
             {
-                Dash.setBusy(button, false);
+                Dash.setBusy(confirm, false);
                 errorBox.textContent = error.message;
             }
         }
@@ -807,6 +1002,37 @@
 
         if (user)
         {
+            const dialog = document.getElementById('decision-dialog');
+
+            document.getElementById('decision-form').addEventListener('submit', function (event)
+            {
+                event.preventDefault();
+                submitDecision();
+            });
+
+            document.getElementById('dec-cancel').addEventListener('click', function ()
+            {
+                dialog.close();
+            });
+
+            dialog.addEventListener('click', function (event)
+            {
+                if (event.target === dialog)
+                {
+                    dialog.close();
+                }
+            });
+
+            dialog.addEventListener('close', function ()
+            {
+                if (decisionOpener && document.body.contains(decisionOpener))
+                {
+                    decisionOpener.focus();
+                }
+
+                decisionOpener = null;
+            });
+
             Dash.mountShell(
             {
                 user: user,

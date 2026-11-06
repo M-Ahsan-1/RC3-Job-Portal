@@ -3,245 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recruiter Dashboard - RC3 Job Portal</title>
+    <title>Dashboard – SORYNTH</title>
+    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/rdash.css">
 </head>
 <body class="theme-recruiter">
-    <div id="content" class="d-content">
-        <section class="d-hero">
+    <script src="js/brand.js"></script>
+    <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
+
+    <div id="content" class="d-content rd">
+        <header class="rd-head">
             <div>
                 <h2 id="greeting">Welcome back</h2>
-                <p>Review applicants, track every stage and keep hiring decisions in your hands.</p>
-                <a class="btn" href="job-form.html"><i data-lucide="plus"></i>Post a job</a>
+                <p class="rd-date" id="today"></p>
             </div>
-            <svg class="art" viewBox="0 0 220 140" fill="none" aria-hidden="true">
-                <rect x="20" y="70" width="28" height="60" rx="6" fill="#fff" opacity=".25"/>
-                <rect x="62" y="44" width="28" height="86" rx="6" fill="#fff" opacity=".4"/>
-                <rect x="104" y="20" width="28" height="110" rx="6" fill="#fff" opacity=".6"/>
-                <rect x="146" y="50" width="28" height="80" rx="6" fill="#fff" opacity=".4"/>
-                <circle cx="190" cy="24" r="10" fill="#fff" opacity=".5"/>
-            </svg>
-        </section>
+            <div class="rd-head-actions">
+                <span class="rd-updated" id="updated" role="status"></span>
+                <button class="btn btn-secondary btn-sm" id="refresh-btn" type="button"><i data-lucide="refresh-cw"></i>Refresh</button>
+                <a class="btn btn-sm" href="job-form.html"><i data-lucide="plus"></i>Post a job</a>
+            </div>
+        </header>
 
-        <div id="error-box" class="d-panel hidden" role="alert"></div>
+        <div id="error-box" class="rd-panel hidden" role="alert"></div>
+        <div id="empty-box" class="rd-panel hidden"></div>
 
-        <section class="d-kpis" id="kpis" aria-label="Key numbers"></section>
+        <div class="rd-body" id="rd-body">
+            <section class="rd-attention" id="attention" aria-label="Needs your attention"></section>
 
-        <section class="d-row" aria-label="Applications overview">
-            <div class="d-panel">
-                <h3>Applications by job</h3>
-                <p class="sub">How many people applied to each role</p>
-                <div class="d-chart"><canvas id="job-chart" aria-label="Bar chart of applications by job" role="img"></canvas></div>
-            </div>
-            <div class="d-panel">
-                <h3>Applications by stage</h3>
-                <p class="sub">Where applicants are in the pipeline</p>
-                <div class="d-chart"><canvas id="stage-chart" aria-label="Doughnut chart of applications by stage" role="img"></canvas></div>
-            </div>
-        </section>
+            <section class="rd-kpis" id="kpis" aria-label="Key numbers"></section>
 
-        <section class="d-row" aria-label="Hiring performance">
-            <div class="d-panel">
-                <h3>Hiring performance</h3>
-                <p class="sub">From submission to the first recruiter decision</p>
-                <div class="d-metrics" id="metrics"></div>
-            </div>
-            <div class="d-panel">
-                <h3>Most common skill gaps</h3>
-                <p class="sub">Skills applicants are missing most often</p>
-                <div id="gaps"></div>
-            </div>
-        </section>
+            <section class="rd-panel" aria-labelledby="flow-title">
+                <div class="rd-panel-head">
+                    <div>
+                        <h3 id="flow-title">Hiring pipeline</h3>
+                        <p class="rd-sub">How many applicants reached each stage, and how many moved on.</p>
+                    </div>
+                </div>
+                <div class="rd-flow-wrap" id="flow-wrap">
+                    <div class="rd-flow" id="flow"></div>
+                    <div class="rd-tip" id="flow-tip" hidden></div>
+                </div>
+                <div class="rd-key-row" id="flow-key"></div>
+            </section>
 
-        <section class="d-panel" aria-label="Recent jobs">
-            <div class="d-panel-head">
-                <div><h3>Recent jobs</h3><p class="sub">Your latest postings</p></div>
-                <a class="btn btn-secondary btn-sm" href="jobs.html">All jobs</a>
+            <section class="rd-panel hidden" id="stage-list" aria-live="polite"></section>
+
+            <div class="rd-cols">
+                <section class="rd-panel" aria-labelledby="job-title">
+                    <div class="rd-panel-head">
+                        <div>
+                            <h3 id="job-title">Applications by job</h3>
+                            <p class="rd-sub">Select a job to see its applicants.</p>
+                        </div>
+                        <a class="btn btn-secondary btn-sm" href="jobs.html">All jobs</a>
+                    </div>
+                    <div id="by-job"></div>
+                </section>
+
+                <div class="rd-stack">
+                    <section class="rd-panel" aria-label="Hiring performance">
+                        <div class="rd-stats" id="rates"></div>
+                    </section>
+
+                    <section class="rd-panel" aria-labelledby="gap-title">
+                        <div class="rd-panel-head">
+                            <div>
+                                <h3 id="gap-title">Most common skill gaps</h3>
+                                <p class="rd-sub">Select a skill to search for candidates who have it.</p>
+                            </div>
+                        </div>
+                        <div id="gaps"></div>
+                    </section>
+                </div>
             </div>
-            <div id="jobs"></div>
-        </section>
+
+            <div class="rd-cols">
+                <section class="rd-panel" aria-labelledby="feed-title">
+                    <div class="rd-panel-head">
+                        <div>
+                            <h3 id="feed-title">Recent activity</h3>
+                            <p class="rd-sub">Who changed what, from the audit trail.</p>
+                        </div>
+                    </div>
+                    <div id="feed"></div>
+                </section>
+
+                <section class="rd-panel" aria-labelledby="today-title">
+                    <div class="rd-panel-head">
+                        <div>
+                            <h3 id="today-title">Today's interviews</h3>
+                            <p class="rd-sub">In the order they start.</p>
+                        </div>
+                        <a class="btn btn-secondary btn-sm" href="interviews.html">All interviews</a>
+                    </div>
+                    <div id="today-list"></div>
+                </section>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="js/icons.js"></script>
+    <script src="js/illustrations.js"></script>
+    <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/recruiter-dash.js"></script>
     <script>
         const user = guardPage('recruiter');
-        const charts = [];
-
-        function kpiCard(icon, value, label)
-        {
-            return '<div class="d-kpi"><div class="ic"><i data-lucide="' + icon + '"></i></div><b>' + Dash.esc(value) + '</b><span>' + label + '</span></div>';
-        }
-
-        function renderKpis(data)
-        {
-            document.getElementById('kpis').innerHTML =
-                kpiCard('briefcase', data.active_jobs, 'Active jobs') +
-                kpiCard('users', data.total_applications, 'Total applications') +
-                kpiCard('user-check', data.shortlisted_count, 'Shortlisted candidates') +
-                kpiCard('hourglass', data.pending_reviews, 'Pending reviews') +
-                kpiCard('calendar-clock', data.upcoming_interviews, 'Upcoming interviews');
-        }
-
-        function drawChart(canvasId, config)
-        {
-            if (!window.Chart)
-            {
-                return;
-            }
-
-            charts.push(new Chart(document.getElementById(canvasId), config));
-        }
-
-        function renderCharts(data)
-        {
-            const byJob = data.applications_by_job || [];
-            const byStage = (data.applications_by_stage || []).filter(function (row)
-            {
-                return row.count > 0;
-            });
-
-            drawChart('job-chart',
-            {
-                type: 'bar',
-                data:
-                {
-                    labels: byJob.map(function (row) { return row.job; }),
-                    datasets: [{ data: byJob.map(function (row) { return row.count; }), backgroundColor: '#6366f1', borderRadius: 8, maxBarThickness: 46 }]
-                },
-                options:
-                {
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#eef0f6' } }, x: { grid: { display: false } } }
-                }
-            });
-
-            drawChart('stage-chart',
-            {
-                type: 'doughnut',
-                data:
-                {
-                    labels: byStage.map(function (row) { return row.status; }),
-                    datasets: [{ data: byStage.map(function (row) { return row.count; }), backgroundColor: ['#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#4f46e5', '#4338ca', '#2563eb', '#ef4444'], borderWidth: 2 }]
-                },
-                options: { maintainAspectRatio: false, cutout: '66%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, usePointStyle: true } } } }
-            });
-        }
-
-        function renderMetrics(data)
-        {
-            const rate = data.shortlist_rate === undefined ? '-' : data.shortlist_rate + '%';
-            const time = data.avg_processing_time === undefined ? '-' : data.avg_processing_time + ' days';
-
-            document.getElementById('metrics').innerHTML =
-                '<div class="d-metric"><b>' + Dash.esc(rate) + '</b><span>Shortlist rate</span></div>' +
-                '<div class="d-metric"><b>' + Dash.esc(time) + '</b><span>Average processing time</span></div>';
-        }
-
-        function renderGaps(data)
-        {
-            const gaps = data.common_skill_gaps || [];
-            const box = document.getElementById('gaps');
-
-            if (!gaps.length)
-            {
-                box.innerHTML = Dash.empty('check-circle-2', 'No skill gaps found yet. Gaps appear once applicants are assessed.');
-                return;
-            }
-
-            const max = Math.max.apply(null, gaps.map(function (gap) { return gap.count; })) || 1;
-
-            box.innerHTML = gaps.slice(0, 6).map(function (gap)
-            {
-                return '<div class="d-gap"><span>' + Dash.esc(gap.skill) + '</span><i><u style="width:' + Math.round(gap.count / max * 100) + '%"></u></i><b>' + gap.count + '</b></div>';
-            }).join('');
-        }
-
-        function renderJobs(jobs)
-        {
-            const box = document.getElementById('jobs');
-
-            if (!jobs.length)
-            {
-                box.innerHTML = Dash.empty('briefcase', 'You have not posted any jobs yet.', '<a class="btn btn-sm" href="job-form.html">Post your first job</a>');
-                return;
-            }
-
-            box.innerHTML = jobs.slice(0, 5).map(function (job)
-            {
-                const open = job.status === 'open';
-                const place = [job.department, job.location].filter(Boolean).map(Dash.esc).join(', ');
-
-                return '<div class="d-item"><div class="main"><b>' + Dash.esc(job.title) + '</b><span>' + place + '</span></div>' +
-                    '<span class="d-badge ' + (open ? 'ok' : '') + '">' + (open ? 'Open' : 'Closed') + '</span>' +
-                    '<span class="muted">' + (job.applicantCount || 0) + ' applicants</span>' +
-                    '<a class="btn btn-secondary btn-sm" href="applicants.html?jobId=' + encodeURIComponent(job.id) + '">View applicants</a></div>';
-            }).join('');
-        }
-
-        async function load()
-        {
-            const errorBox = document.getElementById('error-box');
-            errorBox.classList.add('hidden');
-            document.getElementById('kpis').innerHTML = Dash.skeletons(5);
-            document.getElementById('jobs').innerHTML = Dash.skeletons(2);
-
-            try
-            {
-                const results = await Promise.all([Api.get('/api/analytics'), Api.get('/api/jobs')]);
-                charts.forEach(function (chart) { chart.destroy(); });
-                charts.length = 0;
-                renderKpis(results[0]);
-                renderCharts(results[0]);
-                renderMetrics(results[0]);
-                renderGaps(results[0]);
-                renderJobs(results[1]);
-            }
-            catch (error)
-            {
-                document.getElementById('kpis').innerHTML = '';
-                document.getElementById('jobs').innerHTML = '';
-                errorBox.innerHTML = Dash.empty('triangle-alert', error.message, '<button class="btn btn-sm" id="retry-btn" type="button">Try again</button>');
-                errorBox.classList.remove('hidden');
-                document.getElementById('retry-btn').addEventListener('click', load);
-            }
-
-            Dash.icons();
-        }
 
         if (user)
         {
-            document.getElementById('greeting').textContent = 'Welcome back, ' + user.name.split(' ')[0];
-
             Dash.mountShell(
             {
                 user: user,
-                logo: 'sparkles',
-                title: 'Overview',
+                title: 'Dashboard',
                 subtitle: 'Your recruitment workspace',
-                search: true,
-                items:
-                [
-                    { label: 'Overview', href: 'recruiter.html', icon: 'layout-dashboard' },
-                    { label: 'Jobs', href: 'jobs.html', icon: 'briefcase' },
-                    { label: 'Interviews', href: 'interviews.html', icon: 'calendar-clock' },
-                    { label: 'Analytics', href: 'analytics.html', icon: 'bar-chart-3' },
-                    { label: 'Talent Search', href: 'search.html', icon: 'search' }
-                ],
+                items: Dash.RECRUITER_NAV,
                 onBell: function ()
                 {
                     showToast('You have no new notifications.', 'info');
                 }
             });
 
-            load();
+            RDash.start(user);
         }
     </script>
 </body>
