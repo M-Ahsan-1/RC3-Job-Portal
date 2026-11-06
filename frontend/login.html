@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log in – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>Log in – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -22,7 +23,7 @@
         <main class="auth-panel">
             <div class="auth-form" id="auth-form">
                 <h1>Welcome back</h1>
-                <p class="subtitle">Log in to your SORYNTH account.</p>
+                <p class="subtitle">Log in to your VEYRA account.</p>
 
                 <div id="form-error" class="form-error hidden" role="alert"></div>
 
@@ -42,7 +43,7 @@
                         <div class="error-text" id="password-error"></div>
                     </div>
 
-                    <button type="submit" id="submit-btn" class="btn btn-block">Log in</button>
+                    <button type="submit" id="submit-btn" class="btn btn-accent btn-block">Log in</button>
                 </form>
 
                 <div class="auth-footer">
@@ -70,7 +71,7 @@
         const submitButton = document.getElementById('submit-btn');
         const formPanel = document.getElementById('auth-form');
 
-        mountAuthStage('Every score links to the exact words in the resume.');
+        mountAuthStage('Every AI assessment links back to the resume evidence. You make the final decision.');
         authBindPasswordToggles();
 
         const existingUser = getUser();
@@ -156,5 +157,6 @@
         emailInput.addEventListener('input', authHideFormError);
         passwordInput.addEventListener('input', authHideFormError);
     </script>
+    <script src="js/constellation.js"></script>
 </body>
 </html>

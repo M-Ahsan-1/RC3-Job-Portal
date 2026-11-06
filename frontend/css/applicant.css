@@ -47,7 +47,7 @@
 .ev-threads path
 {
     fill: none;
-    stroke: var(--ink, #17233A);
+    stroke: var(--accent, #5146D8);
     stroke-width: 1.6;
     stroke-linecap: round;
     stroke-dasharray: 1;
@@ -57,7 +57,7 @@
 
 .ev-threads circle
 {
-    fill: var(--ink, #17233A);
+    fill: var(--accent, #5146D8);
 }
 
 .ev-rail,
@@ -66,7 +66,7 @@
 {
     padding: 16px;
     background: var(--surface, #FFFFFF);
-    border: 1px solid var(--line, #DFE3EA);
+    border: 1px solid var(--line, #E4E1EC);
     border-radius: var(--r-panel, 14px);
 }
 
@@ -98,7 +98,7 @@
 
 .ev-group span
 {
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-weight: 500;
 }
 
@@ -109,7 +109,7 @@
 
 .ev-group.is-gap
 {
-    color: var(--gap, #B45309);
+    color: var(--gap, #A34A06);
 }
 
 .ev-group.is-absent
@@ -120,7 +120,7 @@
 .ev-help
 {
     margin: 0 0 8px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.8rem;
     line-height: 1.45;
 }
@@ -128,7 +128,7 @@
 .ev-empty
 {
     margin: 0;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.85rem;
 }
 
@@ -139,12 +139,12 @@
     margin-bottom: 8px;
     padding: 8px 10px;
     background: var(--surface, #FFFFFF);
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
     font: inherit;
     font-size: 0.9rem;
     font-weight: 500;
     text-align: left;
-    border: 1px solid var(--line-strong, #C9D0DB);
+    border: 1px solid var(--line-strong, #7E7A97);
     border-radius: var(--r-ctl, 6px);
     transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
 }
@@ -162,7 +162,7 @@ button.ev-chip
 .ev-chip.is-gap
 {
     border-style: dashed;
-    border-color: var(--gap, #B45309);
+    border-color: var(--gap, #A34A06);
 }
 
 .ev-chip.is-absent
@@ -174,8 +174,8 @@ button.ev-chip
 .ev-chip.is-lit,
 button.ev-chip:hover
 {
-    background: var(--neutral-soft, #EEF1F5);
-    border-color: var(--ink, #17233A);
+    background: var(--neutral-soft, #EFECFA);
+    border-color: var(--accent, #5146D8);
 }
 
 .ev-chip-top
@@ -189,7 +189,7 @@ button.ev-chip:hover
 .ev-unv
 {
     display: inline-flex;
-    color: var(--gap, #B45309);
+    color: var(--gap, #A34A06);
 }
 
 .ev-unv svg
@@ -204,7 +204,7 @@ button.ev-chip:hover
     height: 3px;
     margin-top: 6px;
     overflow: hidden;
-    background: var(--line, #DFE3EA);
+    background: var(--line, #E4E1EC);
     border-radius: 2px;
 }
 
@@ -234,14 +234,14 @@ button.ev-chip:hover
 {
     margin-top: 18px;
     padding-top: 14px;
-    border-top: 1px solid var(--line, #DFE3EA);
+    border-top: 1px solid var(--line, #E4E1EC);
 }
 
 .ev-add label
 {
     display: block;
     margin-bottom: 6px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.85rem;
     font-weight: 600;
 }
@@ -275,7 +275,7 @@ button.ev-chip:hover
 
 .ev-doc-head span
 {
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.85rem;
 }
 
@@ -284,19 +284,19 @@ button.ev-chip:hover
     max-height: min(72vh, 680px);
     padding: 22px 24px;
     overflow-y: auto;
-    background: var(--paper, #F6F7F9);
-    color: var(--ink, #17233A);
+    background: var(--paper, #FAF9F6);
+    color: var(--ink, #25243A);
     font-size: 0.95rem;
     line-height: 1.75;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    border: 1px solid var(--line, #DFE3EA);
+    border: 1px solid var(--line, #E4E1EC);
     border-radius: var(--r-ctl, 6px);
 }
 
 .ev-doc:focus-visible
 {
-    outline: 2px solid var(--ink, #17233A);
+    outline: 2px solid var(--accent, #5146D8);
     outline-offset: 2px;
 }
 
@@ -304,19 +304,19 @@ button.ev-chip:hover
 {
     margin: 0 0 14px;
     padding: 8px 10px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.82rem;
     line-height: 1.45;
     white-space: normal;
-    border: 1px dashed var(--line-strong, #C9D0DB);
+    border: 1px dashed var(--line-strong, #7E7A97);
     border-radius: var(--r-ctl, 6px);
 }
 
 .ev-hl
 {
     padding: 1px 3px;
-    background: var(--mark, #FFE066);
-    color: #17233A;
+    background: var(--mark, #FFD9C2);
+    color: var(--on-mark, #25243A);
     border-radius: 3px;
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
@@ -325,7 +325,7 @@ button.ev-chip:hover
 
 .ev-hl.is-lit
 {
-    box-shadow: 0 0 0 2px var(--ink, #17233A);
+    box-shadow: 0 0 0 2px var(--ink, #25243A);
 }
 
 .ev-hl.pulse
@@ -338,7 +338,7 @@ button.ev-chip:hover
 .ev-chip:focus-visible,
 .ev-ref:focus-visible
 {
-    outline: 2px solid var(--ink, #17233A);
+    outline: 2px solid var(--accent, #5146D8);
     outline-offset: 2px;
 }
 
@@ -346,8 +346,8 @@ button.ev-chip:hover
 {
     margin-left: 5px;
     padding: 0 5px;
-    background: var(--ink, #17233A);
-    color: var(--paper, #F6F7F9);
+    background: var(--ink, #25243A);
+    color: var(--paper, #FAF9F6);
     font-size: 0.66rem;
     font-weight: 600;
     line-height: 1.5;
@@ -358,7 +358,7 @@ button.ev-chip:hover
 
 .ev-claim
 {
-    text-decoration: underline dashed var(--gap, #B45309);
+    text-decoration: underline dashed var(--gap, #A34A06);
     text-decoration-thickness: 2px;
     text-underline-offset: 4px;
 }
@@ -366,18 +366,18 @@ button.ev-chip:hover
 .ev-claim.is-reviewed
 {
     text-decoration-style: solid;
-    text-decoration-color: var(--line-strong, #C9D0DB);
+    text-decoration-color: var(--line-strong, #7E7A97);
 }
 
 .ev-claim-label
 {
     margin-left: 5px;
     padding: 0 5px;
-    color: var(--gap, #B45309);
+    color: var(--gap, #A34A06);
     font-size: 0.66rem;
     font-weight: 700;
     line-height: 1.5;
-    border: 1px solid var(--gap, #B45309);
+    border: 1px solid var(--gap, #A34A06);
     border-radius: 3px;
     vertical-align: middle;
     white-space: nowrap;
@@ -402,19 +402,19 @@ button.ev-chip:hover
     justify-content: space-between;
     gap: 8px 14px;
     padding: 10px 0;
-    border-top: 1px solid var(--line, #DFE3EA);
+    border-top: 1px solid var(--line, #E4E1EC);
 }
 
 .ev-claim-row b
 {
     display: block;
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
 }
 
 .ev-claim-row p
 {
     margin: 2px 0 0;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.86rem;
     line-height: 1.5;
 }
@@ -458,7 +458,7 @@ button.ev-chip:hover
 
 .ev-ring .bg
 {
-    stroke: var(--line, #DFE3EA);
+    stroke: var(--line, #E4E1EC);
 }
 
 .ev-ring .fg
@@ -471,7 +471,7 @@ button.ev-chip:hover
 
 .ev-ring[data-tone="warn"] .fg
 {
-    stroke: var(--gap, #B45309);
+    stroke: var(--gap, #A34A06);
 }
 
 .ev-ring[data-tone="bad"] .fg
@@ -485,7 +485,7 @@ button.ev-chip:hover
     inset: 0;
     display: grid;
     place-items: center;
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
     font-family: var(--font-display, "Bricolage Grotesque", system-ui, sans-serif);
     font-size: 2rem;
     font-variant-numeric: tabular-nums;
@@ -499,7 +499,7 @@ button.ev-chip:hover
 .ev-score-cap
 {
     margin: 10px 0 14px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.85rem;
     line-height: 1.5;
     text-align: center;
@@ -514,13 +514,13 @@ button.ev-chip:hover
 {
     display: flex;
     justify-content: space-between;
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
     font-size: 0.86rem;
 }
 
 .ev-bar-head small
 {
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
 }
 
 .ev-bar-head b
@@ -533,7 +533,7 @@ button.ev-chip:hover
     height: 6px;
     margin-top: 4px;
     overflow: hidden;
-    background: var(--line, #DFE3EA);
+    background: var(--line, #E4E1EC);
     border-radius: 3px;
 }
 
@@ -549,7 +549,7 @@ button.ev-chip:hover
 
 .ev-bar[data-tier="mid"] .ev-bar-track i
 {
-    background: var(--gap, #B45309);
+    background: var(--gap, #A34A06);
 }
 
 .ev-bar[data-tier="low"] .ev-bar-track i
@@ -581,7 +581,7 @@ button.ev-chip:hover
 .ev-fair figcaption
 {
     margin-top: 6px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.8rem;
 }
 
@@ -592,10 +592,10 @@ button.ev-chip:hover
     width: min(320px, calc(100% - 16px));
     padding: 14px 16px;
     background: var(--surface, #FFFFFF);
-    color: var(--ink, #17233A);
-    border: 1px solid var(--line-strong, #C9D0DB);
+    color: var(--ink, #25243A);
+    border: 1px solid var(--line-strong, #7E7A97);
     border-radius: var(--r-panel, 14px);
-    box-shadow: 0 16px 40px rgba(10, 15, 26, 0.28);
+    box-shadow: 0 16px 40px rgba(17, 19, 47, 0.28);
     animation: ev-pop-in 160ms var(--ease, ease) both;
 }
 
@@ -613,7 +613,7 @@ button.ev-chip:hover
 .ev-pop p
 {
     margin: 6px 0 0;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.86rem;
     line-height: 1.5;
 }
@@ -622,8 +622,8 @@ button.ev-chip:hover
 {
     margin: 8px 0 0;
     padding: 8px 10px;
-    background: var(--mark, #FFE066);
-    color: #17233A;
+    background: var(--mark, #FFD9C2);
+    color: var(--on-mark, #25243A);
     font-size: 0.88rem;
     line-height: 1.5;
     border-radius: 4px;
@@ -650,7 +650,7 @@ button.ev-chip:hover
     height: 32px;
     padding: 0;
     background: none;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     border: 0;
     border-radius: 50%;
     cursor: pointer;
@@ -658,7 +658,7 @@ button.ev-chip:hover
 
 .ev-pop-x:hover
 {
-    background: var(--neutral-soft, #EEF1F5);
+    background: var(--neutral-soft, #EFECFA);
 }
 
 .ev-pop-x svg
@@ -675,12 +675,12 @@ button.ev-chip:hover
     height: 22px;
     margin-left: 4px;
     padding: 0 5px;
-    background: var(--neutral-soft, #EEF1F5);
-    color: var(--ink, #17233A);
+    background: var(--neutral-soft, #EFECFA);
+    color: var(--ink, #25243A);
     font: inherit;
     font-size: 0.72rem;
     font-weight: 700;
-    border: 1px solid var(--line-strong, #C9D0DB);
+    border: 1px solid var(--line-strong, #7E7A97);
     border-radius: 999px;
     cursor: pointer;
     vertical-align: super;
@@ -688,15 +688,15 @@ button.ev-chip:hover
 
 .ev-ref[aria-expanded="true"]
 {
-    background: var(--ink, #17233A);
-    color: var(--paper, #F6F7F9);
+    background: var(--ink, #25243A);
+    color: var(--paper, #FAF9F6);
 }
 
 .ev-ref-box
 {
     margin-top: 12px;
     padding: 12px 14px;
-    border: 1px solid var(--line-strong, #C9D0DB);
+    border: 1px solid var(--line-strong, #7E7A97);
     border-left: 4px solid var(--match, #0F766E);
     border-radius: var(--r-ctl, 6px);
 }
@@ -712,7 +712,7 @@ button.ev-chip:hover
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.85rem;
 }
 
@@ -727,7 +727,7 @@ button.ev-chip:hover
     margin: 0;
     padding: 0 0 0 18px;
     list-style: none;
-    border-left: 2px solid var(--line-strong, #C9D0DB);
+    border-left: 2px solid var(--line-strong, #7E7A97);
 }
 
 .ev-timeline li
@@ -744,7 +744,7 @@ button.ev-chip:hover
     left: -25px;
     width: 10px;
     height: 10px;
-    background: var(--ink, #17233A);
+    background: var(--ink, #25243A);
     border: 2px solid var(--surface, #FFFFFF);
     border-radius: 50%;
 }
@@ -757,14 +757,14 @@ button.ev-chip:hover
 .ev-timeline p
 {
     margin: 4px 0 0;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.86rem;
     line-height: 1.5;
 }
 
 .ev-timeline small
 {
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.8rem;
 }
 
@@ -773,10 +773,10 @@ button.ev-chip:hover
     width: min(460px, calc(100vw - 32px));
     padding: 22px;
     background: var(--surface, #FFFFFF);
-    color: var(--ink, #17233A);
-    border: 1px solid var(--line-strong, #C9D0DB);
+    color: var(--ink, #25243A);
+    border: 1px solid var(--line-strong, #7E7A97);
     border-radius: var(--r-panel, 14px);
-    box-shadow: 0 24px 64px rgba(10, 15, 26, 0.4);
+    box-shadow: 0 24px 64px rgba(17, 19, 47, 0.4);
 }
 
 .ev-dialog[open]
@@ -786,7 +786,7 @@ button.ev-chip:hover
 
 .ev-dialog::backdrop
 {
-    background: rgba(10, 15, 26, 0.5);
+    background: rgba(17, 19, 47, 0.5);
 }
 
 .ev-dialog h3
@@ -797,7 +797,7 @@ button.ev-chip:hover
 .ev-dialog p
 {
     margin: 0 0 14px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     line-height: 1.5;
 }
 
@@ -830,9 +830,9 @@ button.ev-chip:hover
     margin: 0 auto;
     padding: 10px 14px;
     background: var(--surface, #FFFFFF);
-    border: 1px solid var(--line-strong, #C9D0DB);
+    border: 1px solid var(--line-strong, #7E7A97);
     border-radius: var(--r-panel, 14px);
-    box-shadow: 0 16px 40px rgba(10, 15, 26, 0.28);
+    box-shadow: 0 16px 40px rgba(17, 19, 47, 0.28);
     animation: ev-pop-in 200ms var(--ease, ease) both;
 }
 
@@ -852,7 +852,7 @@ button.ev-chip:hover
     align-items: center;
     gap: 4px;
     padding: 2px 4px 2px 10px;
-    background: var(--neutral-soft, #EEF1F5);
+    background: var(--neutral-soft, #EFECFA);
     font-size: 0.85rem;
     border-radius: 999px;
 }
@@ -865,7 +865,7 @@ button.ev-chip:hover
     height: 28px;
     padding: 0;
     background: none;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     border: 0;
     border-radius: 50%;
     cursor: pointer;
@@ -889,8 +889,8 @@ button.ev-chip:hover
 
 @keyframes ev-pulse
 {
-    0% { box-shadow: 0 0 0 0 rgba(23, 35, 58, 0.55); }
-    100% { box-shadow: 0 0 0 10px rgba(23, 35, 58, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(81, 70, 216, 0.55); }
+    100% { box-shadow: 0 0 0 10px rgba(81, 70, 216, 0); }
 }
 
 @keyframes ev-pop-in

@@ -1,0 +1,314 @@
+/* interviews.css
+   only for interviews.html, loads after polish.css so it can use the jp tokens */
+
+@keyframes iv-beat {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 61, 0.55); }
+    50% { box-shadow: 0 0 0 9px rgba(255, 200, 61, 0); }
+}
+
+@keyframes iv-drift {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+/* ---------- hero: the next interview ---------- */
+
+.iv-hero {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 28px 32px;
+    border-radius: 22px;
+    color: #fff;
+    background:
+        radial-gradient(480px 220px at 90% -20%, rgba(255, 200, 61, 0.25), transparent 70%),
+        radial-gradient(420px 240px at 0% 130%, rgba(139, 125, 255, 0.35), transparent 70%),
+        #171a45;
+    animation: jp-rise 0.5s var(--jp-ease) both;
+}
+
+.iv-hero h2 { margin: 0 0 4px; font-size: 1.55rem; color: #fff; }
+.iv-hero p { margin: 0; color: rgba(255, 255, 255, 0.72); }
+.iv-hero .iv-eyebrow { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin-bottom: 6px; }
+
+.iv-count {
+    display: grid;
+    gap: 2px;
+    justify-items: center;
+    padding: 14px 22px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.iv-count b {
+    font-size: 2rem;
+    line-height: 1.1;
+    color: var(--jp-accent);
+    font-variant-numeric: tabular-nums;
+}
+
+.iv-count span { font-size: 0.78rem; color: rgba(255, 255, 255, 0.65); }
+.iv-count.is-soon { animation: iv-beat 1.8s ease-out infinite; }
+
+.iv-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+/* ---------- note, stats, week strip ---------- */
+
+.iv-note {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin: 16px 0;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: var(--jp-brand-soft);
+    font-size: 0.9rem;
+    color: var(--jp-ink);
+}
+
+.iv-note svg { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--jp-brand); }
+.iv-note b { display: block; }
+
+.iv-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.iv-kpi {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--jp-line);
+    border-radius: 16px;
+    background: var(--jp-surface);
+    animation: jp-rise 0.45s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.iv-kpi .ic {
+    flex: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: var(--jp-brand-soft);
+    color: var(--jp-brand);
+}
+
+.iv-kpi .ic svg { width: 20px; height: 20px; }
+.iv-kpi b { display: block; font-size: 1.6rem; line-height: 1.1; color: var(--jp-ink); font-variant-numeric: tabular-nums; }
+.iv-kpi span { font-size: 0.82rem; color: var(--jp-muted); }
+.iv-kpi.is-warn .ic { background: rgba(196, 122, 10, 0.14); color: var(--jp-warn); }
+.iv-kpi.is-ok .ic { background: rgba(18, 133, 107, 0.14); color: var(--jp-ok); }
+
+.iv-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.iv-day {
+    display: grid;
+    gap: 2px;
+    justify-items: center;
+    padding: 10px 4px;
+    border: 1px solid var(--jp-line);
+    border-radius: 14px;
+    background: var(--jp-surface);
+    color: var(--jp-ink);
+    font: inherit;
+    cursor: pointer;
+    transition: transform 0.15s var(--jp-ease), border-color 0.15s, background 0.15s;
+}
+
+.iv-day:hover { transform: translateY(-2px); border-color: var(--jp-brand); }
+.iv-day small { font-size: 0.74rem; color: var(--jp-muted); }
+.iv-day b { font-size: 1.15rem; }
+.iv-day i { height: 6px; display: flex; gap: 3px; }
+.iv-day i em { width: 6px; height: 6px; border-radius: 50%; background: var(--jp-accent); }
+.iv-day.is-today { border-color: var(--jp-brand); }
+.iv-day[aria-pressed="true"] { background: var(--jp-brand); border-color: var(--jp-brand); color: #fff; }
+.iv-day[aria-pressed="true"] small { color: rgba(255, 255, 255, 0.8); }
+
+/* ---------- filter toolbar ---------- */
+
+.iv-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.iv-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.iv-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--jp-line);
+    background: var(--jp-surface);
+    color: var(--jp-ink);
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.iv-tab:hover { border-color: var(--jp-brand); }
+.iv-tab[aria-pressed="true"] { background: var(--jp-brand); border-color: var(--jp-brand); color: #fff; }
+.iv-tab em { font-style: normal; font-size: 0.78rem; opacity: 0.75; font-variant-numeric: tabular-nums; }
+
+.iv-tools .grow { flex: 1; min-width: 200px; }
+.iv-tools [hidden] { display: none; }
+
+/* ---------- interview cards ---------- */
+
+.iv-card {
+    position: relative;
+    --tc: var(--jp-brand);
+    animation: jp-rise 0.45s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 60ms);
+    transition: transform 0.2s var(--jp-ease), box-shadow 0.2s;
+}
+
+.iv-card::before {
+    /* colour stripe tells the interview type at a glance */
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 16px;
+    bottom: 16px;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
+    background: var(--tc);
+}
+
+.iv-card:hover { box-shadow: 0 10px 28px rgba(23, 26, 69, 0.1); }
+.iv-type-technical { --tc: #5b4bdb; }
+.iv-type-behavioural { --tc: #12856b; }
+.iv-type-culture { --tc: #c47a0a; }
+.iv-type-hr { --tc: #c2394b; }
+
+.iv-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+
+.iv-date {
+    flex: none;
+    width: 62px;
+    padding: 8px 0;
+    border-radius: 14px;
+    text-align: center;
+    background: var(--jp-brand-soft);
+    color: var(--jp-brand);
+}
+
+.iv-date b { display: block; font-size: 1.5rem; line-height: 1.05; }
+.iv-date span { font-size: 0.74rem; font-weight: 600; }
+
+.iv-main { flex: 1; min-width: 240px; }
+.iv-who { display: flex; align-items: center; gap: 12px; }
+.iv-who h3 { margin: 0; font-size: 1.08rem; }
+.iv-sub { margin: 2px 0 0; font-size: 0.85rem; color: var(--jp-muted); }
+
+.iv-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+
+.iv-when {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: var(--jp-line);
+    color: var(--jp-ink);
+}
+
+.iv-when svg { width: 14px; height: 14px; }
+
+.iv-soon {
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: rgba(255, 200, 61, 0.22);
+    color: #8a5a00;
+}
+
+.iv-soon.is-near { animation: iv-beat 1.8s ease-out infinite; }
+
+.iv-need {
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: rgba(196, 122, 10, 0.16);
+    color: var(--jp-warn);
+}
+
+.iv-card .d-actions { margin-top: 14px; }
+
+/* feedback bars */
+
+.iv-scores { display: grid; gap: 10px; margin-top: 12px; }
+.iv-score { display: grid; grid-template-columns: 130px 1fr 28px; align-items: center; gap: 12px; font-size: 0.88rem; }
+.iv-score .bar { height: 7px; border-radius: 7px; background: var(--jp-line); overflow: hidden; }
+
+.iv-score .bar i {
+    display: block;
+    height: 100%;
+    width: var(--w, 0%);
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--jp-brand), #8b7dff);
+    transform-origin: left;
+    animation: jp-grow 0.8s var(--jp-ease) both;
+}
+
+.iv-score b { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- empty state ---------- */
+
+.iv-empty {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    padding: 40px 16px;
+    text-align: center;
+    color: var(--jp-muted);
+}
+
+.iv-empty .orb {
+    width: 62px;
+    height: 62px;
+    border-radius: 20px;
+    display: grid;
+    place-items: center;
+    background: var(--jp-brand-soft);
+    color: var(--jp-brand);
+    animation: iv-drift 3.2s ease-in-out infinite;
+}
+
+.iv-empty .orb svg { width: 28px; height: 28px; }
+.iv-empty p { margin: 0; max-width: 46ch; }
+
+@media (max-width: 720px) {
+    .iv-hero { padding: 22px 18px; }
+    .iv-week { gap: 4px; }
+    .iv-score { grid-template-columns: 100px 1fr 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .iv-hero, .iv-kpi, .iv-card, .iv-score .bar i, .iv-empty .orb, .iv-count.is-soon, .iv-soon.is-near { animation: none !important; }
+}

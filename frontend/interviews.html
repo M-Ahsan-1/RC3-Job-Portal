@@ -3,26 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interviews – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>Interviews – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/pages.css">
+    <link rel="stylesheet" href="css/polish.css">
+    <link rel="stylesheet" href="css/interviews.css">
 </head>
 <body class="theme-recruiter">
     <script src="js/brand.js"></script>
     <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
-        <div class="d-callout">
+        <section id="hero" aria-label="Next interview"></section>
+
+        <div class="iv-note">
             <i data-lucide="bot"></i>
             <div><b>Humans decide, AI informs</b>AI assessment scores help you prepare for each interview, but every reschedule, every piece of feedback and every final decision on this page is made by you.</div>
         </div>
 
-        <section class="d-kpis" id="kpis" aria-label="Interview numbers"></section>
+        <section class="iv-kpis" id="kpis" aria-label="Interview numbers"></section>
+
+        <div class="iv-week" id="week" role="group" aria-label="Next seven days"></div>
+
+        <div class="iv-tools" id="tools">
+            <div class="iv-tabs" id="tabs" role="group" aria-label="Interview status">
+                <button type="button" class="iv-tab" data-tab="all" aria-pressed="true">All <em>0</em></button>
+                <button type="button" class="iv-tab" data-tab="upcoming" aria-pressed="false">Upcoming <em>0</em></button>
+                <button type="button" class="iv-tab" data-tab="awaiting" aria-pressed="false">Needs feedback <em>0</em></button>
+                <button type="button" class="iv-tab" data-tab="completed" aria-pressed="false">Completed <em>0</em></button>
+            </div>
+            <div class="d-field grow">
+                <label for="iv-search">Search interviews</label>
+                <input type="search" id="iv-search" placeholder="Candidate, job or interviewer" autocomplete="off">
+            </div>
+            <div class="d-field">
+                <label for="iv-type">Type</label>
+                <select id="iv-type">
+                    <option value="">Any type</option>
+                    <option value="technical">Technical</option>
+                    <option value="behavioural">Behavioural</option>
+                    <option value="culture">Culture fit</option>
+                    <option value="hr">HR round</option>
+                </select>
+            </div>
+            <button class="btn btn-secondary btn-sm" type="button" id="iv-clear">Clear filters</button>
+        </div>
 
         <div class="d-group-title" id="upcoming-title">Upcoming</div>
         <div id="upcoming"></div>
@@ -54,6 +85,7 @@
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/polish.js"></script>
     <script>
         const user = guardPage('recruiter');
 
@@ -80,11 +112,22 @@
             openReschedule: null,
             openFeedback: null,
             decisionNote: null,
-            focus: null
+            focus: null,
+            tab: 'all',
+            query: '',
+            type: '',
+            day: null,
+            countedUp: false
         };
 
         let pendingDecision = null;
         let decisionOpener = null;
+        let cardIndex = 0;
+
+        function el(id)
+        {
+            return document.getElementById(id);
+        }
 
         function findInterview(id)
         {
@@ -177,6 +220,39 @@
             return date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
         }
 
+        // turns the gap to the interview into something quick to read, like "in 2d 4h"
+        function countdownText(iso)
+        {
+            const ms = new Date(iso).getTime() - Date.now();
+
+            if (ms <= 0)
+            {
+                return 'Starting now';
+            }
+
+            const minutes = Math.floor(ms / 60000);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days >= 1)
+            {
+                return 'in ' + days + 'd ' + (hours % 24) + 'h';
+            }
+
+            if (hours >= 1)
+            {
+                return 'in ' + hours + 'h ' + (minutes % 60) + 'm';
+            }
+
+            return 'in ' + Math.max(minutes, 1) + ' min';
+        }
+
+        function isNear(iso)
+        {
+            const ms = new Date(iso).getTime() - Date.now();
+            return ms > 0 && ms < 3600000;
+        }
+
         function overlaps(startA, minutesA, startB, minutesB)
         {
             const a1 = new Date(startA).getTime();
@@ -230,9 +306,47 @@
             }).join('') + '</ul>';
         }
 
-        function kpiCard(icon, value, label)
+        /* ---------- hero, stats and week strip ---------- */
+
+        function nextInterview()
         {
-            return '<div class="d-kpi"><div class="ic"><i data-lucide="' + icon + '"></i></div><b>' + Dash.esc(value) + '</b><span>' + label + '</span></div>';
+            return state.interviews.filter(isUpcoming).sort(byTime(1))[0] || null;
+        }
+
+        function renderHero()
+        {
+            const next = nextInterview();
+
+            if (!next)
+            {
+                el('hero').innerHTML = '<div class="iv-hero"><div><h2>Nothing on the calendar</h2><p>No interviews are scheduled right now. Pick a strong applicant and book a slot.</p>' +
+                    '<div class="iv-hero-actions"><a class="btn btn-accent" href="jobs.html"><i data-lucide="briefcase"></i>Go to jobs and applicants</a></div></div></div>';
+                return;
+            }
+
+            const todayCount = state.interviews.filter(function (item)
+            {
+                return isUpcoming(item) && toDateInput(item.scheduled_at) === toDateInput(new Date());
+            }).length;
+
+            el('hero').innerHTML = '<div class="iv-hero">' +
+                '<div>' +
+                    '<div class="iv-eyebrow">' + Dash.esc(dayLabel(next.scheduled_at)) + (todayCount > 1 ? ' &middot; ' + todayCount + ' interviews today' : '') + '</div>' +
+                    '<h2>Next up: ' + Dash.esc(next.candidateName) + '</h2>' +
+                    '<p>' + Dash.esc(next.jobTitle) + ' &middot; ' + Dash.esc(timeRange(next.scheduled_at, next.duration_minutes)) + ' with ' + Dash.esc(next.interviewer) + '</p>' +
+                    '<div class="iv-hero-actions">' +
+                        '<a class="btn btn-accent btn-sm" href="applicant-detail.html?id=' + encodeURIComponent(next.applicationId) + '"><i data-lucide="user"></i>Review applicant</a>' +
+                        '<button class="btn btn-secondary btn-sm" type="button" data-hero-reschedule="' + next.id + '"><i data-lucide="calendar-clock"></i>Reschedule</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="iv-count' + (isNear(next.scheduled_at) ? ' is-soon' : '') + '"><b data-countdown="' + Dash.esc(next.scheduled_at) + '">' + Dash.esc(countdownText(next.scheduled_at)) + '</b><span>until it starts</span></div>' +
+            '</div>';
+        }
+
+        function kpiCard(icon, value, label, tone, index)
+        {
+            return '<div class="iv-kpi' + (tone ? ' ' + tone : '') + '" style="--i:' + index + '"><div class="ic"><i data-lucide="' + icon + '"></i></div>' +
+                '<div><b data-count="' + Dash.esc(value) + '">' + (state.countedUp ? Dash.esc(value) : '0') + '</b><span>' + label + '</span></div></div>';
         }
 
         function renderKpis()
@@ -240,12 +354,133 @@
             const upcoming = state.interviews.filter(isUpcoming).length;
             const completed = state.interviews.filter(function (interview) { return interview.status === 'completed'; }).length;
             const awaiting = state.interviews.filter(awaitingFeedback).length;
+            const week = weekDays().reduce(function (sum, day) { return sum + day.count; }, 0);
 
-            document.getElementById('kpis').innerHTML =
-                kpiCard('calendar-clock', upcoming, 'Upcoming interviews') +
-                kpiCard('check-circle-2', completed, 'Completed') +
-                kpiCard('message-square', awaiting, 'Awaiting feedback');
+            el('kpis').innerHTML =
+                kpiCard('calendar-clock', upcoming, 'Upcoming interviews', '', 0) +
+                kpiCard('calendar-days', week, 'In the next 7 days', '', 1) +
+                kpiCard('message-square', awaiting, 'Awaiting feedback', awaiting ? 'is-warn' : '', 2) +
+                kpiCard('check-circle-2', completed, 'Completed', 'is-ok', 3);
+
+            if (!state.countedUp)
+            {
+                el('kpis').querySelectorAll('[data-count]').forEach(function (node)
+                {
+                    Polish.countUp(node, node.getAttribute('data-count'));
+                });
+
+                state.countedUp = true;
+            }
         }
+
+        function weekDays()
+        {
+            const days = [];
+
+            for (let i = 0; i < 7; i++)
+            {
+                const date = new Date();
+                date.setDate(date.getDate() + i);
+
+                const key = toDateInput(date);
+                const count = state.interviews.filter(function (item)
+                {
+                    return item.status !== 'cancelled' && toDateInput(item.scheduled_at) === key;
+                }).length;
+
+                days.push({ key: key, date: date, count: count, today: i === 0 });
+            }
+
+            return days;
+        }
+
+        function renderWeek()
+        {
+            el('week').innerHTML = weekDays().map(function (day)
+            {
+                const dots = Array.from({ length: Math.min(day.count, 3) }).map(function () { return '<em></em>'; }).join('');
+                const label = day.date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + ', ' + day.count + (day.count === 1 ? ' interview' : ' interviews');
+
+                return '<button type="button" class="iv-day' + (day.today ? ' is-today' : '') + '" data-day="' + day.key + '" aria-pressed="' + (state.day === day.key ? 'true' : 'false') + '" aria-label="' + Dash.esc(label) + '">' +
+                    '<small>' + Dash.esc(day.today ? 'Today' : day.date.toLocaleDateString(undefined, { weekday: 'short' })) + '</small>' +
+                    '<b>' + day.date.getDate() + '</b><i>' + dots + '</i></button>';
+            }).join('');
+        }
+
+        function renderTabs()
+        {
+            const counts =
+            {
+                all: state.interviews.length,
+                upcoming: state.interviews.filter(isUpcoming).length,
+                awaiting: state.interviews.filter(awaitingFeedback).length,
+                completed: state.interviews.filter(function (item) { return item.status === 'completed'; }).length
+            };
+
+            el('tabs').querySelectorAll('[data-tab]').forEach(function (button)
+            {
+                const key = button.getAttribute('data-tab');
+                button.setAttribute('aria-pressed', String(key === state.tab));
+                button.querySelector('em').textContent = counts[key];
+            });
+        }
+
+        function filtered()
+        {
+            const term = state.query.trim().toLowerCase();
+
+            return state.interviews.filter(function (item)
+            {
+                if (state.tab === 'upcoming' && !isUpcoming(item))
+                {
+                    return false;
+                }
+
+                if (state.tab === 'awaiting' && !awaitingFeedback(item))
+                {
+                    return false;
+                }
+
+                if (state.tab === 'completed' && item.status !== 'completed')
+                {
+                    return false;
+                }
+
+                if (state.type && (item.interview_type || 'technical') !== state.type)
+                {
+                    return false;
+                }
+
+                if (state.day && toDateInput(item.scheduled_at) !== state.day)
+                {
+                    return false;
+                }
+
+                if (term && [item.candidateName, item.jobTitle, item.interviewer].join(' ').toLowerCase().indexOf(term) === -1)
+                {
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        function filtersActive()
+        {
+            return state.tab !== 'all' || state.query.trim() !== '' || state.type !== '' || state.day !== null;
+        }
+
+        function resetFilters()
+        {
+            state.tab = 'all';
+            state.query = '';
+            state.type = '';
+            state.day = null;
+            el('iv-search').value = '';
+            el('iv-type').value = '';
+        }
+
+        /* ---------- radio groups and forms (logic unchanged) ---------- */
 
         function wireRadioGroup(group, onChange)
         {
@@ -430,6 +665,13 @@
             '</div>';
         }
 
+        function scoreRow(label, value)
+        {
+            const number = Number(value) || 0;
+
+            return '<div class="iv-score"><span>' + Dash.esc(label) + '</span><div class="bar"><i style="--w:' + (number / 5 * 100) + '%"></i></div><b>' + Dash.esc(value) + '</b></div>';
+        }
+
         function feedbackViewHtml(interview)
         {
             const feedback = interview.feedback;
@@ -439,11 +681,11 @@
                     '<div><h3>Interview feedback</h3><p class="sub">Submitted by ' + Dash.esc(feedback.submittedBy) + ' &middot; ' + Dash.esc(Dash.timeAgo(feedback.submittedAt)) + '</p></div>' +
                     Dash.badge(recommendationLabel(feedback.recommendation), RECOMMENDATION_TONE[feedback.recommendation] || 'neutral') +
                 '</div>' +
-                '<div class="d-fair">' +
-                    '<div><b>' + Dash.esc(feedback.technical) + '</b><span>Technical</span></div>' +
-                    '<div><b>' + Dash.esc(feedback.communication) + '</b><span>Communication</span></div>' +
-                    '<div><b>' + Dash.esc(feedback.problem_solving) + '</b><span>Problem solving</span></div>' +
-                    '<div><b>' + Dash.esc(feedback.culture_fit) + '</b><span>Culture fit</span></div>' +
+                '<div class="iv-scores">' +
+                    scoreRow('Technical', feedback.technical) +
+                    scoreRow('Communication', feedback.communication) +
+                    scoreRow('Problem solving', feedback.problem_solving) +
+                    scoreRow('Culture fit', feedback.culture_fit) +
                 '</div>' +
                 (feedback.comments ? '<div class="d-excerpt" style="margin-top:16px">' + Dash.esc(feedback.comments) + '</div>' : '') +
             '</div>';
@@ -477,21 +719,36 @@
                 (interview.feedback ? 'Edit feedback' : 'Add feedback') + '</button>';
         }
 
+        /* ---------- the interview card ---------- */
+
         function cardHtml(interview)
         {
             const upcoming = isUpcoming(interview);
+            const date = new Date(interview.scheduled_at);
+            const type = interview.interview_type || 'technical';
             const statusBadge = interview.status === 'completed'
                 ? Dash.badge('Completed', 'ok')
                 : Dash.badge('Scheduled', 'info');
             const lateBadge = interview.status === 'scheduled' && !upcoming ? Dash.badge('Time passed', 'warn') : '';
             const kept = (interview.conflicts || []).length;
 
-            let html = '<section class="d-panel" data-interview="' + interview.id + '">' +
-                '<div class="d-panel-head">' +
-                    '<div><h3 class="pg-iv-title" tabindex="-1">' + Dash.esc(interview.candidateName) + '</h3>' +
-                    '<p class="sub"><span class="pg-iv-time">' + Dash.esc(timeRange(interview.scheduled_at, interview.duration_minutes)) + '</span> &middot; ' +
-                    Dash.esc(interview.jobTitle) + ' &middot; Interviewer ' + Dash.esc(interview.interviewer) + '</p></div>' +
-                    '<div class="d-meta">' + Dash.badge(typeLabel(interview.interview_type), 'neutral') + statusBadge + lateBadge + '</div>' +
+            let html = '<section class="d-panel iv-card iv-type-' + Dash.esc(type) + '" data-interview="' + interview.id + '" style="--i:' + (cardIndex++) + '">' +
+                '<div class="iv-row">' +
+                    '<div class="iv-date" aria-hidden="true"><b>' + date.getDate() + '</b><span>' + Dash.esc(date.toLocaleDateString(undefined, { month: 'short' })) + '</span></div>' +
+                    '<div class="iv-main">' +
+                        '<div class="iv-who">' +
+                            '<span class="jp-avatar" aria-hidden="true">' + Dash.esc(Polish.initials(interview.candidateName)) + '</span>' +
+                            '<div><h3 class="pg-iv-title" tabindex="-1">' + Dash.esc(interview.candidateName) + '</h3>' +
+                            '<p class="iv-sub">' + Dash.esc(interview.jobTitle) + ' &middot; Interviewer ' + Dash.esc(interview.interviewer) + '</p></div>' +
+                        '</div>' +
+                        '<div class="iv-chips">' +
+                            '<span class="iv-when"><i data-lucide="clock"></i>' + Dash.esc(timeRange(interview.scheduled_at, interview.duration_minutes)) + '</span>' +
+                            '<span class="iv-when">' + Dash.esc(interview.duration_minutes) + ' min</span>' +
+                            Dash.badge(typeLabel(type), 'neutral') + statusBadge + lateBadge +
+                            (upcoming ? '<span class="iv-soon' + (isNear(interview.scheduled_at) ? ' is-near' : '') + '" data-countdown="' + Dash.esc(interview.scheduled_at) + '">' + Dash.esc(countdownText(interview.scheduled_at)) + '</span>' : '') +
+                            (awaitingFeedback(interview) ? '<span class="iv-need">Feedback needed</span>' : '') +
+                        '</div>' +
+                    '</div>' +
                 '</div>';
 
             if (kept)
@@ -574,19 +831,44 @@
             };
         }
 
+        function emptyHtml(icon, text, action)
+        {
+            return '<div class="iv-empty"><div class="orb"><i data-lucide="' + icon + '"></i></div><p>' + text + '</p>' + (action || '') + '</div>';
+        }
+
         function render()
         {
+            cardIndex = 0;
+
+            renderHero();
             renderKpis();
+            renderWeek();
+            renderTabs();
 
-            const upcoming = state.interviews.filter(isUpcoming).sort(byTime(1));
-            const past = state.interviews.filter(function (interview) { return !isUpcoming(interview); }).sort(byTime(-1));
+            const list = filtered();
+            const upcoming = list.filter(isUpcoming).sort(byTime(1));
+            const past = list.filter(function (interview) { return !isUpcoming(interview); }).sort(byTime(-1));
 
-            document.getElementById('past-title').classList.toggle('hidden', !past.length);
-            document.getElementById('upcoming').innerHTML = upcoming.length
-                ? groupedHtml(upcoming)
-                : Dash.empty('calendar-clock', 'No upcoming interviews. Schedule one from an applicant page.',
-                    '<a class="btn btn-sm" href="jobs.html">Go to jobs and applicants</a>');
-            document.getElementById('past').innerHTML = groupedHtml(past);
+            el('iv-clear').hidden = !filtersActive();
+            el('upcoming-title').classList.toggle('hidden', !upcoming.length);
+            el('past-title').classList.toggle('hidden', !past.length);
+
+            if (!state.interviews.length)
+            {
+                el('upcoming-title').classList.add('hidden');
+                el('upcoming').innerHTML = emptyHtml('calendar-clock', 'No interviews yet. Schedule one from an applicant page.', '<a class="btn btn-sm" href="jobs.html">Go to jobs and applicants</a>');
+            }
+            else if (!list.length)
+            {
+                el('upcoming-title').classList.add('hidden');
+                el('upcoming').innerHTML = emptyHtml('filter', 'No interviews match these filters.', '<button class="btn btn-sm" type="button" id="iv-clear-empty">Clear filters</button>');
+            }
+            else
+            {
+                el('upcoming').innerHTML = upcoming.length ? groupedHtml(upcoming) : '';
+            }
+
+            el('past').innerHTML = groupedHtml(past);
 
             wire();
             Dash.icons();
@@ -651,6 +933,17 @@
                     });
                 });
             });
+
+            const emptyClear = el('iv-clear-empty');
+
+            if (emptyClear)
+            {
+                emptyClear.addEventListener('click', function ()
+                {
+                    resetFilters();
+                    render();
+                });
+            }
         }
 
         function wireReschedule(card, interview)
@@ -915,31 +1208,31 @@
 
         function openDecision(interview, decision, opener)
         {
-            const dialog = document.getElementById('decision-dialog');
+            const dialog = el('decision-dialog');
             const selecting = decision === 'Selected';
-            const confirm = document.getElementById('dec-confirm');
+            const confirm = el('dec-confirm');
 
             pendingDecision = { interview: interview, decision: decision };
             decisionOpener = opener;
 
-            document.getElementById('dec-title').textContent = selecting ? 'Select this candidate' : 'Reject this candidate';
-            document.getElementById('dec-sub').textContent = 'The decision for ' + interview.candidateName + ' is audited and the candidate is notified.';
-            document.getElementById('dec-label').textContent = selecting ? 'Why are you selecting this candidate?' : 'Why are you rejecting this candidate?';
-            document.getElementById('dec-reason').value = '';
-            document.getElementById('dec-error').textContent = '';
+            el('dec-title').textContent = selecting ? 'Select this candidate' : 'Reject this candidate';
+            el('dec-sub').textContent = 'The decision for ' + interview.candidateName + ' is audited and the candidate is notified.';
+            el('dec-label').textContent = selecting ? 'Why are you selecting this candidate?' : 'Why are you rejecting this candidate?';
+            el('dec-reason').value = '';
+            el('dec-error').textContent = '';
             confirm.className = 'btn btn-sm ' + (selecting ? 'btn-success' : 'btn-danger');
             confirm.textContent = selecting ? 'Confirm selection' : 'Confirm rejection';
             Dash.setBusy(confirm, false);
 
             dialog.showModal();
-            document.getElementById('dec-reason').focus();
+            el('dec-reason').focus();
         }
 
         async function submitDecision()
         {
-            const reasonInput = document.getElementById('dec-reason');
-            const errorBox = document.getElementById('dec-error');
-            const confirm = document.getElementById('dec-confirm');
+            const reasonInput = el('dec-reason');
+            const errorBox = el('dec-error');
+            const confirm = el('dec-confirm');
             const reason = reasonInput.value.trim();
 
             errorBox.textContent = '';
@@ -967,7 +1260,7 @@
                 state.decisionNote = { interviewId: interview.id, message: result.notification };
                 state.focus = '[data-interview="' + interview.id + '"] .pg-iv-title';
                 decisionOpener = null;
-                document.getElementById('decision-dialog').close();
+                el('decision-dialog').close();
                 await load();
             }
             catch (error)
@@ -979,11 +1272,12 @@
 
         async function load()
         {
-            const pastTitle = document.getElementById('past-title');
+            const pastTitle = el('past-title');
 
-            document.getElementById('kpis').innerHTML = Dash.skeletons(3);
-            document.getElementById('upcoming').innerHTML = Dash.skeletons(2);
-            document.getElementById('past').innerHTML = '';
+            el('hero').innerHTML = '';
+            el('kpis').innerHTML = Dash.skeletons(3);
+            el('upcoming').innerHTML = Dash.skeletons(2);
+            el('past').innerHTML = '';
             pastTitle.classList.add('hidden');
 
             try
@@ -993,24 +1287,33 @@
             }
             catch (error)
             {
-                document.getElementById('kpis').innerHTML = '';
-                document.getElementById('past').innerHTML = '';
+                el('kpis').innerHTML = '';
+                el('past').innerHTML = '';
                 pastTitle.classList.add('hidden');
-                Dash.failInto(document.getElementById('upcoming'), error.message, load);
+                Dash.failInto(el('upcoming'), error.message, load);
             }
+        }
+
+        // keeps every countdown fresh without redrawing the page, so nothing you type is lost
+        function tickCountdowns()
+        {
+            document.querySelectorAll('[data-countdown]').forEach(function (node)
+            {
+                node.textContent = countdownText(node.getAttribute('data-countdown'));
+            });
         }
 
         if (user)
         {
-            const dialog = document.getElementById('decision-dialog');
+            const dialog = el('decision-dialog');
 
-            document.getElementById('decision-form').addEventListener('submit', function (event)
+            el('decision-form').addEventListener('submit', function (event)
             {
                 event.preventDefault();
                 submitDecision();
             });
 
-            document.getElementById('dec-cancel').addEventListener('click', function ()
+            el('dec-cancel').addEventListener('click', function ()
             {
                 dialog.close();
             });
@@ -1032,6 +1335,71 @@
 
                 decisionOpener = null;
             });
+
+            el('tabs').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-tab]');
+
+                if (!button)
+                {
+                    return;
+                }
+
+                state.tab = button.getAttribute('data-tab');
+                render();
+            });
+
+            el('week').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-day]');
+
+                if (!button)
+                {
+                    return;
+                }
+
+                // clicking the same day again clears the day filter
+                state.day = state.day === button.getAttribute('data-day') ? null : button.getAttribute('data-day');
+                render();
+            });
+
+            el('iv-search').addEventListener('input', function ()
+            {
+                state.query = this.value;
+                render();
+            });
+
+            el('iv-type').addEventListener('change', function ()
+            {
+                state.type = this.value;
+                render();
+            });
+
+            el('iv-clear').addEventListener('click', function ()
+            {
+                resetFilters();
+                render();
+            });
+
+            el('hero').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-hero-reschedule]');
+
+                if (!button)
+                {
+                    return;
+                }
+
+                const id = Number(button.getAttribute('data-hero-reschedule'));
+
+                // make sure the card is visible before opening its form
+                resetFilters();
+                state.openReschedule = id;
+                state.focus = '[data-interview="' + id + '"] [data-date]';
+                render();
+            });
+
+            window.setInterval(tickCountdowns, 30000);
 
             Dash.mountShell(
             {

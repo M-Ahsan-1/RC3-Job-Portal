@@ -3,26 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My dashboard – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>My dashboard – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/candidate.css">
+    <link rel="stylesheet" href="css/hero.css">
+    <link rel="stylesheet" href="css/vx.css">
 </head>
 <body class="theme-candidate">
     <script src="js/brand.js"></script>
     <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
         <section class="cd-home" aria-label="Welcome">
-            <div class="cd-greet">
+            <div class="cd-greet hero-band">
+                <div class="hero-art" aria-hidden="true"><img src="assets/illustrations/hero-candidate.png" alt="" decoding="async"></div>
                 <h2 id="greeting">Welcome</h2>
                 <p id="status-line" aria-live="polite">Find a role that fits, then follow it from first look to final answer.</p>
                 <div class="row">
-                    <a class="btn" href="#jobs"><i data-lucide="search"></i>Browse open jobs</a>
+                    <a class="btn btn-accent" href="#jobs"><i data-lucide="search"></i>Browse open jobs</a>
                     <a class="btn btn-secondary" href="my-applications.html">My applications</a>
                 </div>
             </div>
@@ -84,6 +88,7 @@
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/candidate-shared.js"></script>
+    <script src="js/vx.js"></script>
     <script>
         const user = guardPage('candidate');
         const jobsList = document.getElementById('jobs-list');
@@ -573,6 +578,12 @@
                     openApply(wanted);
                 }
             });
+        }
+
+        if (user)
+        {
+            VX.sticker();
+            VX.candidateHook();
         }
     </script>
 </body>

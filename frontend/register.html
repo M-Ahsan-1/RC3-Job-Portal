@@ -3,69 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create account – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>Create account – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/auth.css">
 </head>
 <body>
     <script src="js/brand.js"></script>
     <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
-    <div class="auth-wrapper">
-        <div class="auth-card">
-            <h1>Create your account</h1>
-            <p class="subtitle">Join RC3 Job Portal</p>
 
-            <div id="form-error" class="form-error hidden"></div>
+    <div class="auth-shell">
+        <aside class="auth-stage" id="stage"></aside>
 
-            <form id="register-form" novalidate>
-                <div class="form-group">
-                    <label for="name">Full name</label>
-                    <input type="text" id="name" placeholder="Your full name" autocomplete="name">
-                    <div class="error-text" id="name-error"></div>
+        <main class="auth-panel">
+            <div class="auth-form" id="auth-form">
+                <h1>Create your account</h1>
+                <p class="subtitle">Join VEYRA and start with the evidence.</p>
+
+                <div class="steps" aria-hidden="true">
+                    <span class="step-seg done" id="seg-1"></span>
+                    <span class="step-seg" id="seg-2"></span>
                 </div>
+                <p class="step-label" id="step-label" aria-live="polite">Step 1 of 2: choose your role</p>
 
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
-                    <div class="error-text" id="email-error"></div>
-                </div>
+                <div id="form-error" class="form-error hidden" role="alert"></div>
 
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password">
-                    <div class="error-text" id="password-error"></div>
-                </div>
+                <form id="register-form" novalidate>
+                    <div id="step-1">
+                        <fieldset class="role-group">
+                            <legend>I am a</legend>
+                            <div class="role-cards">
+                                <label class="role-card">
+                                    <input type="radio" name="role" value="candidate">
+                                    <span class="role-art" aria-hidden="true">
+                                        <svg viewBox="0 0 120 64" focusable="false">
+                                            <rect x="38" y="6" width="44" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="2"/>
+                                            <rect class="rc-hl" x="45" y="22" width="30" height="8" rx="2" fill="#FFD9C2"/>
+                                            <path d="M45 15h20M45 38h26M45 46h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.45"/>
+                                            <path class="rc-check" pathLength="1" d="M88 40l5 5 10-12" fill="none" stroke="#0F766E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </span>
+                                    <span class="role-title">Candidate</span>
+                                    <span class="role-sub">Apply to roles and follow every step of your application.</span>
+                                </label>
+                                <label class="role-card">
+                                    <input type="radio" name="role" value="recruiter">
+                                    <span class="role-art" aria-hidden="true">
+                                        <svg viewBox="0 0 120 64" focusable="false">
+                                            <path d="M20 16h44M20 28h30M20 40h38" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.45"/>
+                                            <rect class="rc-hl" x="20" y="24" width="30" height="8" rx="2" fill="#FFD9C2"/>
+                                            <circle cx="82" cy="30" r="14" fill="none" stroke="currentColor" stroke-width="2"/>
+                                            <path d="M92 40l12 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                                            <path class="rc-check" pathLength="1" d="M76 30l4 4 7-9" fill="none" stroke="#0F766E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </span>
+                                    <span class="role-title">Recruiter</span>
+                                    <span class="role-sub">Post jobs and review applicants with evidence from their resumes.</span>
+                                </label>
+                            </div>
+                            <div class="error-text" id="role-error" role="alert"></div>
+                        </fieldset>
 
-                <div class="form-group">
-                    <label for="confirm">Confirm password</label>
-                    <input type="password" id="confirm" placeholder="Type your password again" autocomplete="new-password">
-                    <div class="error-text" id="confirm-error"></div>
-                </div>
-
-                <div class="form-group">
-                    <label>I am a</label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" name="role" value="candidate"> Candidate
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="role" value="recruiter"> Recruiter
-                        </label>
+                        <button type="button" id="next-btn" class="btn btn-accent btn-block">Continue</button>
                     </div>
-                    <div class="error-text" id="role-error"></div>
+
+                    <div id="step-2" hidden>
+                        <div class="form-group">
+                            <label for="name">Full name</label>
+                            <input type="text" id="name" placeholder="Your full name" autocomplete="name">
+                            <div class="error-text" id="name-error"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+                            <div class="error-text" id="email-error"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <div class="pw-wrap">
+                                <input type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password" aria-describedby="pw-hint">
+                                <button type="button" class="pw-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+                            </div>
+                            <div class="meter" aria-hidden="true"><span class="meter-fill" id="meter-fill" style="--value: 0"></span></div>
+                            <div class="meter-row"><span class="field-hint" id="pw-hint" aria-live="polite">Use at least 8 characters.</span></div>
+                            <div class="error-text" id="password-error"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirm">Confirm password</label>
+                            <div class="pw-wrap">
+                                <input type="password" id="confirm" placeholder="Type your password again" autocomplete="new-password">
+                                <button type="button" class="pw-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+                            </div>
+                            <div class="error-text" id="confirm-error"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="terms-row" for="terms">
+                                <input type="checkbox" id="terms">
+                                <span>I agree to the terms of use and understand that AI assessments support, and never replace, the recruiter's decision.</span>
+                            </label>
+                            <div class="error-text" id="terms-error"></div>
+                        </div>
+
+                        <div class="auth-actions">
+                            <button type="button" id="back-btn" class="btn btn-secondary">Back</button>
+                            <button type="submit" id="submit-btn" class="btn btn-accent">Create account</button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="auth-footer">
+                    Already have an account? <a href="login.html">Log in</a>
                 </div>
-
-                <button type="submit" id="submit-btn" class="btn btn-block">Create account</button>
-            </form>
-
-            <div class="auth-footer">
-                Already have an account? <a href="login.html">Log in</a>
             </div>
-        </div>
+        </main>
     </div>
 
     <script src="js/icons.js"></script>
@@ -73,9 +132,8 @@
     <script src="js/ui.js"></script>
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
     <script>
-        const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
         const form = document.getElementById('register-form');
         const nameInput = document.getElementById('name');
         const emailInput = document.getElementById('email');
@@ -83,39 +141,22 @@
         const confirmInput = document.getElementById('confirm');
         const roleError = document.getElementById('role-error');
         const submitButton = document.getElementById('submit-btn');
-        const formError = document.getElementById('form-error');
+        const stepOne = document.getElementById('step-1');
+        const stepTwo = document.getElementById('step-2');
+        const stepLabel = document.getElementById('step-label');
+        const segTwo = document.getElementById('seg-2');
+        const formPanel = document.getElementById('auth-form');
+
+        let currentStep = 1;
+
+        mountAuthStage('Every AI assessment links back to the resume evidence. You make the final decision.');
+        authBindPasswordToggles();
 
         const existingUser = getUser();
 
         if (getToken() && existingUser)
         {
-            window.location.href = dashboardFor(existingUser.role);
-        }
-
-        function setFieldError(input, message)
-        {
-            const errorBox = document.getElementById(input.id + '-error');
-            errorBox.textContent = message;
-
-            if (message)
-            {
-                input.classList.add('invalid');
-            }
-            else
-            {
-                input.classList.remove('invalid');
-            }
-        }
-
-        function showFormError(message)
-        {
-            formError.textContent = message;
-            formError.classList.remove('hidden');
-        }
-
-        function hideFormError()
-        {
-            formError.classList.add('hidden');
+            authRedirect(dashboardFor(existingUser.role), 0);
         }
 
         function selectedRole()
@@ -124,89 +165,219 @@
             return chosen ? chosen.value : '';
         }
 
-        function validateForm()
+        function validateRole()
         {
-            let valid = true;
-            const name = nameInput.value.trim();
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-            const confirm = confirmInput.value;
-
-            if (name.length < 2)
-            {
-                setFieldError(nameInput, 'Please enter your full name.');
-                valid = false;
-            }
-            else
-            {
-                setFieldError(nameInput, '');
-            }
-
-            if (!email)
-            {
-                setFieldError(emailInput, 'Please enter your email.');
-                valid = false;
-            }
-            else if (!EMAIL_PATTERN.test(email))
-            {
-                setFieldError(emailInput, 'Please enter a valid email, like name@example.com.');
-                valid = false;
-            }
-            else
-            {
-                setFieldError(emailInput, '');
-            }
-
-            if (password.length < 8)
-            {
-                setFieldError(passwordInput, 'Password must be at least 8 characters.');
-                valid = false;
-            }
-            else
-            {
-                setFieldError(passwordInput, '');
-            }
-
-            if (!confirm)
-            {
-                setFieldError(confirmInput, 'Please type your password again.');
-                valid = false;
-            }
-            else if (confirm !== password)
-            {
-                setFieldError(confirmInput, 'The two passwords do not match.');
-                valid = false;
-            }
-            else
-            {
-                setFieldError(confirmInput, '');
-            }
-
             if (!selectedRole())
             {
                 roleError.textContent = 'Please choose Candidate or Recruiter.';
-                valid = false;
+                return false;
+            }
+
+            roleError.textContent = '';
+            return true;
+        }
+
+        function goToStep(step)
+        {
+            currentStep = step;
+            stepOne.hidden = step !== 1;
+            stepTwo.hidden = step !== 2;
+            segTwo.classList.toggle('done', step === 2);
+            stepLabel.textContent = step === 1 ? 'Step 1 of 2: choose your role' : 'Step 2 of 2: your details';
+            authHideFormError();
+
+            if (step === 2)
+            {
+                nameInput.focus();
             }
             else
             {
-                roleError.textContent = '';
+                const chosen = document.querySelector('input[name="role"]:checked') || document.querySelector('input[name="role"]');
+                chosen.focus();
+            }
+        }
+
+        function passwordStrength(value)
+        {
+            let score = 0;
+
+            if (value.length >= 8)
+            {
+                score += 40;
             }
 
-            return valid;
+            if (value.length >= 12)
+            {
+                score += 20;
+            }
+
+            if (/[a-z]/.test(value) && /[A-Z]/.test(value))
+            {
+                score += 15;
+            }
+
+            if (/\d/.test(value))
+            {
+                score += 15;
+            }
+
+            if (/[^A-Za-z0-9]/.test(value))
+            {
+                score += 10;
+            }
+
+            return Math.min(100, score);
         }
+
+        function updateMeter()
+        {
+            const value = passwordInput.value;
+            const score = value ? passwordStrength(value) : 0;
+            let text = 'Use at least 8 characters.';
+
+            if (value)
+            {
+                if (value.length < 8)
+                {
+                    text = 'Too short. Use at least 8 characters.';
+                }
+                else if (score < 60)
+                {
+                    text = 'Fair. Add length, numbers or symbols to strengthen it.';
+                }
+                else
+                {
+                    text = 'Strong password.';
+                }
+            }
+
+            document.getElementById('meter-fill').style.setProperty('--value', score);
+            document.getElementById('pw-hint').textContent = text;
+        }
+
+        const validateName = authBindField(nameInput, function ()
+        {
+            return nameInput.value.trim().length < 2 ? 'Please enter your full name.' : '';
+        });
+
+        const validateEmail = authBindField(emailInput, function ()
+        {
+            const email = emailInput.value.trim();
+
+            if (!email)
+            {
+                return 'Please enter your email.';
+            }
+
+            if (!AUTH_EMAIL_PATTERN.test(email))
+            {
+                return 'Please enter a valid email, like name@example.com.';
+            }
+
+            return '';
+        });
+
+        const validatePassword = authBindField(passwordInput, function ()
+        {
+            return passwordInput.value.length < 8 ? 'Password must be at least 8 characters.' : '';
+        });
+
+        const validateConfirm = authBindField(confirmInput, function ()
+        {
+            if (!confirmInput.value)
+            {
+                return 'Please type your password again.';
+            }
+
+            return confirmInput.value !== passwordInput.value ? 'The two passwords do not match.' : '';
+        });
+
+        const termsInput = document.getElementById('terms');
+        const termsError = document.getElementById('terms-error');
+
+        function validateTerms()
+        {
+            termsError.textContent = termsInput.checked ? '' : 'Please agree to continue.';
+            return termsInput.checked;
+        }
+
+        termsInput.addEventListener('change', validateTerms);
+
+        function validateDetails()
+        {
+            const results = [validateName(), validateEmail(), validatePassword(), validateConfirm()];
+            const fields = [nameInput, emailInput, passwordInput, confirmInput];
+
+            for (let i = 0; i < results.length; i++)
+            {
+                if (!results[i])
+                {
+                    fields[i].focus();
+                    return false;
+                }
+            }
+
+            if (!validateTerms())
+            {
+                termsInput.focus();
+                return false;
+            }
+
+            return true;
+        }
+
+        document.getElementById('next-btn').addEventListener('click', function ()
+        {
+            if (validateRole())
+            {
+                goToStep(2);
+            }
+        });
+
+        document.getElementById('back-btn').addEventListener('click', function ()
+        {
+            goToStep(1);
+        });
+
+        form.addEventListener('change', function (event)
+        {
+            if (event.target.name === 'role')
+            {
+                validateRole();
+            }
+        });
+
+        passwordInput.addEventListener('input', function ()
+        {
+            updateMeter();
+
+            if (confirmInput.value)
+            {
+                validateConfirm();
+            }
+        });
 
         form.addEventListener('submit', async function (event)
         {
             event.preventDefault();
-            hideFormError();
+            authHideFormError();
 
-            if (!validateForm())
+            if (currentStep === 1)
+            {
+                if (validateRole())
+                {
+                    goToStep(2);
+                }
+
+                return;
+            }
+
+            if (!validateRole() || !validateDetails())
             {
                 return;
             }
 
-            submitButton.disabled = true;
-            submitButton.classList.add('loading');
+            setLoading(submitButton, true);
 
             try
             {
@@ -221,22 +392,24 @@
                 if (data && data.token && data.user)
                 {
                     saveSession(data.token, data.user);
-                    window.location.href = dashboardFor(data.user.role);
+                    authRedirect(dashboardFor(data.user.role), 0);
                 }
                 else
                 {
-                    window.location.href = 'login.html';
+                    authRedirect('login.html', 0);
                 }
             }
             catch (error)
             {
-                showFormError(error.message);
-                submitButton.disabled = false;
-                submitButton.classList.remove('loading');
+                authShowFormError(error.message);
+                shake(formPanel);
+                setLoading(submitButton, false);
             }
         });
 
-        form.addEventListener('input', hideFormError);
+        form.addEventListener('input', authHideFormError);
     </script>
+        <script src="js/constellation.js"></script>
+
 </body>
 </html>

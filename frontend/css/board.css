@@ -4,17 +4,17 @@
 {
     display: inline-flex;
     padding: 3px;
-    background: var(--neutral-soft, #EEF1F5);
-    border: 1px solid var(--line, #DFE3EA);
+    background: var(--neutral-soft, #EFECFA);
+    border: 1px solid var(--line, #E4E1EC);
     border-radius: var(--r-ctl, 6px);
 }
 
 .bd-seg button
 {
-    min-height: 32px;
+    min-height: 40px;
     padding: 0 14px;
     background: none;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-family: inherit;
     font-size: 0.85rem;
     font-weight: 600;
@@ -26,26 +26,26 @@
 
 .bd-seg button:hover
 {
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
 }
 
 .bd-seg button[aria-pressed="true"]
 {
     background: var(--surface, #FFFFFF);
-    color: var(--ink, #17233A);
-    box-shadow: 0 0 0 1px var(--line-strong, #C9D0DB);
+    color: var(--ink, #25243A);
+    box-shadow: 0 0 0 1px var(--line-strong, #7E7A97);
 }
 
 .bd-seg button:focus-visible
 {
-    outline: 2px solid var(--ink, #17233A);
+    outline: 2px solid var(--accent, #5146D8);
     outline-offset: 2px;
 }
 
 .bd-note
 {
     margin: 6px 0 12px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.88rem;
 }
 
@@ -63,7 +63,7 @@
     flex: 0 0 268px;
     min-height: 140px;
     padding: 10px;
-    background: var(--neutral-soft, #EEF1F5);
+    background: var(--neutral-soft, #EFECFA);
     border: 2px solid transparent;
     border-radius: var(--r-panel, 14px);
     transition: border-color 140ms ease, background 140ms ease, opacity 140ms ease;
@@ -85,7 +85,7 @@
     gap: 8px;
     font-size: 0.9rem;
     font-weight: 600;
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
 }
 
 .bd-head h4::before
@@ -93,7 +93,7 @@
     content: "";
     width: 8px;
     height: 8px;
-    background: var(--muted, #5B6677);
+    background: var(--muted, #5E5C75);
     border-radius: 50%;
 }
 
@@ -104,7 +104,7 @@
 
 .bd-col.tone-warn .bd-head h4::before
 {
-    background: var(--gap, #B45309);
+    background: var(--gap, #A34A06);
 }
 
 .bd-col.tone-bad .bd-head h4::before
@@ -117,7 +117,7 @@
     min-width: 24px;
     padding: 1px 8px;
     background: var(--surface, #FFFFFF);
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.78rem;
     font-weight: 600;
     text-align: center;
@@ -138,7 +138,7 @@
     gap: 8px;
     padding: 12px;
     background: var(--surface, #FFFFFF);
-    border: 1px solid var(--line, #DFE3EA);
+    border: 1px solid var(--line, #E4E1EC);
     border-radius: var(--r-ctl, 6px);
     cursor: grab;
     transition: border-color 140ms ease, opacity 140ms ease;
@@ -146,7 +146,7 @@
 
 .bd-card:hover
 {
-    border-color: var(--line-strong, #C9D0DB);
+    border-color: var(--line-strong, #7E7A97);
 }
 
 .bd-card.is-final
@@ -171,7 +171,7 @@
 .bd-name
 {
     overflow: hidden;
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
     font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -187,7 +187,7 @@
 
 .bd-none
 {
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.78rem;
 }
 
@@ -195,7 +195,7 @@
 {
     height: 6px;
     overflow: hidden;
-    background: var(--neutral-soft, #EEF1F5);
+    background: var(--neutral-soft, #EFECFA);
     border-radius: 999px;
 }
 
@@ -209,7 +209,7 @@
 
 .bd-track i.mid
 {
-    background: var(--gap, #B45309);
+    background: var(--gap, #A34A06);
 }
 
 .bd-track i.low
@@ -236,44 +236,44 @@
 
 .bd-meta
 {
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.8rem;
 }
 
 .bd-move
 {
     width: 100%;
-    min-height: 36px;
+    min-height: 40px;
     padding: 0 8px;
     background: var(--surface, #FFFFFF);
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
     font-family: inherit;
     font-size: 0.85rem;
-    border: 1px solid var(--line-strong, #C9D0DB);
+    border: 1px solid var(--line-strong, #7E7A97);
     border-radius: var(--r-ctl, 6px);
 }
 
 .bd-move:focus-visible,
 .bd-name:focus-visible
 {
-    outline: 2px solid var(--ink, #17233A);
+    outline: 2px solid var(--accent, #5146D8);
     outline-offset: 2px;
 }
 
 .bd-final
 {
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.8rem;
 }
 
 .bd-empty
 {
     padding: 14px 8px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.84rem;
     line-height: 1.4;
     text-align: center;
-    border: 1px dashed var(--line-strong, #C9D0DB);
+    border: 1px dashed var(--line-strong, #7E7A97);
     border-radius: var(--r-ctl, 6px);
 }
 
@@ -281,7 +281,7 @@
 
 .bd-col.can-drop
 {
-    border-color: var(--line-strong, #C9D0DB);
+    border-color: var(--line-strong, #7E7A97);
     border-style: dashed;
 }
 

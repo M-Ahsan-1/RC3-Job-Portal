@@ -24,19 +24,19 @@ function buildScene()
 
     let svg = '<svg viewBox="0 0 600 440" role="presentation" focusable="false">';
 
-    svg += '<rect x="24" y="24" width="340" height="392" rx="10" fill="#F6F7F9"/>';
-    svg += '<rect x="52" y="54" width="130" height="12" rx="6" fill="#17233A" opacity="0.85"/>';
-    svg += '<rect x="52" y="76" width="200" height="7" rx="3.5" fill="#C9D0DB"/>';
-    svg += '<rect x="52" y="112" width="70" height="8" rx="4" fill="#9AA6BA"/>';
+    svg += '<rect x="24" y="24" width="340" height="392" rx="10" fill="#FAF9F6"/>';
+    svg += '<rect x="52" y="54" width="130" height="12" rx="6" fill="#171A45" opacity="0.85"/>';
+    svg += '<rect x="52" y="76" width="200" height="7" rx="3.5" fill="#D9D6EE"/>';
+    svg += '<rect x="52" y="112" width="70" height="8" rx="4" fill="#A8A5C7"/>';
 
     lines.forEach(function (line)
     {
-        svg += '<rect x="52" y="' + line[0] + '" width="' + line[1] + '" height="7" rx="3.5" fill="#DFE3EA"/>';
+        svg += '<rect x="52" y="' + line[0] + '" width="' + line[1] + '" height="7" rx="3.5" fill="#E6E3F2"/>';
     });
 
     phrases.forEach(function (phrase)
     {
-        svg += '<rect class="sc-hl" style="--d:' + phrase.delay + '" x="48" y="' + (phrase.baseline - 16) + '" width="' + phrase.box + '" height="22" rx="3" fill="#FFE066"/>';
+        svg += '<rect class="sc-hl" style="--d:' + phrase.delay + '" x="48" y="' + (phrase.baseline - 16) + '" width="' + phrase.box + '" height="22" rx="3" fill="#FFD9C2"/>';
         svg += '<text class="sc-text" x="52" y="' + phrase.baseline + '" textLength="' + phrase.width + '" lengthAdjust="spacingAndGlyphs">' + phrase.text + '</text>';
     });
 
@@ -50,11 +50,21 @@ function buildScene()
             ' C' + (startX + 62) + ' ' + startY + ' 360 ' + chip.centerY + ' 420 ' + chip.centerY + '"/>';
 
         svg += '<g class="sc-chip" style="--d:' + chip.pop + '">' +
-            '<rect x="420" y="' + (chip.centerY - 16) + '" width="' + chip.width + '" height="32" rx="16" fill="#12373F" stroke="#2DD4BF" stroke-width="1.5"/>' +
+            '<rect x="420" y="' + (chip.centerY - 16) + '" width="' + chip.width + '" height="32" rx="16" fill="#0F2F3A" stroke="#2DD4BF" stroke-width="1.5"/>' +
             '<text class="sc-chip-text" x="' + (420 + chip.width / 2) + '" y="' + (chip.centerY + 5) + '">' + chip.label + '</text></g>';
     });
 
-    svg += '<circle cx="490" cy="385" r="30" fill="none" stroke="#2A3550" stroke-width="6"/>';
+    // magnifier over the resume and a floating tag, both drawn so the scene needs no image files
+    svg += '<g class="sc-chip" style="--d:0.4s"><circle cx="322" cy="112" r="30" fill="#FFC83D" fill-opacity="0.16" stroke="#FFC83D" stroke-width="5"/>' +
+        '<path d="M343 134l22 22" stroke="#FFC83D" stroke-width="7" stroke-linecap="round"/></g>';
+
+    svg += '<g class="sc-chip" style="--d:2.6s">' +
+        '<rect x="420" y="62" width="156" height="32" rx="16" fill="#2A2160" stroke="#FFC83D" stroke-width="1.5"/>' +
+        '<circle cx="438" cy="78" r="8" fill="#FFC83D"/>' +
+        '<path d="M434.5 78l2.6 2.6 4.6-5.4" fill="none" stroke="#171A45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<text class="sc-chip-text sc-gold" x="510" y="83">Verified skills</text></g>';
+
+    svg += '<circle cx="490" cy="385" r="30" fill="none" stroke="#2B2F66" stroke-width="6"/>';
     svg += '<circle class="sc-ring-fill" style="--d:2.3s" cx="490" cy="385" r="30" fill="none" stroke="#2DD4BF" stroke-width="6" stroke-linecap="round" pathLength="100" transform="rotate(-90 490 385)"/>';
     svg += '<text class="sc-ring-num" x="490" y="392">86</text>';
     svg += '<text class="sc-ring-label" x="490" y="434">Example</text>';
@@ -92,30 +102,38 @@ function playScene(offsetSeconds)
     }, (offset + 2.3) * 1000);
 }
 
+function authStagePoints()
+{
+    const points = [
+        'Every score links to the resume line behind it',
+        'Gaps are flagged, never hidden',
+        'AI explains the evidence. You make the decision.'
+    ];
+
+    let html = '<ul class="stage-points">';
+
+    points.forEach(function (text)
+    {
+        html += '<li><span class="sp-tick" aria-hidden="true">' + (typeof icon === 'function' ? icon('check', 14) : '') + '</span>' + text + '</li>';
+    });
+
+    return html + '</ul>';
+}
+
 function mountAuthStage(line)
 {
     const stage = document.getElementById('stage');
 
     stage.innerHTML =
-        '<div class="stage-top">' + wordmark({ onInk: true, size: '1.6rem' }) + '</div>' +
+        '<div class="stage-top">' + brand({ onDark: true, size: '1.6rem', className: 'wordmark' }) + '</div>' +
         '<div class="stage-copy">' +
-            '<p class="stage-tagline">Hire on evidence. Decide as a human.</p>' +
+            '<p class="stage-tagline">See the evidence. Hire with confidence.</p>' +
             '<p class="stage-line" id="stage-line"></p>' +
+            authStagePoints() +
         '</div>' +
-        '<div class="scene-wrap" aria-hidden="true"><div class="scene" id="scene">' + buildScene() + '</div></div>';
+        '<div class="scene-wrap" aria-hidden="true"><img class="scene-art" src="assets/illustrations/register-scene.png" alt="" width="1354" height="1161" decoding="async"></div>';
 
     document.getElementById('stage-line').textContent = line;
-
-    document.getElementById('scene').addEventListener('mouseenter', function ()
-    {
-        if (Date.now() - sceneLastPlay > SCENE_REPLAY_GAP_MS)
-        {
-            playScene(0);
-        }
-    });
-
-    // small head start so the page loader is gone before the sequence begins
-    playScene(0.8);
 }
 
 function authStageLine(text)

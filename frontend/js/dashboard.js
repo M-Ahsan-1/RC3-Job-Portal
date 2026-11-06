@@ -494,7 +494,7 @@ const Dash =
                 '<span class="d-search-text">Search or jump to</span><kbd class="d-kbd" id="palette-kbd">Ctrl K</kbd></button>'
             : '';
 
-        const mark = typeof wordmark === 'function' ? wordmark({ onInk: true, size: '1.3rem' }) : 'SORYNTH';
+        const mark = typeof brand === 'function' ? brand({ onDark: true, size: '1.3rem', className: 'wordmark' }) : 'VEYRA';
 
         const shell = document.createElement('div');
         shell.className = 'd-shell';
@@ -502,7 +502,7 @@ const Dash =
             '<a class="skip-link" href="#content">Skip to content</a>' +
             '<aside class="d-sidebar" id="sidebar" aria-label="Sidebar">' +
                 '<div class="d-side-head">' +
-                    '<a class="d-brand" href="' + home + '">' + mark + '<span class="d-mono" aria-hidden="true">S</span></a>' +
+                    '<a class="d-brand" href="' + home + '">' + mark + '<span class="d-mono" aria-hidden="true">' + (typeof brandMark === 'function' ? brandMark({ size: '24px' }) : 'V') + '</span></a>' +
                     '<button class="d-icon-btn d-collapse" id="collapse-btn" type="button" aria-label="Collapse sidebar" aria-expanded="true"><i data-lucide="panel-left"></i></button>' +
                 '</div>' +
                 '<nav class="d-nav" aria-label="Main"><span class="d-nav-ind" aria-hidden="true"></span>' + links + '</nav>' +

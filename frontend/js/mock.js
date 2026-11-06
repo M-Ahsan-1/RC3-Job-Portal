@@ -2377,6 +2377,15 @@ const MockApi =
             .sort(function (a, b) { return new Date(b.appliedAt) - new Date(a.appliedAt); });
     },
 
+    candidateInterviews(user)
+    {
+        MockApi.requireUser(user, 'candidate');
+
+        return MockApi.clone(MockStore.load().interviews
+            .filter(function (interview) { return interview.candidateId === user.id && interview.status !== 'cancelled'; })
+            .sort(function (a, b) { return new Date(a.scheduled_at) - new Date(b.scheduled_at); }));
+    },
+
     notifications(user)
     {
         if (!user)
@@ -2716,6 +2725,11 @@ const MockApi =
         {
             MockApi.requireUser(user, 'candidate');
             return [];
+        }
+
+        if (method === 'GET' && route === '/api/candidate/interviews')
+        {
+            return MockApi.candidateInterviews(user);
         }
 
         if (method === 'GET' && route === '/api/notifications')

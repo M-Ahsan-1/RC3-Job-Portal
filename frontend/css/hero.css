@@ -1,0 +1,174 @@
+/* Hero bands with a drawn illustration. Loaded after the page's own stylesheet. */
+
+:root
+{
+    --hero-bg: var(--midnight-indigo);
+    --hero-muted: #D2D0EE;
+}
+
+@media (prefers-color-scheme: dark)
+{
+    :root:not([data-theme="light"])
+    {
+        --hero-bg: #1B1F5C;
+    }
+}
+
+:root[data-theme="dark"]
+{
+    --hero-bg: #1B1F5C;
+}
+
+.hero-band
+{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 14px;
+    min-height: 190px;
+    padding: 28px 32px;
+    overflow: hidden;
+    background: var(--hero-bg);
+    color: #FFFFFF;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+}
+
+.hero-band > :not(.hero-art)
+{
+    position: relative;
+    z-index: 1;
+    max-width: 58%;
+}
+
+.hero-band h2,
+.cd-greet.hero-band h2
+{
+    color: #FFFFFF;
+    font-size: 1.8rem;
+    letter-spacing: -0.02em;
+}
+
+.hero-band p,
+.hero-band .muted,
+.hero-band .rd-date,
+.hero-band .rd-updated,
+.cd-greet.hero-band p
+{
+    color: var(--hero-muted);
+}
+
+.hero-art
+{
+    position: absolute;
+    top: 0;
+    right: 16px;
+    bottom: 0;
+    width: min(400px, 44%);
+    pointer-events: none;
+}
+
+.hero-art
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* soft glow so the navy shirt and laptop do not melt into the dark band */
+.hero-art::before
+{
+    content: "";
+    position: absolute;
+    inset: 6% 4%;
+    background: radial-gradient(closest-side, rgba(143, 134, 255, 0.5), rgba(143, 134, 255, 0) 100%);
+}
+
+.hero-art svg,
+.hero-art img
+{
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.hero-art img
+{
+    width: auto;
+    max-width: 100%;
+    padding: 8px 0;
+    object-fit: contain;
+    object-position: center;
+}
+
+.hero-band .btn-secondary
+{
+    background: rgba(255, 255, 255, 0.1);
+    color: #FFFFFF;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.hero-band .btn-secondary:hover
+{
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.hero-band :focus-visible
+{
+    outline: 2px solid var(--golden-yellow);
+    outline-offset: 2px;
+}
+
+/* the header rows that already existed keep their children, only the layout changes */
+
+.rd-head.hero-band,
+.page-header.hero-band
+{
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.rd-head.hero-band .rd-head-actions
+{
+    margin-top: 4px;
+}
+
+.hero-slim
+{
+    min-height: 164px;
+    margin-bottom: 18px;
+    padding: 22px 28px;
+}
+
+.hero-slim h2
+{
+    font-size: 1.45rem;
+}
+
+.cd-greet.hero-band
+{
+    min-height: 230px;
+    padding: 28px 32px;
+}
+
+@media (max-width: 900px)
+{
+    .hero-art
+    {
+        display: none;
+    }
+
+    .hero-band > :not(.hero-art)
+    {
+        max-width: none;
+    }
+
+    .hero-band
+    {
+        min-height: 0;
+        padding: 22px 20px;
+    }
+}

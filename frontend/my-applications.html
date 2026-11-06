@@ -3,36 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My applications – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>My applications – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/candidate.css">
+    <link rel="stylesheet" href="css/my-applications.css">
 </head>
 <body class="theme-candidate">
     <script src="js/brand.js"></script>
     <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
-        <section class="d-panel" aria-label="My applications">
-            <h3>My applications</h3>
-            <p class="sub">Follow every application from submission to decision</p>
-            <div id="apps-list"></div>
-        </section>
+        <section class="ma-hero" id="hero" aria-label="Summary"></section>
 
-        <section class="d-panel" id="notifications" tabindex="-1" aria-label="Notifications">
-            <div class="d-panel-head">
-                <div>
-                    <h3>Notifications</h3>
-                    <p class="sub">Updates about your applications</p>
-                </div>
-                <button class="btn btn-secondary btn-sm" id="mark-read" type="button">Mark all as read</button>
+        <div class="ma-grid">
+            <div>
+                <div class="ma-stats" id="stats" role="group" aria-label="Filter applications by stage"></div>
+
+                <section class="d-panel" aria-label="My applications">
+                    <div class="ma-toolbar">
+                        <div>
+                            <h3>My applications</h3>
+                            <p class="sub">Follow every application from submission to decision</p>
+                        </div>
+                        <div class="ma-tools">
+                            <input type="search" id="app-search" placeholder="Search by job title" aria-label="Search applications by job title">
+                            <select id="app-sort" aria-label="Sort applications">
+                                <option value="newest">Newest first</option>
+                                <option value="oldest">Oldest first</option>
+                                <option value="progress">Furthest along</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="ma-count" id="apps-count" role="status" aria-live="polite"></p>
+                    <div id="apps-list" class="ma-list"></div>
+                </section>
             </div>
-            <div id="notes-list"></div>
-        </section>
+
+            <section class="d-panel ma-notes" id="notifications" tabindex="-1" aria-label="Notifications">
+                <div class="d-panel-head">
+                    <div>
+                        <h3>Notifications<span class="ma-pill" id="unread-pill" hidden></span></h3>
+                        <p class="sub">Updates about your applications</p>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" id="mark-read" type="button">Mark all as read</button>
+                </div>
+                <div class="ma-tabs" role="group" aria-label="Filter notifications">
+                    <button type="button" class="cd-fchip" data-note-tab="all" aria-pressed="true">All</button>
+                    <button type="button" class="cd-fchip" data-note-tab="unread" aria-pressed="false">Unread</button>
+                </div>
+                <div id="notes-list"></div>
+            </section>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
@@ -45,34 +72,404 @@
     <script src="js/candidate-shared.js"></script>
     <script>
         const user = guardPage('candidate');
-        const appsList = document.getElementById('apps-list');
-        let notes = null;
+        const POLL_MS = 30000;
+        const STAGES =
+        [
+            { key: 'all', label: 'All applications' },
+            { key: 'review', label: 'In review' },
+            { key: 'shortlisted', label: 'Shortlisted or interview' },
+            { key: 'decided', label: 'Decisions' }
+        ];
+        const state = { apps: [], signature: '', stage: 'all', query: '', sort: 'newest', counted: false, notes: [], known: null, noteTab: 'all' };
+        const el = function (id) { return document.getElementById(id); };
 
-        function renderApps(apps)
+        function stageOf(app)
         {
-            if (!apps.length)
+            if (!CandidateKit.isActive(app.status))
             {
-                appsList.innerHTML = Dash.empty('file-text', 'You have not applied to any jobs yet. When you apply, every update appears here.', '<a class="btn btn-sm" href="candidate.html#jobs">Browse open jobs</a>');
+                return 'decided';
+            }
+
+            return CandidateKit.stepIndex(app.status) >= 3 ? 'shortlisted' : 'review';
+        }
+
+        function lastAt(app)
+        {
+            let latest = app.appliedAt;
+
+            (app.timeline || []).forEach(function (entry)
+            {
+                if (new Date(entry.at) > new Date(latest))
+                {
+                    latest = entry.at;
+                }
+            });
+
+            return latest;
+        }
+
+        function countUp(node, to)
+        {
+            if (CandidateKit.reducedMotion() || to === 0)
+            {
+                node.textContent = to;
                 return;
             }
 
-            appsList.innerHTML = apps.map(function (app)
+            const start = performance.now();
+
+            function tick(now)
             {
-                return CandidateKit.applicationHtml(app, false);
-            }).join('');
+                const t = Math.min(1, (now - start) / 700);
+                node.textContent = Math.round(to * (1 - Math.pow(1 - t, 3)));
+
+                if (t < 1)
+                {
+                    requestAnimationFrame(tick);
+                }
+            }
+
+            requestAnimationFrame(tick);
         }
 
-        async function load()
+        function greeting()
         {
-            appsList.innerHTML = Dash.skeletons(2);
+            const hour = new Date().getHours();
+            const name = String(user && (user.name || user.fullName) || '').trim().split(/\s+/)[0];
+            const base = hour < 12 ? 'Good morning' : (hour < 18 ? 'Good afternoon' : 'Good evening');
+
+            return name ? base + ', ' + name : base;
+        }
+
+        function renderHero()
+        {
+            const apps = state.apps;
+            const active = apps.filter(function (app) { return CandidateKit.isActive(app.status); });
+            const selected = apps.filter(function (app) { return app.status === 'Selected'; });
+            const interviews = apps.filter(function (app) { return app.status === 'Interview'; });
+            const lead = active.slice().sort(function (a, b) { return CandidateKit.stepIndex(b.status) - CandidateKit.stepIndex(a.status); })[0];
+            const recent = apps.slice().sort(function (a, b) { return new Date(lastAt(b)) - new Date(lastAt(a)); })[0];
+            let title = 'Ready when you are';
+            let text = 'Apply to a role and follow every step of it here.';
+
+            if (selected.length)
+            {
+                title = 'Good news, you were selected';
+                text = 'Open the application below to see what happens next.';
+            }
+            else if (interviews.length)
+            {
+                title = interviews.length === 1 ? 'You have an interview in progress' : 'You have ' + interviews.length + ' interviews in progress';
+                text = 'Check your notifications for the details.';
+            }
+            else if (active.length)
+            {
+                title = active.length === 1 ? 'One application in progress' : active.length + ' applications in progress';
+                text = 'We will tell you the moment one of them moves forward.';
+            }
+            else if (apps.length)
+            {
+                title = 'Every application has a decision';
+                text = 'Have a look at the other open roles.';
+            }
+
+            if (recent && apps.length)
+            {
+                text += ' Latest: ' + recent.jobTitle + ', ' + CandidateKit.label(recent.status).toLowerCase() + ' ' + Dash.timeAgo(lastAt(recent)) + '.';
+            }
+
+            let focus = '';
+
+            if (lead)
+            {
+                const step = CandidateKit.stepIndex(lead.status);
+                focus = '<div class="ma-focus">' + CandidateKit.ringHtml(Math.round(((step + 1) / CandidateKit.STEPS.length) * 100)) +
+                    '<div><span>Furthest along</span><b>' + Dash.esc(lead.jobTitle) + '</b><span>Step ' + (step + 1) + ' of ' + CandidateKit.STEPS.length + '</span></div></div>';
+            }
+
+            el('hero').innerHTML = '<div><h2>' + Dash.esc(greeting()) + '. ' + Dash.esc(title) + '</h2><p>' + Dash.esc(text) + '</p>' +
+                '<div class="ma-hero-act"><a class="ma-cta" href="candidate.html#jobs">Browse open jobs</a></div></div>' + focus;
+
+            CandidateKit.animateRings(el('hero'));
+        }
+
+        function renderStats()
+        {
+            el('stats').innerHTML = STAGES.map(function (stage)
+            {
+                const count = stage.key === 'all' ? state.apps.length : state.apps.filter(function (app) { return stageOf(app) === stage.key; }).length;
+
+                return '<button type="button" class="ma-stat" data-stage="' + stage.key + '" aria-pressed="' + (state.stage === stage.key) + '"><b data-count="' + count + '">' + (state.counted ? count : 0) + '</b><span>' + stage.label + '</span></button>';
+            }).join('');
+
+            if (!state.counted)
+            {
+                el('stats').querySelectorAll('[data-count]').forEach(function (node)
+                {
+                    countUp(node, Number(node.getAttribute('data-count')));
+                });
+            }
+
+            state.counted = true;
+        }
+
+        function noteIcon(message)
+        {
+            if (/interview/i.test(message)) { return 'calendar-check'; }
+            if (/shortlist/i.test(message)) { return 'star'; }
+            if (/selected|congrat/i.test(message)) { return 'party-popper'; }
+            if (/not selected|not to move|unfortunately/i.test(message)) { return 'mail'; }
+            return 'bell';
+        }
+
+        function cardHtml(app, index)
+        {
+            const step = CandidateKit.stepIndex(app.status);
+            const total = CandidateKit.STEPS.length;
+            const tone = CandidateKit.tone(app.status);
+            const date = Dash.formatDate(app.appliedAt);
+            const icon = app.status === 'Selected' ? 'party-popper' : (app.status === 'Interview' ? 'calendar-check' : (app.status === 'Shortlisted' ? 'star' : (app.status === 'Rejected' ? 'compass' : 'clock')));
+            const upcoming = CandidateKit.isActive(app.status) && step < total - 1 ? 'Next: ' + CandidateKit.STEPS[step + 1] : '';
+            const cta = app.status === 'Rejected' ? '<a href="candidate.html#jobs">Browse open jobs</a>' : '';
+
+            return '<article class="ma-card' + (tone === 'ok' ? ' is-ok' : (tone === 'bad' ? ' is-bad' : '')) + '" data-app="' + CandidateKit.attrEsc(app.id) + '" style="--i:' + Math.min(index, 6) + '">' +
+                '<header class="ma-head"><span class="ma-mark" aria-hidden="true">' + Dash.esc(String(app.jobTitle || '?').charAt(0).toUpperCase()) + '</span>' +
+                '<div class="ma-title"><h4>' + Dash.esc(app.jobTitle) + '</h4><p>' + (date ? 'Applied ' + Dash.esc(date) : '') + '</p></div>' +
+                Dash.badge(CandidateKit.label(app.status), tone) + '</header>' +
+                CandidateKit.stepperHtml(app) +
+                '<div class="ma-next"><i data-lucide="' + icon + '"></i><div><b>Step ' + (step + 1) + ' of ' + total + ': ' + Dash.esc(CandidateKit.label(app.status)) + '</b><p>' + Dash.esc(CandidateKit.nextText(app.status)) + '</p></div></div>' +
+                '<div class="ma-foot"><span>Updated ' + Dash.esc(Dash.timeAgo(lastAt(app))) + '</span><span>' + Dash.esc(upcoming) + cta + '</span></div>' +
+                CandidateKit.timelineHtml(app.timeline) +
+                '</article>';
+        }
+
+        function visibleApps()
+        {
+            const query = state.query.trim().toLowerCase();
+
+            return state.apps.filter(function (app)
+            {
+                return (state.stage === 'all' || stageOf(app) === state.stage) && (!query || String(app.jobTitle).toLowerCase().indexOf(query) !== -1);
+            }).sort(function (a, b)
+            {
+                if (state.sort === 'progress')
+                {
+                    return CandidateKit.stepIndex(b.status) - CandidateKit.stepIndex(a.status);
+                }
+
+                const diff = new Date(b.appliedAt) - new Date(a.appliedAt);
+                return state.sort === 'oldest' ? -diff : diff;
+            });
+        }
+
+        function renderApps()
+        {
+            const list = el('apps-list');
+            const shown = visibleApps();
+
+            el('apps-count').textContent = state.apps.length ? 'Showing ' + shown.length + ' of ' + state.apps.length : '';
+
+            if (!state.apps.length)
+            {
+                list.innerHTML = Dash.empty('file-text', 'You have not applied to any jobs yet. When you apply, every update appears here.', '<a class="btn btn-sm" href="candidate.html#jobs">Browse open jobs</a>');
+            }
+            else if (!shown.length)
+            {
+                list.innerHTML = Dash.empty('search-x', 'No applications match these filters.', '<button type="button" class="btn btn-secondary btn-sm" id="clear-filters">Clear filters</button>');
+                el('clear-filters').addEventListener('click', function ()
+                {
+                    state.stage = 'all';
+                    state.query = '';
+                    el('app-search').value = '';
+                    renderAll();
+                });
+            }
+            else
+            {
+                list.innerHTML = shown.map(cardHtml).join('');
+            }
+
+            Dash.icons();
+        }
+
+        function renderAll()
+        {
+            renderHero();
+            renderStats();
+            renderApps();
+            Dash.icons();
+        }
+
+        function dayLabel(iso)
+        {
+            const date = new Date(iso);
+
+            if (isNaN(date))
+            {
+                return 'Earlier';
+            }
+
+            const now = new Date();
+            const diff = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(date.getFullYear(), date.getMonth(), date.getDate())) / 86400000);
+
+            if (diff <= 0) { return 'Today'; }
+            if (diff === 1) { return 'Yesterday'; }
+            return Dash.formatDate(iso) || 'Earlier';
+        }
+
+        function unreadCount()
+        {
+            return state.notes.filter(function (item) { return item.read !== true; }).length;
+        }
+
+        function renderNotes(freshIds)
+        {
+            const unread = unreadCount();
+            const pill = el('unread-pill');
+            const items = state.notes.filter(function (item) { return state.noteTab === 'all' || item.read !== true; })
+                .sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+            const groups = [];
+
+            Dash.setBell(unread);
+            el('mark-read').disabled = unread === 0;
+            pill.hidden = unread === 0;
+            pill.textContent = unread + ' new';
+
+            if (!items.length)
+            {
+                el('notes-list').innerHTML = state.notes.length
+                    ? Dash.empty('check-check', 'You are all caught up.')
+                    : Dash.empty('bell', 'No notifications yet. We will tell you the moment something changes.');
+                Dash.icons();
+                return;
+            }
+
+            items.forEach(function (item)
+            {
+                const label = dayLabel(item.createdAt);
+                const last = groups[groups.length - 1];
+
+                if (last && last.label === label)
+                {
+                    last.items.push(item);
+                }
+                else
+                {
+                    groups.push({ label: label, items: [item] });
+                }
+            });
+
+            el('notes-list').innerHTML = groups.map(function (group)
+            {
+                return '<div class="ma-day"><h4>' + Dash.esc(group.label) + '</h4><ul>' + group.items.map(function (item)
+                {
+                    const isUnread = item.read !== true;
+                    const fresh = freshIds && freshIds[item.id];
+
+                    return '<li class="ma-note' + (isUnread ? ' is-unread' : '') + (fresh ? ' is-fresh' : '') + '"><i data-lucide="' + noteIcon(String(item.message)) + '"></i>' +
+                        '<div><p>' + (isUnread ? '<span class="cd-vh">Unread: </span>' : '') + Dash.esc(item.message) + '</p><small>' + Dash.esc(Dash.timeAgo(item.createdAt)) + '</small></div></li>';
+                }).join('') + '</ul></div>';
+            }).join('');
+
+            Dash.icons();
+        }
+
+        async function refreshNotes(announce)
+        {
+            const items = await Api.get('/api/notifications');
+            const fresh = [];
+            const freshIds = {};
+
+            if (state.known !== null)
+            {
+                items.forEach(function (item)
+                {
+                    if (!state.known[item.id])
+                    {
+                        freshIds[item.id] = true;
+
+                        if (item.read !== true)
+                        {
+                            fresh.push(item);
+                        }
+                    }
+                });
+            }
+
+            state.known = {};
+            items.forEach(function (item) { state.known[item.id] = true; });
+            state.notes = items;
+            renderNotes(freshIds);
+
+            if (announce && fresh.length)
+            {
+                showToast(fresh.length === 1 ? fresh[0].message : fresh.length + ' new notifications.', 'info');
+            }
+        }
+
+        async function loadNotes()
+        {
+            el('notes-list').innerHTML = Dash.skeletons(1);
 
             try
             {
-                renderApps(await Api.get('/api/candidate/applications'));
+                await refreshNotes(false);
             }
             catch (error)
             {
-                Dash.failInto(appsList, error.message, load);
+                el('mark-read').disabled = true;
+                Dash.failInto(el('notes-list'), error.message, loadNotes);
+            }
+
+            Dash.icons();
+        }
+
+        async function markAll()
+        {
+            const button = el('mark-read');
+            Dash.setBusy(button, true);
+
+            try
+            {
+                const items = await Api.patch('/api/notifications/read');
+                state.notes = Array.isArray(items) ? items : state.notes.map(function (item) { item.read = true; return item; });
+                renderNotes();
+                showToast('All notifications marked as read.', 'success');
+            }
+            catch (error)
+            {
+                showToast(error.message, 'error');
+            }
+
+            Dash.setBusy(button, false);
+            button.disabled = unreadCount() === 0;
+        }
+
+        async function loadApps(silent)
+        {
+            if (!silent)
+            {
+                el('apps-list').innerHTML = Dash.skeletons(2);
+            }
+
+            try
+            {
+                const apps = await Api.get('/api/candidate/applications');
+                const signature = JSON.stringify(apps);
+
+                if (!silent || signature !== state.signature)
+                {
+                    state.apps = apps;
+                    state.signature = signature;
+                    renderAll();
+                }
+            }
+            catch (error)
+            {
+                if (!silent)
+                {
+                    Dash.failInto(el('apps-list'), error.message, loadApps);
+                }
             }
 
             Dash.icons();
@@ -92,10 +489,66 @@
                 onBell: CandidateKit.bellHandler
             });
 
-            notes = CandidateKit.mountNotes({ list: document.getElementById('notes-list'), markButton: document.getElementById('mark-read') });
+            el('stats').addEventListener('click', function (event)
+            {
+                const button = event.target.closest('[data-stage]');
 
-            load();
-            notes.load();
+                if (button)
+                {
+                    state.stage = button.getAttribute('data-stage');
+                    el('stats').querySelectorAll('[data-stage]').forEach(function (node)
+                    {
+                        node.setAttribute('aria-pressed', String(node === button));
+                    });
+                    renderApps();
+                }
+            });
+
+            el('app-search').addEventListener('input', function ()
+            {
+                state.query = this.value;
+                renderApps();
+            });
+
+            el('app-sort').addEventListener('change', function ()
+            {
+                state.sort = this.value;
+                renderApps();
+            });
+
+            document.querySelectorAll('[data-note-tab]').forEach(function (button)
+            {
+                button.addEventListener('click', function ()
+                {
+                    state.noteTab = button.getAttribute('data-note-tab');
+                    document.querySelectorAll('[data-note-tab]').forEach(function (node)
+                    {
+                        node.setAttribute('aria-pressed', String(node === button));
+                    });
+                    renderNotes();
+                });
+            });
+
+            el('mark-read').addEventListener('click', markAll);
+
+            setInterval(function ()
+            {
+                if (!document.hidden)
+                {
+                    refreshNotes(true).catch(function () {});
+                    loadApps(true);
+                }
+            }, POLL_MS);
+
+            loadApps(false).then(function ()
+            {
+                if (window.location.hash === '#notifications')
+                {
+                    CandidateKit.bellHandler();
+                }
+            });
+
+            loadNotes();
         }
     </script>
 </body>

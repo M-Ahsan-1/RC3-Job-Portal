@@ -50,7 +50,7 @@ function renderNav()
     const brand = document.createElement('a');
     brand.className = 'nav-brand';
     brand.href = dashboardFor(user.role);
-    brand.innerHTML = typeof wordmark === 'function' ? wordmark() : 'SORYNTH';
+    brand.innerHTML = typeof wordmark === 'function' ? wordmark() : 'VEYRA';
     nav.appendChild(brand);
 
     const linkBox = document.createElement('div');

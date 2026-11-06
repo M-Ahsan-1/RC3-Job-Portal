@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Applicants – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>Applicants – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/board.css">
+    <link rel="stylesheet" href="css/polish.css">
 </head>
 <body class="theme-recruiter">
     <script src="js/brand.js"></script>
@@ -27,6 +29,8 @@
             </div>
             <div id="job-skills"></div>
         </section>
+
+        <div class="ap-stats" id="stats"></div>
 
         <section class="d-panel" aria-label="Applicant list">
             <div class="d-toolbar" id="toolbar">
@@ -70,6 +74,7 @@
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/board.js"></script>
+    <script src="js/polish.js"></script>
     <script>
         const user = guardPage('recruiter');
         const jobId = Dash.intParam('jobId', 0);
@@ -89,6 +94,7 @@
             Board.showList();
 
             el('toolbar').classList.add('hidden');
+            el('stats').innerHTML = '';
             el('summary').textContent = '';
 
             const list = el('list');
@@ -120,6 +126,33 @@
                     }).join('') +
                     '</div>'
                 : '';
+        }
+
+        // quick numbers at the top, they count up once when the page loads
+        function renderStats()
+        {
+            const scored = applicants
+                .map(function (item) { return item.effectiveScore; })
+                .filter(function (value) { return value !== null && value !== undefined; });
+            const top = scored.length ? Math.max.apply(null, scored) : 0;
+            const strong = scored.filter(function (value) { return value >= 70; }).length;
+            const shortlisted = applicants.filter(function (item) { return item.status === 'Shortlisted'; }).length;
+            const items = [
+                [applicants.length, 'Applicants', true],
+                [top, 'Top score', false],
+                [strong, 'Strong matches (70 and up)', false],
+                [shortlisted, 'Shortlisted', false]
+            ];
+
+            el('stats').innerHTML = items.map(function (entry, index)
+            {
+                return '<div class="ap-stat' + (entry[2] ? ' is-hero' : '') + '" style="--i:' + index + '"><b data-count="' + entry[0] + '">0</b><span>' + entry[1] + '</span></div>';
+            }).join('');
+
+            el('stats').querySelectorAll('[data-count]').forEach(function (node)
+            {
+                Polish.countUp(node, node.getAttribute('data-count'));
+            });
         }
 
         function populateFilters()
@@ -211,7 +244,7 @@
                 '</td></tr>';
         }
 
-        function rowHtml(item, rank)
+        function rowHtml(item, rank, index)
         {
             const overridden = item.overrideScore !== null && item.overrideScore !== undefined;
             const score = item.effectiveScore;
@@ -236,14 +269,22 @@
                 }
             }
 
-            return '<tr>' +
+            // bar colour follows the score so a recruiter can scan the column quickly
+            const hasScore = score !== null && score !== undefined;
+            const meterTone = score >= 70 ? 'is-ok' : (score >= 40 ? 'is-warn' : 'is-bad');
+            const meter = hasScore
+                ? '<div class="ap-meter ' + meterTone + '"><i style="--w:' + Math.max(0, Math.min(100, score)) + '%"></i></div>'
+                : '';
+
+            return '<tr class="ap-row' + (rank === 1 ? ' ap-top' : '') + '" style="--i:' + index + '">' +
                 '<td><input type="checkbox" data-select="' + item.id + '"' +
                     (selected.has(item.id) ? ' checked' : '') +
                     (selected.size >= 3 && !selected.has(item.id) ? ' disabled' : '') +
                     ' aria-label="Select ' + Dash.esc(item.candidateName) + ' for comparison"></td>' +
                 '<td><span class="d-rank' + (rank === 1 ? ' top' : '') + '">' + rank + '</span></td>' +
-                '<td><strong>' + Dash.esc(item.candidateName) + '</strong><br><span class="muted">' + Dash.esc(item.email) + '</span></td>' +
-                '<td>' + scoreCell + '</td>' +
+                '<td><div class="ap-who"><span class="jp-avatar" aria-hidden="true">' + Dash.esc(Polish.initials(item.candidateName)) + '</span>' +
+                    '<div><strong>' + Dash.esc(item.candidateName) + '</strong><br><span class="muted">' + Dash.esc(item.email) + '</span></div></div></td>' +
+                '<td><div class="ap-score"><div class="ap-score-top">' + scoreCell + '</div>' + meter + '</div></td>' +
                 '<td>' + Dash.badge(item.status, Dash.statusTone(item.status)) + '</td>' +
                 '<td>' + Dash.esc(Dash.formatDate(item.appliedAt)) + '</td>' +
                 '<td><div class="row">' +
@@ -342,9 +383,9 @@
                     '<th><span class="d-sr">Select for comparison</span></th>' +
                     '<th>Rank</th><th>Applicant</th><th>Score</th><th>Status</th><th>Applied</th><th>Actions</th>' +
                     '</tr></thead><tbody>' +
-                    rows.map(function (item)
+                    rows.map(function (item, index)
                     {
-                        return rowHtml(item, rankOf[item.id]);
+                        return rowHtml(item, rankOf[item.id], index);
                     }).join('') +
                     '</tbody></table></div>';
             }
@@ -409,6 +450,7 @@
 
                 openOverrideId = null;
                 render();
+                renderStats();
                 showToast('Score overridden to ' + updated.effectiveScore + '. Your reason was recorded.', 'success');
             }
             catch (error)
@@ -444,6 +486,7 @@
                 applicants = results[1];
                 renderJobHead();
                 populateFilters();
+                renderStats();
                 render();
             }
             catch (error)
@@ -474,6 +517,7 @@
                     });
 
                     render();
+                    renderStats();
                 }
             });
 

@@ -2,22 +2,22 @@
 
 :root
 {
-    --stage-bg: #17233A;
+    --stage-bg: var(--midnight-indigo);
     --stage-ink: #FFFFFF;
-    --stage-muted: #B7C1D3;
+    --stage-muted: #C4C3E3;
 }
 
 @media (prefers-color-scheme: dark)
 {
     :root:not([data-theme="light"])
     {
-        --stage-bg: #0A0F1A;
+        --stage-bg: #0C0E2B;
     }
 }
 
 :root[data-theme="dark"]
 {
-    --stage-bg: #0A0F1A;
+    --stage-bg: #0C0E2B;
 }
 
 /* shell: stage on the left, form on the right */
@@ -62,10 +62,50 @@
     opacity: 0;
 }
 
+.stage-points
+{
+    display: grid;
+    gap: var(--sp-3);
+    margin: var(--sp-5) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stage-points li
+{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--stage-ink);
+    font-size: 0.95rem;
+}
+
+.sp-tick
+{
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    background: var(--golden-yellow);
+    color: var(--midnight-indigo);
+    border-radius: 50%;
+}
+
 .scene-wrap
 {
-    width: min(100%, 560px);
+    width: min(100%, 520px);
     margin-top: auto;
+}
+
+.scene-art
+{
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 42vh;
+    object-fit: contain;
+    object-position: left bottom;
 }
 
 .auth-panel
@@ -119,7 +159,7 @@
     font-family: var(--font-ui);
     font-size: 14px;
     font-weight: 600;
-    fill: #17233A;
+    fill: #25243A;
 }
 
 .sc-chip-text
@@ -129,6 +169,11 @@
     font-weight: 600;
     fill: #CFF7F1;
     text-anchor: middle;
+}
+
+.sc-gold
+{
+    fill: #FFE7A3;
 }
 
 .sc-ring-num
@@ -144,7 +189,7 @@
 {
     font-family: var(--font-ui);
     font-size: 11px;
-    fill: #9AA6BA;
+    fill: #A8AACB;
     text-anchor: middle;
 }
 
@@ -157,7 +202,7 @@
 .sc-thread
 {
     fill: none;
-    stroke: #FFC800;
+    stroke: var(--golden-yellow);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-dasharray: 1;
@@ -263,7 +308,7 @@
     display: block;
     width: 100%;
     height: 100%;
-    background: var(--mark);
+    background: var(--accent);
     transform: scaleX(calc(var(--value, 0) / 100));
     transform-origin: left center;
     transition: transform 200ms var(--ease);
@@ -307,7 +352,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: var(--mark);
+    background: var(--action);
     transform: scaleX(0);
     transform-origin: left center;
     transition: transform var(--t-slow) var(--ease);
@@ -369,14 +414,75 @@
 
 .role-card:has(input:checked)
 {
-    background: var(--neutral-soft);
-    border-color: var(--ink);
-    box-shadow: 0 0 0 1px var(--ink);
+    background: var(--stage-bg);
+    border-color: var(--golden-yellow);
+    box-shadow: 0 0 0 1px var(--golden-yellow);
+    color: #FFFFFF;
+}
+
+.role-card:has(input:checked) .role-art,
+.role-card:has(input:checked) .role-title
+{
+    color: #FFFFFF;
+}
+
+.role-card:has(input:checked) .role-sub
+{
+    color: var(--stage-muted);
+}
+
+/* small yellow tick in the corner of the picked card */
+.role-card::after
+{
+    content: "";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--golden-yellow) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M5 9.5l2.6 2.6L13 6.8' fill='none' stroke='%23171A45' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity var(--t-fast), transform var(--t-fast);
+}
+
+.role-card:has(input:checked)::after
+{
+    opacity: 1;
+    transform: scale(1);
+}
+
+.terms-row
+{
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 var(--sp-4);
+    font-size: var(--fs-sm);
+    color: var(--muted);
+    line-height: 1.45;
+    cursor: pointer;
+}
+
+.terms-row input
+{
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin: 1px 0 0;
+    accent-color: var(--electric-indigo);
+}
+
+.terms-row a
+{
+    color: var(--accent);
+    font-weight: 600;
 }
 
 .role-card:has(input:focus-visible)
 {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--accent, #5146D8);
     outline-offset: 3px;
 }
 
@@ -429,6 +535,7 @@
     stroke-dashoffset: 0;
 }
 
+/* the peach highlight still reads on the dark card, so it stays as is */
 .role-card:has(input:checked) .rc-hl
 {
     animation: sc-sweep 500ms var(--ease) both;
@@ -465,11 +572,6 @@
     color: var(--muted);
 }
 
-.success .wordmark.sweep .wm-mark::after
-{
-    animation-iteration-count: 1;
-}
-
 /* mobile: the stage turns into a short header band */
 
 @media (max-width: 900px)
@@ -487,7 +589,8 @@
     }
 
     .scene-wrap,
-    .stage-line
+    .stage-line,
+    .stage-points
     {
         display: none;
     }

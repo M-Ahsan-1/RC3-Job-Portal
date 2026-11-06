@@ -3,29 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>Analytics – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
-    <style>
-        .columns{display:flex;align-items:flex-end;gap:14px;height:170px;padding-top:10px}
-        .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
-        .col .bar{width:100%;max-width:70px;background:var(--ac);border-radius:6px 6px 0 0;min-height:2px}
-        .col span{font-size:.82rem;margin-top:6px}
-        .col b{font-size:.9rem}
-    </style>
+    <link rel="stylesheet" href="css/polish.css">
+    <link rel="stylesheet" href="css/analytics.css">
 </head>
 <body class="theme-recruiter">
     <script src="js/brand.js"></script>
     <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
-        <div id="error-box" class="form-error hidden" role="alert"></div>
-        <div id="stats" class="stats-grid"></div>
-        <div class="grid-2">
+        <section class="an-hero" aria-label="Summary">
+            <div>
+                <h2>Hiring at a glance</h2>
+                <p id="summary">Loading your hiring numbers</p>
+            </div>
+            <div class="an-hero-actions">
+                <span class="an-stamp" id="stamp" aria-live="polite"></span>
+                <button class="btn btn-secondary btn-sm" type="button" id="refresh-btn"><i data-lucide="refresh-cw"></i>Refresh</button>
+                <button class="btn btn-accent btn-sm" type="button" id="export-btn" disabled><i data-lucide="download"></i>Export CSV</button>
+            </div>
+        </section>
+
+        <div id="stats" class="an-kpis"></div>
+        <div id="insights" class="an-insights"></div>
+
+        <div class="an-grid">
             <section class="d-panel" aria-label="Hiring funnel">
                 <div class="d-panel-head"><div><h3>Hiring funnel</h3><p class="sub">Applicants by status</p></div></div>
                 <div id="funnel"></div>
@@ -35,7 +44,8 @@
                 <div id="distribution"></div>
             </section>
         </div>
-        <div class="grid-2">
+
+        <div class="an-grid">
             <section class="d-panel" aria-label="Top skills">
                 <div class="d-panel-head"><div><h3>Most common skills</h3><p class="sub">Matched across all applicants</p></div></div>
                 <div id="skills"></div>
@@ -45,8 +55,9 @@
                 <div id="gaps"></div>
             </section>
         </div>
+
         <section class="d-panel" aria-label="Jobs">
-            <div class="d-panel-head"><div><h3>Jobs</h3><p class="sub">Applicants and average score per job</p></div></div>
+            <div class="d-panel-head"><div><h3>Jobs</h3><p class="sub">Applicants and average score per job. Click a heading to sort.</p></div></div>
             <div id="jobs"></div>
         </section>
     </div>
@@ -59,62 +70,373 @@
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/recruiter-nav.js"></script>
+    <script src="js/polish.js"></script>
     <script>
         const user = mountRecruiterShell('Analytics', 'Hiring numbers at a glance', 'analytics.html');
 
-        function el(id) { return document.getElementById(id); }
+        const SHOW_FIRST = 8;
+        let data = null;
+        let countedUp = false;
+        let showAllSkills = false;
+        let showAllGaps = false;
+        let jobSort = { key: 'applicants', dir: 'desc' };
 
-        function bars(items, labelKey)
+        function el(id)
         {
-            const max = Math.max.apply(null, items.map(function (i) { return i.count; }).concat([1]));
+            return document.getElementById(id);
+        }
 
-            return items.map(function (i)
+        function percent(part, whole)
+        {
+            return whole ? Math.round((part / whole) * 100) : 0;
+        }
+
+        function emptyHtml(icon, text)
+        {
+            return '<div class="an-empty"><i data-lucide="' + icon + '"></i><p>' + text + '</p></div>';
+        }
+
+        /* ---------- hero and kpis ---------- */
+
+        function renderSummary(t)
+        {
+            el('summary').textContent = t.applicants
+                ? t.applicants + (t.applicants === 1 ? ' applicant' : ' applicants') + ' across ' + t.jobs + (t.jobs === 1 ? ' job' : ' jobs') + ', with an average AI score of ' + t.averageScore + '. You make every final decision.'
+                : 'No applicants yet. Numbers appear here as soon as people apply to your jobs.';
+        }
+
+        function kpiTile(icon, label, value, note, index, hero)
+        {
+            return '<div class="an-kpi' + (hero ? ' is-hero' : '') + '" style="--i:' + index + '">' +
+                '<div class="an-kpi-top"><span class="ic"><i data-lucide="' + icon + '"></i></span>' + label + '</div>' +
+                '<b data-count="' + Dash.esc(value) + '">' + (countedUp ? Dash.esc(value) : '0') + '</b>' +
+                '<small>' + note + '</small></div>';
+        }
+
+        function renderKpis(t)
+        {
+            el('stats').innerHTML =
+                kpiTile('briefcase', 'Jobs', t.jobs, 'Postings on VEYRA', 0, false) +
+                kpiTile('users', 'Applicants', t.applicants, 'Across all jobs', 1, true) +
+                kpiTile('list-checks', 'Shortlisted', t.shortlisted, percent(t.shortlisted, t.applicants) + '% of applicants', 2, false) +
+                kpiTile('user-check', 'Selected', t.selected, percent(t.selected, t.applicants) + '% of applicants', 3, false) +
+                kpiTile('gauge', 'Average score', t.averageScore, 'AI assessment, out of 100', 4, false);
+
+            if (!countedUp)
             {
-                return '<div class="score-row"><div class="score-label"><span>' + Dash.esc(i[labelKey]) + '</span><b>' + i.count + '</b></div><div class="score-bar"><div class="score-fill" style="width:' + Math.round(i.count / max * 100) + '%"></div></div></div>';
+                el('stats').querySelectorAll('[data-count]').forEach(function (node)
+                {
+                    const raw = node.getAttribute('data-count');
+
+                    // decimals would look odd while counting, so those are shown as they are
+                    if (/^\d+$/.test(raw))
+                    {
+                        Polish.countUp(node, raw);
+                    }
+                    else
+                    {
+                        node.textContent = raw;
+                    }
+                });
+
+                countedUp = true;
+            }
+        }
+
+        /* ---------- insights worked out from the numbers ---------- */
+
+        function renderInsights(d)
+        {
+            const items = [];
+            const jobs = d.byJob || [];
+
+            if (d.totals.applicants && d.funnel.length)
+            {
+                const biggest = d.funnel.slice().sort(function (a, b) { return b.count - a.count; })[0];
+
+                if (biggest && biggest.count)
+                {
+                    items.push({ icon: 'layers', title: 'Largest group: ' + biggest.status, text: biggest.count + ' applicants, ' + percent(biggest.count, d.totals.applicants) + '% of everyone who applied.' });
+                }
+            }
+
+            const scored = jobs.filter(function (job) { return job.applicants > 0; });
+
+            if (scored.length)
+            {
+                const best = scored.slice().sort(function (a, b) { return b.averageScore - a.averageScore; })[0];
+                items.push({ icon: 'trophy', title: 'Strongest pipeline: ' + best.title, text: 'Average score ' + best.averageScore + ' across ' + best.applicants + (best.applicants === 1 ? ' applicant.' : ' applicants.') });
+            }
+
+            if (d.topSkills.length)
+            {
+                items.push({ icon: 'sparkles', title: 'Most common skill: ' + d.topSkills[0].skill, text: 'Matched for ' + d.topSkills[0].count + (d.topSkills[0].count === 1 ? ' applicant.' : ' applicants.') });
+            }
+
+            if (d.topGaps.length)
+            {
+                items.push({ icon: 'triangle-alert', title: 'Biggest gap: ' + d.topGaps[0].skill, text: 'Missing for ' + d.topGaps[0].count + (d.topGaps[0].count === 1 ? ' applicant.' : ' applicants.') + ' Worth a mention in the job post.', tone: 'is-warn' });
+            }
+
+            el('insights').innerHTML = items.map(function (item, index)
+            {
+                return '<div class="an-insight' + (item.tone ? ' ' + item.tone : '') + '" style="--i:' + index + '"><i data-lucide="' + item.icon + '"></i><div><b>' + Dash.esc(item.title) + '</b><span>' + Dash.esc(item.text) + '</span></div></div>';
             }).join('');
         }
 
-        function render(data)
+        /* ---------- ranked bars ---------- */
+
+        function rankedRows(items, labelKey, options)
         {
-            const t = data.totals;
-            const cards = [[t.jobs, 'Jobs'], [t.applicants, 'Applicants'], [t.shortlisted, 'Shortlisted'], [t.selected, 'Selected'], [t.averageScore, 'Average score']];
-            el('stats').innerHTML = cards.map(function (c) { return '<div class="stat-card"><div class="stat-value">' + c[0] + '</div><div class="stat-label">' + c[1] + '</div></div>'; }).join('');
+            const max = Math.max.apply(null, items.map(function (item) { return item.count; }).concat([1]));
 
-            el('funnel').innerHTML = t.applicants ? bars(data.funnel, 'status') : Dash.empty('users', 'No applicants yet.');
-
-            const max = Math.max.apply(null, data.distribution.map(function (d) { return d.count; }).concat([1]));
-            el('distribution').innerHTML = t.applicants ? '<div class="columns">' + data.distribution.map(function (d)
+            return '<div class="an-rows">' + items.map(function (item, index)
             {
-                return '<div class="col"><b>' + d.count + '</b><div class="bar" style="height:' + Math.round(d.count / max * 100) + '%" title="' + d.count + ' applicants"></div><span>' + Dash.esc(d.label) + '</span></div>';
-            }).join('') + '</div>' : Dash.empty('bar-chart-3', 'No scores yet.');
+                return '<div class="an-row" style="--i:' + index + '">' +
+                    '<div class="an-row-top">' +
+                        (options.rank ? '<span class="rank">' + (index + 1) + '</span>' : '') +
+                        '<span class="name">' + Dash.esc(item[labelKey]) + '</span>' +
+                        '<span class="num">' + item.count + '</span>' +
+                        (options.total ? '<span class="pct">' + percent(item.count, options.total) + '%</span>' : '') +
+                    '</div>' +
+                    '<div class="an-track"><div class="an-fill' + (options.gap ? ' is-gap' : '') + '" style="--w:' + Math.round(item.count / max * 100) + '%"></div></div>' +
+                '</div>';
+            }).join('') + '</div>';
+        }
 
-            el('skills').innerHTML = data.topSkills.length ? bars(data.topSkills, 'skill') : Dash.empty('sparkles', 'No matched skills yet.');
-            el('gaps').innerHTML = data.topGaps.length ? bars(data.topGaps, 'skill') : Dash.empty('check-circle', 'No skill gaps found.');
+        function skillList(items, labelKey, showAll, toggleId, options)
+        {
+            const shown = showAll ? items : items.slice(0, SHOW_FIRST);
 
-            el('jobs').innerHTML = data.byJob.length ? '<div class="table-wrap"><table><thead><tr><th>Job</th><th>Applicants</th><th>Average score</th></tr></thead><tbody>' +
-                data.byJob.map(function (j) { return '<tr><td><b>' + Dash.esc(j.title) + '</b></td><td>' + j.applicants + '</td><td>' + j.averageScore + '</td></tr>'; }).join('') + '</tbody></table></div>' : Dash.empty('briefcase', 'No jobs yet.');
+            return rankedRows(shown, labelKey, options) +
+                (items.length > SHOW_FIRST ? '<button type="button" class="an-more" id="' + toggleId + '">' + (showAll ? 'Show fewer' : 'Show all ' + items.length) + '</button>' : '');
+        }
 
+        function renderFunnel(d)
+        {
+            el('funnel').innerHTML = d.totals.applicants
+                ? rankedRows(d.funnel, 'status', { total: d.totals.applicants })
+                : emptyHtml('users', 'No applicants yet.');
+        }
+
+        /* ---------- score distribution ---------- */
+
+        function bandColor(index, count)
+        {
+            if (count < 2)
+            {
+                return 'var(--jp-brand)';
+            }
+
+            const fraction = index / (count - 1);
+
+            if (fraction < 0.34)
+            {
+                return 'var(--jp-bad)';
+            }
+
+            return fraction < 0.67 ? 'var(--jp-warn)' : 'var(--jp-ok)';
+        }
+
+        function renderDistribution(d)
+        {
+            if (!d.totals.applicants)
+            {
+                el('distribution').innerHTML = emptyHtml('bar-chart-3', 'No scores yet.');
+                return;
+            }
+
+            const max = Math.max.apply(null, d.distribution.map(function (band) { return band.count; }).concat([1]));
+            const peak = d.distribution.filter(function (band) { return band.count === max; })[0];
+
+            el('distribution').innerHTML = '<div class="an-cols">' + d.distribution.map(function (band, index)
+            {
+                return '<div class="an-col' + (band.count === max && max > 0 ? ' is-peak' : '') + '" style="--i:' + index + '">' +
+                    '<b>' + band.count + '</b>' +
+                    '<div class="bar" style="height:' + Math.round(band.count / max * 100) + '%;--c:' + bandColor(index, d.distribution.length) + '" title="' + band.count + ' applicants"></div>' +
+                    '<span>' + Dash.esc(band.label) + '</span></div>';
+            }).join('') + '</div>' +
+            (peak && max > 0 ? '<p class="an-peak">Most applicants score in the <b>' + Dash.esc(peak.label) + '</b> band.</p>' : '');
+        }
+
+        /* ---------- jobs table ---------- */
+
+        function sortedJobs()
+        {
+            const dir = jobSort.dir === 'asc' ? 1 : -1;
+
+            return data.byJob.slice().sort(function (a, b)
+            {
+                if (jobSort.key === 'title')
+                {
+                    return dir * String(a.title).localeCompare(String(b.title));
+                }
+
+                const field = jobSort.key === 'score' ? 'averageScore' : 'applicants';
+                return dir * ((Number(a[field]) || 0) - (Number(b[field]) || 0));
+            });
+        }
+
+        function sortHead(key, label, numeric)
+        {
+            const active = jobSort.key === key;
+            const aria = active ? (jobSort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
+
+            return '<th scope="col" class="' + (numeric ? 'num' : '') + '" aria-sort="' + aria + '"><button type="button" class="an-sort" data-sort="' + key + '">' + label + '<i data-lucide="arrow-up-down"></i></button></th>';
+        }
+
+        function scoreTone(score)
+        {
+            return score >= 70 ? 'is-ok' : (score >= 40 ? 'is-warn' : 'is-bad');
+        }
+
+        function renderJobs()
+        {
+            if (!data.byJob.length)
+            {
+                el('jobs').innerHTML = emptyHtml('briefcase', 'No jobs yet.');
+                return;
+            }
+
+            const most = Math.max.apply(null, data.byJob.map(function (job) { return Number(job.applicants) || 0; }).concat([1]));
+
+            el('jobs').innerHTML = '<div class="an-table-wrap"><table class="an-table"><thead><tr>' +
+                sortHead('title', 'Job', false) + sortHead('applicants', 'Applicants', true) + sortHead('score', 'Average score', false) +
+                '</tr></thead><tbody>' +
+                sortedJobs().map(function (job, index)
+                {
+                    const score = Number(job.averageScore) || 0;
+
+                    return '<tr style="--i:' + index + '"><td><b>' + Dash.esc(job.title) + '</b></td>' +
+                        '<td class="num"><b>' + job.applicants + '</b> <span class="muted">(' + percent(job.applicants, most) + '% of busiest)</span></td>' +
+                        '<td><div class="an-job-score"><b>' + Dash.esc(job.averageScore) + '</b><div class="an-track"><div class="an-fill ' + scoreTone(score) + '" style="--w:' + Math.max(0, Math.min(100, score)) + '%"></div></div></div></td></tr>';
+                }).join('') + '</tbody></table></div>';
+
+            Dash.icons();
+        }
+
+        /* ---------- export ---------- */
+
+        function csvCell(value)
+        {
+            return '"' + String(value === undefined || value === null ? '' : value).replace(/"/g, '""') + '"';
+        }
+
+        function exportCsv()
+        {
+            if (!data)
+            {
+                return;
+            }
+
+            const rows = [['Section', 'Label', 'Value', 'Extra']];
+
+            Object.keys(data.totals).forEach(function (key) { rows.push(['Totals', key, data.totals[key], '']); });
+            data.funnel.forEach(function (item) { rows.push(['Funnel', item.status, item.count, '']); });
+            data.distribution.forEach(function (item) { rows.push(['Score band', item.label, item.count, '']); });
+            data.topSkills.forEach(function (item) { rows.push(['Top skill', item.skill, item.count, '']); });
+            data.topGaps.forEach(function (item) { rows.push(['Skill gap', item.skill, item.count, '']); });
+            data.byJob.forEach(function (item) { rows.push(['Job', item.title, item.applicants, 'Average score ' + item.averageScore]); });
+
+            const text = rows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
+            const link = document.createElement('a');
+
+            link.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+            link.download = 'veyra-analytics-' + new Date().toISOString().slice(0, 10) + '.csv';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(link.href);
+            showToast('Analytics exported as CSV.', 'success');
+        }
+
+        /* ---------- page ---------- */
+
+        function render()
+        {
+            const d = data;
+
+            renderSummary(d.totals);
+            renderKpis(d.totals);
+            renderInsights(d);
+            renderFunnel(d);
+            renderDistribution(d);
+
+            el('skills').innerHTML = d.topSkills.length
+                ? skillList(d.topSkills, 'skill', showAllSkills, 'toggle-skills', { rank: true })
+                : emptyHtml('sparkles', 'No matched skills yet.');
+
+            el('gaps').innerHTML = d.topGaps.length
+                ? skillList(d.topGaps, 'skill', showAllGaps, 'toggle-gaps', { rank: true, gap: true })
+                : emptyHtml('circle-check', 'No skill gaps found.');
+
+            renderJobs();
+
+            el('stamp').textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            el('export-btn').disabled = false;
             Dash.icons();
         }
 
         async function load()
         {
-            el('stats').innerHTML = Dash.skeletons(2);
+            const button = el('refresh-btn');
+
+            Dash.setBusy(button, true);
+
+            if (!data)
+            {
+                el('stats').innerHTML = Dash.skeletons(2);
+            }
 
             try
             {
-                render(await Api.get('/api/analytics'));
+                data = await Api.get('/api/analytics');
+                render();
             }
             catch (error)
             {
                 el('stats').innerHTML = '';
-                el('error-box').textContent = error.message;
-                el('error-box').classList.remove('hidden');
+                el('insights').innerHTML = '';
+                Dash.failInto(el('stats'), error.message, load);
             }
+
+            Dash.setBusy(button, false);
+            Dash.icons();
         }
 
         if (user)
         {
+            el('refresh-btn').addEventListener('click', load);
+            el('export-btn').addEventListener('click', exportCsv);
+
+            el('content').addEventListener('click', function (event)
+            {
+                if (event.target.closest('#toggle-skills'))
+                {
+                    showAllSkills = !showAllSkills;
+                    render();
+                    return;
+                }
+
+                if (event.target.closest('#toggle-gaps'))
+                {
+                    showAllGaps = !showAllGaps;
+                    render();
+                    return;
+                }
+
+                const sort = event.target.closest('[data-sort]');
+
+                if (sort && data)
+                {
+                    const key = sort.getAttribute('data-sort');
+
+                    // second click on the same heading flips the direction
+                    jobSort = { key: key, dir: jobSort.key === key && jobSort.dir === 'desc' ? 'asc' : 'desc' };
+                    renderJobs();
+                }
+            });
+
             load();
         }
     </script>

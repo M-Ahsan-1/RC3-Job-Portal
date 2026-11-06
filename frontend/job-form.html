@@ -3,20 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job posting – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>Job posting – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/jobs.css">
+    <link rel="stylesheet" href="css/hero.css">
+    <link rel="stylesheet" href="css/polish.css">
 </head>
 <body class="theme-recruiter">
     <script src="js/brand.js"></script>
     <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
+        <div class="hero-band hero-slim">
+            <div class="hero-art" aria-hidden="true"><img src="assets/illustrations/create-job.png" alt="" decoding="async"></div>
+            <h2>Describe the role. VEYRA finds the evidence.</h2>
+            <p>The skills you list here decide how every applicant is scored.</p>
+        </div>
+
         <div id="load-box"></div>
 
         <form id="job-form" novalidate>
@@ -26,6 +35,10 @@
                 <section class="d-panel" aria-label="Job details">
                     <div class="d-panel-head">
                         <div><h3>Job details</h3><p class="sub">Everything candidates see on the posting</p></div>
+                    </div>
+                    <div class="jf-meter" aria-live="polite">
+                        <div class="jf-meter-track"><div class="jf-meter-fill" id="meter-fill"></div></div>
+                        <span class="jf-meter-text" id="meter-text">0% ready</span>
                     </div>
                     <div class="d-form-grid">
                         <div>
@@ -65,7 +78,7 @@
                             <input type="text" id="qualifications" placeholder="BS in Computer Science or equivalent experience">
                         </div>
                         <div class="full">
-                            <label for="description">Description <span class="req">*</span></label>
+                            <label for="description">Description <span class="req">*</span><span class="jf-count" id="desc-count">0 / 30</span></label>
                             <textarea id="description" rows="10" placeholder="Describe the role, the responsibilities and the tools your team uses." required></textarea>
                             <div class="error-text" id="description-error"></div>
                             <p class="d-hint">At least 30 characters. Naming concrete tools and technologies helps the AI find the right skills.</p>
@@ -80,7 +93,7 @@
                     <button type="button" class="btn btn-sm jf-extract" id="extract-btn"><i data-lucide="sparkles"></i>Extract requirements with AI</button>
                     <p class="error-text" id="extract-error"></p>
                     <div class="jf-loader" id="extract-loader" role="status" hidden>
-                        <span class="jf-wm" aria-hidden="true">SO<span>RYN</span>TH</span>
+                        <span class="brand" role="img" aria-label="VEYRA"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><polygon class="bm-path l" points="3,5 10.5,5 16,19 16,27"/><polygon class="bm-path r" points="29,5 21.5,5 16,19 16,27"/><circle class="bm-dot" cx="16" cy="8.5" r="2.3"/></svg><span class="brand-text" aria-hidden="true">VEYRA</span></span>
                         <span>Reading the description for skills</span>
                     </div>
                     <div class="d-callout">
@@ -91,6 +104,7 @@
                         </div>
                     </div>
                     <div id="skill-list"></div>
+                    <div class="jf-mix" id="skill-mix"></div>
                     <div class="jf-add">
                         <div>
                             <label for="add-skill-input">Add a skill</label>
@@ -129,6 +143,7 @@
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/polish.js"></script>
     <script>
         const user = guardPage('recruiter');
         const jobId = Dash.intParam('id', 0);
@@ -299,6 +314,7 @@
             {
                 skillList.innerHTML = Dash.empty('sparkles', 'No skills yet. Add them below, or extract them from the description with AI.');
                 Dash.icons();
+                updateHelpers();
                 return;
             }
 
@@ -325,6 +341,7 @@
             }).join('') + '</ul>';
 
             Dash.icons();
+            updateHelpers();
         }
 
         function hasSkill(name)
@@ -361,8 +378,29 @@
             return JSON.stringify(collect());
         }
 
+        // works out how complete the posting looks and updates the small helpers around the form
+        function updateHelpers()
+        {
+            const data = collect();
+            const len = data.description.length;
+            const checks = [data.title, data.department, data.location, data.salary, data.qualifications, len >= 30, data.skills.length >= 3];
+            const done = checks.filter(Boolean).length;
+            const pct = Math.round((done / checks.length) * 100);
+            const high = data.skills.filter(function (item) { return item.importance === 'high'; }).length;
+            const required = data.skills.filter(function (item) { return item.requirement === 'required'; }).length;
+
+            el('meter-fill').style.width = pct + '%';
+            el('meter-text').textContent = pct + '% ready';
+            el('desc-count').textContent = len + ' / 30';
+            el('desc-count').classList.toggle('is-ok', len >= 30);
+            el('skill-mix').innerHTML = data.skills.length
+                ? '<span>' + required + ' required</span><span>' + (data.skills.length - required) + ' preferred</span><span>' + high + ' high importance</span>'
+                : '';
+        }
+
         function refreshDirty()
         {
+            updateHelpers();
             dirty = baseline !== null && snapshot() !== baseline;
             dirtyNote.hidden = !dirty;
         }

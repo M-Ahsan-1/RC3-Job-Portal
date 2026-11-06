@@ -3,36 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Talent search – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>Talent search – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/pages.css">
+    <link rel="stylesheet" href="css/polish.css">
+    <link rel="stylesheet" href="css/talent.css">
 </head>
 <body class="theme-recruiter">
     <script src="js/brand.js"></script>
     <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
-        <section class="d-panel" aria-label="Talent search">
-            <form id="search-form" class="pg-query" novalidate>
-                <div class="d-field">
-                    <label for="query">Describe the talent you need</label>
-                    <input type="text" id="query" placeholder="e.g. Python Django REST APIs" autocomplete="off" aria-describedby="query-error query-note">
+        <section class="tl-hero" aria-label="Talent search">
+            <h2>Search by what people have actually done</h2>
+            <p>Describe the skills or experience you need. VEYRA reads assessed resumes and ranks candidates by meaning, not exact keywords.</p>
+
+            <form id="search-form" novalidate>
+                <div class="tl-box" id="tl-box">
+                    <i data-lucide="sparkles"></i>
+                    <input type="text" id="query" placeholder="e.g. Python Django REST APIs" autocomplete="off" aria-label="Describe the talent you need" aria-describedby="query-error query-note">
+                    <span class="tl-key" aria-hidden="true">/</span>
+                    <button class="btn btn-accent" id="search-btn" type="submit"><i data-lucide="search"></i>Search talent</button>
                 </div>
-                <button class="btn" id="search-btn" type="submit"><i data-lucide="search"></i>Search talent</button>
             </form>
-            <div id="query-error" class="error-text hidden" role="alert"></div>
-            <div class="pg-try" id="examples">
-                <span class="muted">Try</span>
-                <button type="button" data-query="Python Django">Python Django</button>
-                <button type="button" data-query="React TypeScript">React TypeScript</button>
-                <button type="button" data-query="SQL Excel">SQL Excel</button>
+            <div id="query-error" class="tl-error" role="alert" hidden></div>
+
+            <div class="tl-try" id="examples">
+                <span class="tl-label">Try</span>
+                <button type="button" class="tl-chip" data-query="Python Django"><i data-lucide="code-2"></i>Python Django</button>
+                <button type="button" class="tl-chip" data-query="React TypeScript"><i data-lucide="layout"></i>React TypeScript</button>
+                <button type="button" class="tl-chip" data-query="SQL Excel"><i data-lucide="database"></i>SQL Excel</button>
             </div>
-            <p class="pg-note" id="query-note">Results are ranked by meaning, not exact keywords. AI assessment. You make the final decision.</p>
+            <div class="tl-try" id="recent" hidden></div>
+            <p class="tl-note" id="query-note">AI assessment. You make the final decision.</p>
         </section>
 
         <section class="d-panel" aria-label="Search results">
@@ -42,6 +51,7 @@
                     <p class="sub" id="result-count" aria-live="polite">Only applications that have been assessed appear here</p>
                 </div>
             </div>
+            <div id="results-tools"></div>
             <div id="results"></div>
         </section>
     </div>
@@ -53,21 +63,98 @@
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/polish.js"></script>
     <script>
         const user = guardPage('recruiter');
+        const RECENT_KEY = 'veyra-recent-searches';
+        let lastData = null;
+        let lastQuery = '';
+        let sortKey = 'match';
+        let minMatch = 0;
+
+        function el(id)
+        {
+            return document.getElementById(id);
+        }
 
         function showQueryError(message)
         {
-            const box = document.getElementById('query-error');
+            const box = el('query-error');
             box.textContent = message || '';
-            box.classList.toggle('hidden', !message);
+            box.hidden = !message;
+
+            if (message)
+            {
+                // little shake so the empty search is hard to miss
+                const wrap = el('tl-box');
+                wrap.classList.remove('is-shaking');
+                void wrap.offsetWidth;
+                wrap.classList.add('is-shaking');
+            }
+        }
+
+        function emptyState(icon, text)
+        {
+            return '<div class="tl-empty"><div class="orb"><i data-lucide="' + icon + '"></i></div><p>' + text + '</p></div>';
         }
 
         function showInitialResults()
         {
-            document.getElementById('result-count').textContent = 'Only applications that have been assessed appear here';
-            document.getElementById('results').innerHTML = Dash.empty('search', 'Describe the talent you need, or pick an example above, and search across every assessed application.');
+            lastData = null;
+            el('result-count').textContent = 'Only applications that have been assessed appear here';
+            el('results-tools').innerHTML = '';
+            el('results').innerHTML = emptyState('search', 'Describe the talent you need, or pick an example above, and search across every assessed application.');
         }
+
+        /* ---------- recent searches, stored only in this browser ---------- */
+
+        function getRecent()
+        {
+            try
+            {
+                return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+            }
+            catch (error)
+            {
+                return [];
+            }
+        }
+
+        function saveRecent(query)
+        {
+            const list = getRecent().filter(function (item) { return item.toLowerCase() !== query.toLowerCase(); });
+            list.unshift(query);
+
+            try
+            {
+                localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 5)));
+            }
+            catch (error)
+            {
+            }
+        }
+
+        function renderRecent()
+        {
+            const box = el('recent');
+            const list = getRecent();
+
+            box.hidden = !list.length;
+
+            if (!list.length)
+            {
+                return;
+            }
+
+            box.innerHTML = '<span class="tl-label">Recent</span>' + list.map(function (item)
+            {
+                return '<button type="button" class="tl-chip" data-query="' + Dash.esc(item).replace(/"/g, '&quot;') + '"><i data-lucide="history"></i>' + Dash.esc(item) + '</button>';
+            }).join('') + '<button type="button" class="tl-clear" id="clear-recent">Clear</button>';
+
+            Dash.icons();
+        }
+
+        /* ---------- highlighting ---------- */
 
         function termsFor(excerpt, query)
         {
@@ -135,52 +222,152 @@
             return out + Dash.esc(raw.slice(last));
         }
 
+        /* ---------- cards ---------- */
+
         function resultCard(item, index, query)
         {
             const score = Number(item.score) || 0;
             const similarity = Math.max(0, Math.min(1, Number(item.similarity) || 0));
             const match = Math.round(similarity * 100);
+            const tone = match >= 70 ? 'is-ok' : (match >= 45 ? 'is-mid' : 'is-low');
+            const offset = (138.2 * (1 - similarity)).toFixed(1);
             const href = 'applicant-detail.html?id=' + encodeURIComponent(item.applicationId) + '&jobId=' + encodeURIComponent(item.jobId);
+            const excerpts = item.excerpts || [];
+            const seen = {};
+            const skills = excerpts.map(function (excerpt) { return String(excerpt.skill || '').trim(); }).filter(function (name)
+            {
+                const key = name.toLowerCase();
 
-            return '<article class="s-result" style="--i:' + index + '">' +
-                '<div class="s-head">' +
-                    '<div class="main"><b>' + Dash.esc(item.candidateName) + '</b><span>Applied to ' + Dash.esc(item.jobTitle) + '</span></div>' +
-                    '<div class="s-sim" role="img" aria-label="' + match + ' percent match"><span class="s-bar"><i style="--w:' + similarity + '"></i></span>' + match + '%</div>' +
+                if (!name || seen[key])
+                {
+                    return false;
+                }
+
+                seen[key] = true;
+                return true;
+            });
+
+            return '<article class="tl-card" style="--i:' + index + '">' +
+                '<div class="tl-ring ' + tone + '" role="img" aria-label="' + match + ' percent match">' +
+                    '<svg viewBox="0 0 56 56" aria-hidden="true"><circle class="track" cx="28" cy="28" r="22"/><circle class="fill" cx="28" cy="28" r="22" style="--off:' + offset + '"/></svg>' +
+                    '<span>' + match + '%</span>' +
+                '</div>' +
+                '<div>' +
+                    '<div class="tl-name"><span class="jp-avatar" aria-hidden="true">' + Dash.esc(Polish.initials(item.candidateName)) + '</span><b>' + Dash.esc(item.candidateName) + '</b></div>' +
+                    '<p class="tl-sub">Applied to ' + Dash.esc(item.jobTitle) + '</p>' +
+                    (skills.length ? '<div class="tl-skills">' + skills.map(function (name) { return '<span class="tl-skill">' + Dash.esc(name) + '</span>'; }).join('') + '</div>' : '') +
+                    excerpts.map(function (excerpt)
+                    {
+                        return '<p class="tl-quote">' + highlight(excerpt.excerpt, termsFor(excerpt, query)) + '</p>';
+                    }).join('') +
+                '</div>' +
+                '<div class="tl-side">' +
                     Dash.badge('Score ' + score, Dash.scoreTone(score)) +
                     Dash.badge(item.status, Dash.statusTone(item.status)) +
+                    '<a class="btn btn-sm" href="' + href + '">View applicant</a>' +
                 '</div>' +
-                (item.excerpts || []).map(function (excerpt)
-                {
-                    return '<p class="s-excerpt"><b>' + Dash.esc(excerpt.skill) + '</b>' + highlight(excerpt.excerpt, termsFor(excerpt, query)) + '</p>';
-                }).join('') +
-                '<div class="s-foot"><a class="btn btn-secondary btn-sm" href="' + href + '">View applicant</a></div>' +
             '</article>';
+        }
+
+        function visibleResults()
+        {
+            const rows = (lastData.results || []).filter(function (item)
+            {
+                return Math.round((Number(item.similarity) || 0) * 100) >= minMatch;
+            });
+
+            return rows.slice().sort(function (a, b)
+            {
+                if (sortKey === 'score')
+                {
+                    return (Number(b.score) || 0) - (Number(a.score) || 0);
+                }
+
+                return (Number(b.similarity) || 0) - (Number(a.similarity) || 0);
+            });
+        }
+
+        function renderStats(all)
+        {
+            const best = Math.max.apply(null, all.map(function (item) { return Math.round((Number(item.similarity) || 0) * 100); }));
+            const avg = Math.round(all.reduce(function (sum, item) { return sum + (Number(item.score) || 0); }, 0) / all.length);
+            const jobs = {};
+
+            all.forEach(function (item) { jobs[item.jobTitle] = true; });
+
+            const items = [[all.length, 'Candidates found'], [best + '%', 'Best match'], [avg, 'Average AI score'], [Object.keys(jobs).length, 'Jobs they applied to']];
+
+            return '<div class="tl-stats">' + items.map(function (entry, index)
+            {
+                return '<div class="tl-stat" style="--i:' + index + '"><b>' + entry[0] + '</b><span>' + entry[1] + '</span></div>';
+            }).join('') + '</div>';
+        }
+
+        function renderToolbar(all)
+        {
+            el('results-tools').innerHTML = renderStats(all) +
+                '<div class="tl-bar">' +
+                    '<div class="d-field"><label for="sort-key">Sort by</label>' +
+                        '<select id="sort-key"><option value="match"' + (sortKey === 'match' ? ' selected' : '') + '>Best match</option><option value="score"' + (sortKey === 'score' ? ' selected' : '') + '>Highest AI score</option></select></div>' +
+                    '<div class="d-field"><label for="min-match">Minimum match</label>' +
+                        '<select id="min-match"><option value="0"' + (minMatch === 0 ? ' selected' : '') + '>Any match</option><option value="50"' + (minMatch === 50 ? ' selected' : '') + '>50% and up</option><option value="70"' + (minMatch === 70 ? ' selected' : '') + '>70% and up</option></select></div>' +
+                '</div>';
+        }
+
+        function renderList()
+        {
+            const rows = visibleResults();
+            const countLine = el('result-count');
+
+            countLine.textContent = rows.length + (rows.length === 1 ? ' candidate matches' : ' candidates match') + (rows.length !== lastData.results.length ? ' (filtered from ' + lastData.results.length + ')' : '');
+
+            if (!rows.length)
+            {
+                el('results').innerHTML = emptyState('filter', 'No candidates pass the minimum match you picked. Lower it to see everyone.');
+                Dash.icons();
+                return;
+            }
+
+            el('results').innerHTML = '<div class="tl-list">' + rows.map(function (item, index)
+            {
+                return resultCard(item, index, lastQuery);
+            }).join('') + '</div>';
+
+            Dash.icons();
         }
 
         function renderResults(data, query)
         {
             const results = data.results || [];
-            const countLine = document.getElementById('result-count');
+
+            lastData = { results: results };
+            lastQuery = query;
+            sortKey = 'match';
+            minMatch = 0;
 
             if (!results.length)
             {
-                countLine.textContent = 'No candidates match';
-                document.getElementById('results').innerHTML = Dash.empty('search', 'No assessed applications match "' + (data.query || query) + '". Try different wording, fewer terms or a broader skill name.');
+                el('result-count').textContent = 'No candidates match';
+                el('results-tools').innerHTML = '';
+                el('results').innerHTML = emptyState('search-x', 'No assessed applications match "' + Dash.esc(data.query || query) + '". Try different wording, fewer terms or a broader skill name.');
+                Dash.icons();
                 return;
             }
 
-            countLine.textContent = results.length + (results.length === 1 ? ' candidate matches' : ' candidates match');
-            document.getElementById('results').innerHTML = results.map(function (item, index)
-            {
-                return resultCard(item, index, query);
-            }).join('');
+            renderToolbar(results);
+            renderList();
+        }
+
+        function busyState()
+        {
+            el('results-tools').innerHTML = '';
+            el('results').innerHTML = '<div class="tl-busy" role="status"><p class="tl-busy-msg">Reading assessed resumes for the best evidence</p><div class="tl-ghost"></div><div class="tl-ghost" style="animation-delay:.15s"></div><div class="tl-ghost" style="animation-delay:.3s"></div></div>';
         }
 
         async function runSearch()
         {
-            const input = document.getElementById('query');
-            const button = document.getElementById('search-btn');
-            const results = document.getElementById('results');
+            const input = el('query');
+            const button = el('search-btn');
             const query = input.value.trim();
 
             showQueryError('');
@@ -193,8 +380,8 @@
             }
 
             Dash.setBusy(button, true);
-            document.getElementById('result-count').textContent = 'Searching';
-            results.innerHTML = Dash.skeletons(3);
+            el('result-count').textContent = 'Searching';
+            busyState();
 
             try
             {
@@ -202,6 +389,8 @@
                 const count = data.count !== undefined ? data.count : (data.results || []).length;
 
                 renderResults(data, query);
+                saveRecent(query);
+                renderRecent();
                 showToast(count + (count === 1 ? ' candidate found.' : ' candidates found.'), 'success');
 
                 if (window.history && history.replaceState)
@@ -218,8 +407,9 @@
                 }
                 else
                 {
-                    document.getElementById('result-count').textContent = 'Search failed';
-                    Dash.failInto(results, error.message, runSearch);
+                    el('result-count').textContent = 'Search failed';
+                    el('results-tools').innerHTML = '';
+                    Dash.failInto(el('results'), error.message, runSearch);
                 }
             }
 
@@ -232,34 +422,80 @@
             const preset = Dash.param('q');
 
             showInitialResults();
+            renderRecent();
             Dash.icons();
 
             if (preset)
             {
-                document.getElementById('query').value = preset;
+                el('query').value = preset;
                 runSearch();
             }
         }
 
+        function pickQuery(event)
+        {
+            const chip = event.target.closest('[data-query]');
+
+            if (!chip)
+            {
+                return;
+            }
+
+            el('query').value = chip.getAttribute('data-query');
+            runSearch();
+        }
+
         if (user)
         {
-            document.getElementById('search-form').addEventListener('submit', function (event)
+            el('search-form').addEventListener('submit', function (event)
             {
                 event.preventDefault();
                 runSearch();
             });
 
-            document.getElementById('examples').addEventListener('click', function (event)
-            {
-                const chip = event.target.closest('[data-query]');
+            el('examples').addEventListener('click', pickQuery);
 
-                if (!chip)
+            el('recent').addEventListener('click', function (event)
+            {
+                if (event.target.closest('#clear-recent'))
+                {
+                    try { localStorage.removeItem(RECENT_KEY); } catch (error) {}
+                    renderRecent();
+                    return;
+                }
+
+                pickQuery(event);
+            });
+
+            el('results-tools').addEventListener('change', function (event)
+            {
+                if (!lastData)
                 {
                     return;
                 }
 
-                document.getElementById('query').value = chip.getAttribute('data-query');
-                runSearch();
+                if (event.target.id === 'sort-key')
+                {
+                    sortKey = event.target.value;
+                }
+                else if (event.target.id === 'min-match')
+                {
+                    minMatch = Number(event.target.value);
+                }
+
+                renderList();
+            });
+
+            // press / anywhere on the page to jump straight into the search box
+            document.addEventListener('keydown', function (event)
+            {
+                const tag = (document.activeElement && document.activeElement.tagName) || '';
+
+                if (event.key === '/' && !event.metaKey && !event.ctrlKey && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT')
+                {
+                    event.preventDefault();
+                    el('query').focus();
+                }
             });
 
             Dash.mountShell(

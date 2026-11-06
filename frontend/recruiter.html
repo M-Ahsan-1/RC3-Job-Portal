@@ -3,22 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>Dashboard – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/rdash.css">
+    <link rel="stylesheet" href="css/hero.css">
+    <link rel="stylesheet" href="css/vx.css">
 </head>
 <body class="theme-recruiter">
     <script src="js/brand.js"></script>
     <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
 
     <div id="content" class="d-content rd">
-        <header class="rd-head">
+        <header class="rd-head hero-band">
+            <div class="hero-art" aria-hidden="true"><img src="assets/illustrations/hero-recruiter.png" alt="" decoding="async"></div>
             <div>
                 <h2 id="greeting">Welcome back</h2>
                 <p class="rd-date" id="today"></p>
@@ -26,7 +30,7 @@
             <div class="rd-head-actions">
                 <span class="rd-updated" id="updated" role="status"></span>
                 <button class="btn btn-secondary btn-sm" id="refresh-btn" type="button"><i data-lucide="refresh-cw"></i>Refresh</button>
-                <a class="btn btn-sm" href="job-form.html"><i data-lucide="plus"></i>Post a job</a>
+                <a class="btn btn-accent btn-sm" href="job-form.html"><i data-lucide="plus"></i>Post a job</a>
             </div>
         </header>
 
@@ -38,49 +42,81 @@
 
             <section class="rd-kpis" id="kpis" aria-label="Key numbers"></section>
 
-            <section class="rd-panel" aria-labelledby="flow-title">
-                <div class="rd-panel-head">
-                    <div>
-                        <h3 id="flow-title">Hiring pipeline</h3>
-                        <p class="rd-sub">How many applicants reached each stage, and how many moved on.</p>
+            <div class="vx-cols">
+                <section class="rd-panel" aria-labelledby="ov-title">
+                    <div class="rd-panel-head">
+                        <div class="vx-ch"><span class="vx-ch-ico"><i data-lucide="bar-chart-3"></i></span><h3 id="ov-title">Recruitment overview</h3></div>
+                        <select id="vx-range" class="vx-range" aria-label="Time range">
+                            <option value="7">Last 7 days</option>
+                            <option value="14">Last 14 days</option>
+                            <option value="30" selected>Last 30 days</option>
+                        </select>
                     </div>
-                </div>
-                <div class="rd-flow-wrap" id="flow-wrap">
-                    <div class="rd-flow" id="flow"></div>
-                    <div class="rd-tip" id="flow-tip" hidden></div>
-                </div>
-                <div class="rd-key-row" id="flow-key"></div>
-            </section>
+                    <div id="vx-overview"></div>
+                </section>
+
+                <section class="rd-panel" aria-labelledby="flow-title">
+                    <div class="rd-panel-head">
+                        <div>
+                            <h3 id="flow-title">Hiring pipeline</h3>
+                            <p class="rd-sub">Click a stage to list who is in it.</p>
+                        </div>
+                    </div>
+                    <div class="rd-flow-wrap" id="flow-wrap">
+                        <div class="rd-flow" id="flow"></div>
+                        <div class="rd-tip" id="flow-tip" hidden></div>
+                    </div>
+                    <div class="rd-key-row" id="flow-key"></div>
+                </section>
+            </div>
 
             <section class="rd-panel hidden" id="stage-list" aria-live="polite"></section>
 
-            <div class="rd-cols">
-                <section class="rd-panel" aria-labelledby="job-title">
+            <div class="vx-cols even">
+                <section class="rd-panel" aria-labelledby="rj-title">
                     <div class="rd-panel-head">
-                        <div>
-                            <h3 id="job-title">Applications by job</h3>
-                            <p class="rd-sub">Select a job to see its applicants.</p>
-                        </div>
-                        <a class="btn btn-secondary btn-sm" href="jobs.html">All jobs</a>
+                        <div><h3 id="rj-title">Recent jobs</h3></div>
+                        <a class="btn btn-secondary btn-sm" href="jobs.html">View all</a>
                     </div>
-                    <div id="by-job"></div>
+                    <div id="vx-jobs"></div>
                 </section>
 
+                <section class="rd-panel" aria-labelledby="ta-title">
+                    <div class="rd-panel-head">
+                        <div><h3 id="ta-title">Top applicants</h3><p class="rd-sub">Highest AI assessment. You make the final decision.</p></div>
+                        <a class="btn btn-secondary btn-sm" href="search.html">Talent search</a>
+                    </div>
+                    <div id="vx-top"></div>
+                </section>
+            </div>
+
+            <div class="rd-cols">
                 <div class="rd-stack">
+                    <section class="rd-panel" aria-labelledby="job-title">
+                        <div class="rd-panel-head">
+                            <div>
+                                <h3 id="job-title">Applications by job</h3>
+                                <p class="rd-sub">Select a job to see its applicants.</p>
+                            </div>
+                            <a class="btn btn-secondary btn-sm" href="jobs.html">All jobs</a>
+                        </div>
+                        <div id="by-job"></div>
+                    </section>
+
                     <section class="rd-panel" aria-label="Hiring performance">
                         <div class="rd-stats" id="rates"></div>
                     </section>
-
-                    <section class="rd-panel" aria-labelledby="gap-title">
-                        <div class="rd-panel-head">
-                            <div>
-                                <h3 id="gap-title">Most common skill gaps</h3>
-                                <p class="rd-sub">Select a skill to search for candidates who have it.</p>
-                            </div>
-                        </div>
-                        <div id="gaps"></div>
-                    </section>
                 </div>
+
+                <section class="rd-panel" aria-labelledby="gap-title">
+                    <div class="rd-panel-head">
+                        <div>
+                            <h3 id="gap-title">Most common skill gaps</h3>
+                            <p class="rd-sub">Select a skill to search for candidates who have it.</p>
+                        </div>
+                    </div>
+                    <div id="gaps"></div>
+                </section>
             </div>
 
             <div class="rd-cols">
@@ -94,16 +130,28 @@
                     <div id="feed"></div>
                 </section>
 
-                <section class="rd-panel" aria-labelledby="today-title">
-                    <div class="rd-panel-head">
-                        <div>
-                            <h3 id="today-title">Today's interviews</h3>
-                            <p class="rd-sub">In the order they start.</p>
+                <div class="rd-stack">
+                    <section class="rd-panel" aria-labelledby="today-title">
+                        <div class="rd-panel-head">
+                            <div>
+                                <h3 id="today-title">Today's interviews</h3>
+                                <p class="rd-sub">In the order they start.</p>
+                            </div>
+                            <a class="btn btn-secondary btn-sm" href="interviews.html">All interviews</a>
                         </div>
-                        <a class="btn btn-secondary btn-sm" href="interviews.html">All interviews</a>
-                    </div>
-                    <div id="today-list"></div>
-                </section>
+                        <div id="today-list"></div>
+                    </section>
+
+                    <section class="rd-panel" aria-labelledby="qa-title">
+                        <div class="rd-panel-head"><div><h3 id="qa-title">Quick actions</h3><p class="rd-sub">Jump straight to common tasks.</p></div></div>
+                        <div class="vx-quick">
+                            <a class="vx-q" href="job-form.html"><span class="vx-ico"><i data-lucide="plus"></i></span>Post a job</a>
+                            <a class="vx-q" href="search.html"><span class="vx-ico"><i data-lucide="search"></i></span>Talent search</a>
+                            <a class="vx-q" href="interviews.html"><span class="vx-ico"><i data-lucide="calendar-clock"></i></span>Interviews</a>
+                            <a class="vx-q" href="analytics.html"><span class="vx-ico"><i data-lucide="bar-chart-3"></i></span>Analytics</a>
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </div>
@@ -116,11 +164,14 @@
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/recruiter-dash.js"></script>
+    <script src="js/vx.js"></script>
     <script>
         const user = guardPage('recruiter');
 
         if (user)
         {
+            VX.recruiter();
+
             Dash.mountShell(
             {
                 user: user,
@@ -133,6 +184,7 @@
                 }
             });
 
+            VX.sticker();
             RDash.start(user);
         }
     </script>

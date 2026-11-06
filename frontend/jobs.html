@@ -3,26 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jobs – SORYNTH</title>
-    <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0F1623" media="(prefers-color-scheme: dark)">
+    <title>Jobs – VEYRA</title>
+    <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#11132F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#171A45">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/jobs.css">
+    <link rel="stylesheet" href="css/hero.css">
+    <link rel="stylesheet" href="css/polish.css">
 </head>
 <body class="theme-recruiter">
     <script src="js/brand.js"></script>
     <script>showPageLoader(); window.addEventListener('load', hidePageLoader);</script>
     <div id="content" class="d-content">
-        <div class="page-header">
+        <div class="page-header hero-band">
+            <div class="hero-art" aria-hidden="true"><img src="assets/illustrations/jobs-hero.png" alt="" decoding="async"></div>
             <div>
                 <h2>Job postings</h2>
                 <p class="muted">Create roles, review applicants and control which postings are live</p>
             </div>
-            <a class="btn" href="job-form.html"><i data-lucide="plus"></i>Post a job</a>
+            <a class="btn btn-accent" href="job-form.html"><i data-lucide="plus"></i>Post a job</a>
         </div>
 
         <section class="d-panel" aria-label="All jobs">
@@ -38,6 +42,14 @@
                         <button type="button" class="jb-fchip" data-status="open" aria-pressed="false">Open <span class="jb-count">0</span></button>
                         <button type="button" class="jb-fchip" data-status="closed" aria-pressed="false">Closed <span class="jb-count">0</span></button>
                     </div>
+                </div>
+                <div class="d-field">
+                    <label for="sort-by">Sort by</label>
+                    <select id="sort-by" class="jp-select">
+                        <option value="applicants">Most applicants</option>
+                        <option value="title">Title A to Z</option>
+                        <option value="status">Open first</option>
+                    </select>
                 </div>
             </div>
 
@@ -64,11 +76,13 @@
     <script src="js/mock.js"></script>
     <script src="js/api.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/polish.js"></script>
     <script>
         const user = guardPage('recruiter');
         const jobsList = document.getElementById('jobs-list');
         const summary = document.getElementById('summary');
         const filterText = document.getElementById('filter-text');
+        const sortBy = document.getElementById('sort-by');
         const statusChips = document.getElementById('status-chips');
         const closeDialog = document.getElementById('close-dialog');
         const closeTitle = document.getElementById('close-title');
@@ -80,6 +94,7 @@
         let statusFilter = 'all';
         let changedId = '';
         let dialogJobId = '';
+        let mostApplicants = 1;
 
         function attrEsc(value)
         {
@@ -134,7 +149,7 @@
         {
             const term = filterText.value.trim().toLowerCase();
 
-            return jobs.filter(function (job)
+            const found = jobs.filter(function (job)
             {
                 if (statusFilter !== 'all' && job.status !== statusFilter)
                 {
@@ -148,31 +163,74 @@
 
                 return [job.title, job.department, job.location].join(' ').toLowerCase().indexOf(term) !== -1;
             });
+
+            const sort = sortBy.value;
+
+            // copy first so the original order of jobs is never touched
+            return found.slice().sort(function (a, b)
+            {
+                if (sort === 'title')
+                {
+                    return String(a.title).localeCompare(String(b.title));
+                }
+
+                if (sort === 'status')
+                {
+                    return (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1);
+                }
+
+                return (Number(b.applicantCount) || 0) - (Number(a.applicantCount) || 0);
+            });
         }
 
-        function rowHtml(job)
+        function iconFor(title)
+        {
+            const t = String(title || '').toLowerCase();
+
+            if (t.indexOf('analy') !== -1 || t.indexOf('data') !== -1)
+            {
+                return 'bar-chart-3';
+            }
+
+            if (t.indexOf('develop') !== -1 || t.indexOf('engineer') !== -1)
+            {
+                return 'code-2';
+            }
+
+            return 'briefcase';
+        }
+
+        function rowHtml(job, index)
         {
             const open = job.status === 'open';
             const id = encodeURIComponent(job.id);
             const idAttr = attrEsc(job.id);
             const titleAttr = attrEsc(job.title);
             const count = Number(job.applicantCount) || 0;
-            const flash = changedId && String(job.id) === String(changedId) ? ' class="jb-flash"' : '';
+            const flash = changedId && String(job.id) === String(changedId) ? ' jb-flash' : '';
 
-            return '<tr data-job="' + idAttr + '"' + flash + '>' +
-                '<td class="jb-title" data-label="Job"><strong>' + Dash.esc(job.title) + '</strong>' + (job.type ? '<span class="jb-sub">' + Dash.esc(job.type) + '</span>' : '') + '</td>' +
-                '<td data-label="Department">' + Dash.esc(job.department || '–') + '</td>' +
-                '<td data-label="Location">' + Dash.esc(job.location || '–') + '</td>' +
-                '<td data-label="Status">' + Dash.badge(open ? 'Open' : 'Closed', open ? 'ok' : 'neutral') + '</td>' +
-                '<td class="num" data-label="Applicants"><a class="jb-link" href="applicants.html?jobId=' + id + '" aria-label="' + count + (count === 1 ? ' applicant' : ' applicants') + ' for ' + titleAttr + '">' + count + (count === 1 ? ' applicant' : ' applicants') + '</a></td>' +
-                '<td class="jb-act"><div class="jb-menu-wrap">' +
+            return '<li class="jp-card' + (open ? ' is-open' : '') + flash + '" data-job="' + idAttr + '" style="--i:' + index + '">' +
+                '<div class="jp-icon"><i data-lucide="' + iconFor(job.title) + '"></i></div>' +
+                '<div class="jp-main"><strong>' + Dash.esc(job.title) + '</strong>' +
+                    '<div class="jp-meta">' +
+                        '<span><i data-lucide="building-2"></i>' + Dash.esc(job.department || 'No department') + '</span>' +
+                        '<span><i data-lucide="map-pin"></i>' + Dash.esc(job.location || 'No location') + '</span>' +
+                        (job.type ? '<span><i data-lucide="clock"></i>' + Dash.esc(job.type) + '</span>' : '') +
+                    '</div>' +
+                '</div>' +
+                '<div class="jp-apps">' +
+                    '<a href="applicants.html?jobId=' + id + '" aria-label="' + count + (count === 1 ? ' applicant' : ' applicants') + ' for ' + titleAttr + '"><b>' + count + '</b><small>' + (count === 1 ? 'applicant' : 'applicants') + '</small></a>' +
+                    '<div class="jp-bar"><i style="--w:' + Math.round((count / mostApplicants) * 100) + '%"></i></div>' +
+                '</div>' +
+                '<div class="jp-status"><span class="jp-live' + (open ? '' : ' is-closed') + '">' + (open ? 'Open' : 'Closed') + '</span></div>' +
+                '<div class="jb-act"><div class="jb-menu-wrap">' +
                     '<button type="button" class="jb-more" data-menu="' + idAttr + '" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ' + titleAttr + '">' + DOTS + '</button>' +
                     '<div class="jb-menu" role="menu" aria-label="Actions for ' + titleAttr + '" hidden>' +
                         '<a role="menuitem" href="job-form.html?id=' + id + '">Edit job</a>' +
                         '<button type="button" role="menuitem" class="' + (open ? 'danger' : '') + '" data-id="' + idAttr + '" data-action="' + (open ? 'close' : 'reopen') + '">' + (open ? 'Close job' : 'Reopen job') + '</button>' +
                     '</div>' +
-                '</div></td>' +
-                '</tr>';
+                '</div></div>' +
+                '</li>';
         }
 
         function closeMenus(returnFocus)
@@ -272,6 +330,9 @@
                 return;
             }
 
+            // the busiest job sets the 100 percent mark for every applicant bar
+            mostApplicants = Math.max.apply(null, jobs.map(function (job) { return Number(job.applicantCount) || 0; }).concat(1));
+
             const filtered = applyFilters();
 
             summary.textContent = filtered.length + (filtered.length === 1 ? ' job' : ' jobs') + ' shown';
@@ -292,10 +353,7 @@
                 return;
             }
 
-            jobsList.innerHTML = '<table class="jb-table">' +
-                '<thead><tr><th scope="col">Job</th><th scope="col">Department</th><th scope="col">Location</th><th scope="col">Status</th><th scope="col" class="num">Applicants</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>' +
-                '<tbody>' + filtered.map(rowHtml).join('') + '</tbody>' +
-                '</table>';
+            jobsList.innerHTML = '<ul class="jp-list">' + filtered.map(rowHtml).join('') + '</ul>';
 
             changedId = '';
             Dash.icons();
@@ -341,6 +399,7 @@
         if (user)
         {
             filterText.addEventListener('input', render);
+            sortBy.addEventListener('change', render);
 
             statusChips.addEventListener('click', function (event)
             {

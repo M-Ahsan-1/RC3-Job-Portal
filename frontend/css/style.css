@@ -1,32 +1,61 @@
-/* SORYNTH design system. Tokens first, then base, then components. */
+/* VEYRA design system, Bold Editorial theme. Tokens first, then base, then components. */
 
 :root
 {
     color-scheme: light;
 
-    --paper: #F6F7F9;
+    /* VEYRA core palette. Defined once, used everywhere through the roles below. */
+    --midnight-indigo: #171A45;
+    --electric-indigo: #5146D8;
+    --tangerine: #FF762E;
+    --soft-lavender: #EAE7FF;
+    --warm-white: #FAF9F6;
+    --deep-charcoal: #25243A;
+
+    /* Golden Yellow is the action accent: active navigation, hero buttons, the logo point.
+       Text on it is always Midnight Indigo, never white. Tangerine stays for small highlights. */
+    --golden-yellow: #FFC83D;
+    --golden-hover: #FFD466;
+    --on-golden: var(--midnight-indigo);
+
+    /* logo colors, redefined for dark surfaces below */
+    --mark-a: var(--electric-indigo);
+    --mark-b: var(--midnight-indigo);
+    --mark-dot: var(--golden-yellow);
+
+    /* roles */
+    --paper: var(--warm-white);
     --surface: #FFFFFF;
-    --ink: #17233A;
-    --ink-hover: #2B3B58;
+    --ink: var(--deep-charcoal);
+    --heading: var(--midnight-indigo);
+    --ink-hover: #3A3957;
     --on-ink: #FFFFFF;
-    --muted: #5B6677;
-    --line: #DFE3EA;
-    --line-strong: #8792A5;
-    --neutral-soft: #EBEEF3;
+    --muted: #5E5C75;
+    --line: #E4E1EC;
+    --line-strong: #7E7A97;
+    --neutral-soft: #EFECFA;
 
-    --mark: #FFE066;
-    --on-mark: #17233A;
+    /* interactive: fills use --action, text links and focus rings use --accent */
+    --action: var(--electric-indigo);
+    --action-hover: #4339B8;
+    --on-action: #FFFFFF;
+    --accent: var(--electric-indigo);
 
+    /* highlighter for resume evidence, a tint of tangerine with dark text */
+    --mark: #FFD9C2;
+    --on-mark: #25243A;
+
+    /* status colors, kept apart from the brand palette */
     --match: #0F766E;
     --match-soft: #E1F3F0;
-    --gap: #B45309;
+    --gap: #A34A06;
     --gap-soft: #FBEEDB;
     --absent: #B42318;
     --absent-soft: #FBE6E4;
     --on-solid: #FFFFFF;
 
-    --shadow-overlay: 0 12px 32px rgba(15, 22, 35, 0.18);
-    --scrim: rgba(15, 22, 35, 0.5);
+    --shadow-overlay: 0 12px 32px rgba(23, 26, 69, 0.18);
+    --scrim: rgba(23, 26, 69, 0.5);
 
     --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
     --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -56,17 +85,17 @@
     --t-slow: 240ms;
 
     /* old names, so pages written before the redesign keep working */
-    --primary: var(--ink);
-    --primary-dark: var(--ink-hover);
-    --primary-light: var(--neutral-soft);
+    --primary: var(--action);
+    --primary-dark: var(--action-hover);
+    --primary-light: var(--soft-lavender);
     --success: var(--match);
     --success-light: var(--match-soft);
     --danger: var(--absent);
     --danger-light: var(--absent-soft);
     --warning: var(--gap);
     --warning-light: var(--gap-soft);
-    --info: var(--ink);
-    --info-light: var(--neutral-soft);
+    --info: var(--action);
+    --info-light: var(--soft-lavender);
     --text: var(--ink);
     --border: var(--line);
     --bg: var(--paper);
@@ -80,48 +109,71 @@
     :root:not([data-theme="light"])
     {
         color-scheme: dark;
-        --paper: #0F1623;
-        --surface: #172033;
-        --ink: #E8ECF3;
+        --paper: #11132F;
+        --surface: #171A45;
+        --ink: #ECEAF8;
+        --heading: #FFFFFF;
         --ink-hover: #FFFFFF;
-        --on-ink: #0F1623;
-        --muted: #9BA7BB;
-        --line: #2A3550;
-        --line-strong: #5F7092;
-        --neutral-soft: #202C45;
+        --on-ink: #11132F;
+        --muted: #A8AACB;
+        --line: #2B2F66;
+        --line-strong: #6B6FA8;
+        --neutral-soft: #222658;
+        --action-hover: #6358E8;
+        --accent: #A7A0FF;
         --match: #2DD4BF;
         --match-soft: rgba(45, 212, 191, 0.15);
         --gap: #FBBF24;
         --gap-soft: rgba(251, 191, 36, 0.14);
         --absent: #F87171;
         --absent-soft: rgba(248, 113, 113, 0.15);
-        --on-solid: #0F1623;
+        --on-solid: #11132F;
         --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5);
-        --scrim: rgba(5, 8, 14, 0.65);
+        --scrim: rgba(5, 6, 20, 0.65);
     }
 }
 
 :root[data-theme="dark"]
 {
     color-scheme: dark;
-    --paper: #0F1623;
-    --surface: #172033;
-    --ink: #E8ECF3;
+    --paper: #11132F;
+    --surface: #171A45;
+    --ink: #ECEAF8;
+    --heading: #FFFFFF;
     --ink-hover: #FFFFFF;
-    --on-ink: #0F1623;
-    --muted: #9BA7BB;
-    --line: #2A3550;
-    --line-strong: #5F7092;
-    --neutral-soft: #202C45;
+    --on-ink: #11132F;
+    --muted: #A8AACB;
+    --line: #2B2F66;
+    --line-strong: #6B6FA8;
+    --neutral-soft: #222658;
+    --action-hover: #6358E8;
+    --accent: #A7A0FF;
     --match: #2DD4BF;
     --match-soft: rgba(45, 212, 191, 0.15);
     --gap: #FBBF24;
     --gap-soft: rgba(251, 191, 36, 0.14);
     --absent: #F87171;
     --absent-soft: rgba(248, 113, 113, 0.15);
-    --on-solid: #0F1623;
+    --on-solid: #11132F;
     --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.5);
-    --scrim: rgba(5, 8, 14, 0.65);
+    --scrim: rgba(5, 6, 20, 0.65);
+}
+
+/* logo colors on dark pages */
+
+@media (prefers-color-scheme: dark)
+{
+    :root:not([data-theme="light"])
+    {
+        --mark-a: #8F86FF;
+        --mark-b: #FFFFFF;
+    }
+}
+
+:root[data-theme="dark"]
+{
+    --mark-a: #8F86FF;
+    --mark-b: #FFFFFF;
 }
 
 /* base */
@@ -155,7 +207,7 @@ body.no-scroll
 
 a
 {
-    color: var(--ink);
+    color: var(--accent);
     text-decoration: underline;
     text-decoration-color: var(--line-strong);
     text-underline-offset: 3px;
@@ -164,7 +216,7 @@ a
 
 a:hover
 {
-    text-decoration-color: var(--ink);
+    text-decoration-color: var(--accent);
 }
 
 h1, h2, h3, h4
@@ -173,7 +225,7 @@ h1, h2, h3, h4
     font-weight: 600;
     line-height: 1.2;
     letter-spacing: -0.01em;
-    color: var(--ink);
+    color: var(--heading);
 }
 
 h1 { font-size: var(--fs-xl); }
@@ -187,7 +239,7 @@ p
 
 :focus-visible
 {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--accent, #5146D8);
     outline-offset: 2px;
 }
 
@@ -276,59 +328,7 @@ td,
     }
 }
 
-/* wordmark and page loader */
-
-.wordmark
-{
-    display: inline-block;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: var(--wm-size, 1.25rem);
-    letter-spacing: -0.015em;
-    line-height: 1;
-    color: var(--ink);
-    white-space: nowrap;
-}
-
-.wordmark.on-ink
-{
-    color: #FFFFFF;
-}
-
-.wm-mark
-{
-    position: relative;
-    z-index: 0;
-    padding: 0 0.04em;
-    color: #17233A;
-}
-
-.wm-mark::after
-{
-    content: "";
-    position: absolute;
-    left: -0.1em;
-    right: -0.08em;
-    bottom: 0.03em;
-    height: 0.5em;
-    background: var(--mark);
-    clip-path: polygon(0 22%, 3% 0, 96% 9%, 100% 58%, 97% 100%, 4% 92%);
-    transform: rotate(-1.8deg);
-    transform-origin: left center;
-    z-index: -1;
-}
-
-.wordmark.sweep .wm-mark::after
-{
-    animation: mark-sweep 1.2s var(--ease) infinite;
-}
-
-@keyframes mark-sweep
-{
-    0% { transform: rotate(-1.8deg) scaleX(0); }
-    65% { transform: rotate(-1.8deg) scaleX(1); }
-    100% { transform: rotate(-1.8deg) scaleX(1); }
-}
+/* page loader. The old highlighter wordmark is gone; "wordmark" survives only as a hook class on the sidebar brand (see shell.css). */
 
 .page-loader
 {
@@ -346,6 +346,120 @@ td,
 {
     opacity: 0;
     pointer-events: none;
+}
+
+/* VEYRA brand component. The mark is a faceted V: an Electric Indigo arm and a Midnight Indigo arm
+   that meet at the base, with a Golden Yellow evidence point resting in the notch. */
+
+.brand
+{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    color: var(--heading);
+    font-family: var(--font-display);
+    font-size: var(--brand-size, 1.25rem);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.brand:hover
+{
+    text-decoration: none;
+}
+
+.brand.on-dark
+{
+    --mark-a: #8F86FF;
+    --mark-b: #FAF9F6;
+    color: var(--warm-white);
+}
+
+.brand-mark
+{
+    display: block;
+    flex: none;
+    width: 1.7em;
+    height: 1.7em;
+}
+
+.brand-mark:not(.brand .brand-mark)
+{
+    width: var(--mark-size, 32px);
+    height: var(--mark-size, 32px);
+}
+
+.bm-path
+{
+    stroke: none;
+    transform-box: fill-box;
+}
+
+.bm-path.l
+{
+    fill: var(--mark-a);
+}
+
+.bm-path.r
+{
+    fill: var(--mark-b);
+}
+
+.bm-dot
+{
+    fill: var(--mark-dot);
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.brand-loader
+{
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    color: var(--heading);
+}
+
+.brand-loader .brand-mark
+{
+    width: 72px;
+    height: 72px;
+}
+
+@keyframes bm-arm-l
+{
+    from { opacity: 0; transform: translate(-8px, -8px); }
+}
+
+@keyframes bm-arm-r
+{
+    from { opacity: 0; transform: translate(8px, -8px); }
+}
+
+@keyframes bm-pop
+{
+    from { opacity: 0; transform: scale(0.2); }
+}
+
+@media (prefers-reduced-motion: no-preference)
+{
+    .brand-loader .bm-path.l
+    {
+        animation: bm-arm-l 520ms var(--ease) both;
+    }
+
+    .brand-loader .bm-path.r
+    {
+        animation: bm-arm-r 520ms var(--ease) 120ms both;
+    }
+
+    .brand-loader .bm-dot
+    {
+        animation: bm-pop 360ms var(--ease) 560ms both;
+    }
 }
 
 /* navbar (kept until the sidebar shell replaces it) */
@@ -400,8 +514,8 @@ td,
 
 .nav-links a.active
 {
-    background: var(--ink);
-    color: var(--on-ink);
+    background: var(--action);
+    color: var(--on-action);
 }
 
 .nav-user
@@ -451,14 +565,14 @@ td,
     border: 1px solid transparent;
     border-radius: var(--r-ctl);
     cursor: pointer;
-    background: var(--ink);
-    color: var(--on-ink);
+    background: var(--action);
+    color: var(--on-action);
     transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast), transform var(--t-fast) var(--ease), opacity var(--t-fast);
 }
 
 .btn:hover
 {
-    background: var(--ink-hover);
+    background: var(--action-hover);
 }
 
 .btn:active
@@ -520,6 +634,25 @@ td,
     opacity: 0.88;
 }
 
+/* Golden Yellow is for the one call to action that matters on a screen. Midnight Indigo text keeps contrast above 9:1. */
+
+.btn-accent
+{
+    background: var(--golden-yellow);
+    color: var(--on-golden);
+}
+
+.btn-accent:hover
+{
+    background: var(--golden-hover);
+}
+
+.btn-accent.loading::after
+{
+    border-color: var(--midnight-indigo);
+    border-right-color: transparent;
+}
+
 .btn-sm
 {
     min-height: 34px;
@@ -553,7 +686,7 @@ td,
     position: absolute;
     width: 16px;
     height: 16px;
-    border: 2px solid var(--on-ink);
+    border: 2px solid var(--on-action);
     border-right-color: transparent;
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
@@ -562,7 +695,7 @@ td,
 .btn-secondary.loading::after,
 .btn-quiet.loading::after
 {
-    border-color: var(--ink);
+    border-color: var(--accent);
     border-right-color: transparent;
 }
 
@@ -579,7 +712,7 @@ td,
     width: 22px;
     height: 22px;
     border: 3px solid var(--line);
-    border-top-color: var(--ink);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -742,7 +875,7 @@ textarea
     border: 1px solid var(--line-strong);
     border-radius: var(--r-ctl);
     outline: none;
-    background: linear-gradient(var(--mark), var(--mark)) no-repeat left bottom / 0 3px var(--surface);
+    background: linear-gradient(var(--accent), var(--accent)) no-repeat left bottom / 0 3px var(--surface);
     transition: border-color var(--t-fast), background-size var(--t-slow) var(--ease);
 }
 
@@ -763,7 +896,7 @@ input:focus,
 select:focus,
 textarea:focus
 {
-    border-color: var(--ink);
+    border-color: var(--accent);
     background-size: 100% 3px;
 }
 
@@ -842,7 +975,7 @@ input[type="checkbox"]:not(.switch)::after
     width: 5px;
     height: 10px;
     margin-top: -2px;
-    border: solid var(--on-ink);
+    border: solid var(--on-action);
     border-width: 0 2px 2px 0;
     transform: rotate(45deg) scale(0);
     transition: transform var(--t-fast) var(--ease);
@@ -854,7 +987,7 @@ input[type="radio"]::after
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--on-ink);
+    background: var(--on-action);
     transform: scale(0);
     transition: transform var(--t-fast) var(--ease);
 }
@@ -862,8 +995,8 @@ input[type="radio"]::after
 input[type="checkbox"]:not(.switch):checked,
 input[type="radio"]:checked
 {
-    background: var(--ink);
-    border-color: var(--ink);
+    background: var(--action);
+    border-color: var(--action);
 }
 
 input[type="checkbox"]:not(.switch):checked::after
@@ -906,7 +1039,7 @@ input[type="checkbox"].switch::after
 
 input[type="checkbox"].switch:checked
 {
-    background: var(--ink);
+    background: var(--action);
 }
 
 input[type="checkbox"].switch:checked::after
@@ -936,8 +1069,8 @@ input[type="checkbox"].switch:checked::after
 
 .radio-option:has(input:checked)
 {
-    border-color: var(--ink);
-    background: var(--neutral-soft);
+    border-color: var(--accent);
+    background: var(--soft-lavender);
 }
 
 /* auth shell (login and register get rebuilt in the next step) */
@@ -1119,8 +1252,8 @@ tbody tr:hover
 .tab-btn.active,
 .tab-btn[aria-selected="true"]
 {
-    color: var(--ink);
-    border-bottom-color: var(--ink);
+    color: var(--accent);
+    border-bottom-color: var(--accent);
 }
 
 .tab-panel
@@ -1160,7 +1293,7 @@ tbody tr:hover
 .score-fill
 {
     height: 100%;
-    background: var(--ink);
+    background: var(--accent);
     border-radius: 999px;
     transition: width 400ms var(--ease);
 }
@@ -1169,7 +1302,7 @@ tbody tr:hover
 {
     width: 100%;
     height: 100%;
-    background: var(--ink);
+    background: var(--accent);
     border-radius: 999px;
     transform: scaleX(calc(var(--value, 0) / 100));
     transform-origin: left center;
@@ -1219,7 +1352,7 @@ tbody tr:hover
 
 .ring.is-gap .ring-fill { stroke: var(--gap); }
 .ring.is-absent .ring-fill { stroke: var(--absent); }
-.ring.is-ink .ring-fill { stroke: var(--ink); }
+.ring.is-ink .ring-fill { stroke: var(--accent); }
 
 .ring-value
 {

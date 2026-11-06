@@ -1,0 +1,222 @@
+/* analytics.css
+   only for analytics.html, loads after polish.css so it can use the jp tokens */
+
+@keyframes an-up {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+}
+
+/* ---------- hero ---------- */
+
+.an-hero {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 26px 30px;
+    margin-bottom: 16px;
+    border-radius: 22px;
+    color: #fff;
+    background:
+        radial-gradient(480px 220px at 92% -20%, rgba(255, 200, 61, 0.25), transparent 70%),
+        radial-gradient(420px 240px at 0% 130%, rgba(139, 125, 255, 0.35), transparent 70%),
+        #171a45;
+    animation: jp-rise 0.5s var(--jp-ease) both;
+}
+
+.an-hero h2 { margin: 0 0 4px; font-size: 1.5rem; color: #fff; }
+.an-hero p { margin: 0; max-width: 60ch; color: rgba(255, 255, 255, 0.72); }
+.an-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.an-stamp { font-size: 0.8rem; color: rgba(255, 255, 255, 0.6); }
+
+/* ---------- kpi tiles ---------- */
+
+.an-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.an-kpi {
+    padding: 16px;
+    border: 1px solid var(--jp-line);
+    border-radius: 16px;
+    background: var(--jp-surface);
+    animation: jp-rise 0.45s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+    transition: transform 0.2s var(--jp-ease), border-color 0.2s;
+}
+
+.an-kpi:hover { transform: translateY(-2px); border-color: var(--jp-brand); }
+
+.an-kpi-top { display: flex; align-items: center; gap: 10px; color: var(--jp-muted); font-size: 0.85rem; }
+
+.an-kpi .ic {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: var(--jp-brand-soft);
+    color: var(--jp-brand);
+}
+
+.an-kpi .ic svg { width: 17px; height: 17px; }
+.an-kpi b { display: block; margin: 10px 0 2px; font-size: 1.9rem; line-height: 1.1; color: var(--jp-ink); font-variant-numeric: tabular-nums; }
+.an-kpi small { font-size: 0.8rem; color: var(--jp-muted); }
+
+.an-kpi.is-hero { background: var(--jp-ink); border-color: transparent; }
+.an-kpi.is-hero b { color: var(--jp-accent); }
+.an-kpi.is-hero .an-kpi-top, .an-kpi.is-hero small { color: rgba(255, 255, 255, 0.7); }
+.an-kpi.is-hero .ic { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+/* ---------- insights ---------- */
+
+.an-insights {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.an-insight {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: var(--jp-brand-soft);
+    animation: jp-rise 0.45s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 70ms + 200ms);
+}
+
+.an-insight svg { flex: none; width: 20px; height: 20px; margin-top: 2px; color: var(--jp-brand); }
+.an-insight b { display: block; font-size: 0.92rem; color: var(--jp-ink); }
+.an-insight span { font-size: 0.84rem; color: var(--jp-muted); }
+.an-insight.is-warn { background: rgba(196, 122, 10, 0.12); }
+.an-insight.is-warn svg { color: var(--jp-warn); }
+
+/* ---------- layout ---------- */
+
+.an-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.an-grid > .d-panel { margin: 0; animation: jp-rise 0.5s var(--jp-ease) both; animation-delay: 300ms; }
+
+/* ---------- ranked bars (funnel, skills, gaps) ---------- */
+
+.an-rows { display: grid; gap: 14px; }
+
+.an-row { display: grid; gap: 6px; animation: jp-rise 0.4s var(--jp-ease) both; animation-delay: calc(var(--i, 0) * 50ms + 350ms); }
+
+.an-row-top { display: flex; align-items: baseline; gap: 10px; font-size: 0.92rem; }
+.an-row-top .rank { flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 0.74rem; font-weight: 700; background: var(--jp-brand-soft); color: var(--jp-brand); }
+.an-row-top .name { flex: 1; min-width: 0; color: var(--jp-ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-row-top .num { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--jp-ink); }
+.an-row-top .pct { font-size: 0.8rem; color: var(--jp-muted); min-width: 40px; text-align: right; }
+
+.an-track { height: 8px; border-radius: 8px; background: var(--jp-line); overflow: hidden; }
+
+.an-fill {
+    height: 100%;
+    width: var(--w, 0%);
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--jp-brand), #8b7dff);
+    transform-origin: left;
+    animation: jp-grow 0.9s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 50ms + 400ms);
+}
+
+.an-fill.is-gap { background: linear-gradient(90deg, var(--jp-warn), #ffc83d); }
+
+.an-drop { font-size: 0.76rem; color: var(--jp-muted); }
+.an-drop.is-bad { color: var(--jp-bad); }
+
+.an-more {
+    margin-top: 12px;
+    background: none;
+    border: 0;
+    color: var(--jp-brand);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ---------- score distribution ---------- */
+
+.an-cols { display: flex; align-items: flex-end; gap: 12px; height: 200px; padding-top: 10px; }
+
+.an-col { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
+.an-col b { font-size: 0.9rem; color: var(--jp-ink); font-variant-numeric: tabular-nums; }
+.an-col span { font-size: 0.78rem; color: var(--jp-muted); white-space: nowrap; }
+
+.an-col .bar {
+    width: 100%;
+    max-width: 64px;
+    min-height: 3px;
+    border-radius: 8px 8px 2px 2px;
+    background: var(--c, var(--jp-brand));
+    transform-origin: bottom;
+    animation: an-up 0.8s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 80ms + 350ms);
+    transition: filter 0.15s;
+}
+
+.an-col:hover .bar { filter: brightness(1.12); }
+.an-col.is-peak b { color: var(--jp-brand); }
+
+.an-peak { margin: 12px 0 0; font-size: 0.84rem; color: var(--jp-muted); }
+
+/* ---------- jobs table ---------- */
+
+.an-table-wrap { overflow-x: auto; }
+.an-table { width: 100%; border-collapse: collapse; }
+.an-table th, .an-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--jp-line); }
+.an-table th { font-size: 0.8rem; font-weight: 600; color: var(--jp-muted); }
+.an-table td.num, .an-table th.num { text-align: right; }
+.an-table tbody tr { animation: jp-rise 0.4s var(--jp-ease) both; animation-delay: calc(var(--i, 0) * 50ms + 400ms); transition: background 0.15s; }
+.an-table tbody tr:hover { background: var(--jp-brand-soft); }
+
+.an-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-weight: 600;
+    color: inherit;
+    cursor: pointer;
+}
+
+.an-sort:hover { color: var(--jp-brand); }
+.an-sort svg { width: 13px; height: 13px; opacity: 0.4; }
+th[aria-sort="ascending"] .an-sort svg, th[aria-sort="descending"] .an-sort svg { opacity: 1; color: var(--jp-brand); }
+
+.an-job-score { display: grid; gap: 5px; min-width: 120px; }
+.an-job-score .an-track { height: 6px; }
+.an-job-score .an-fill.is-ok { background: var(--jp-ok); }
+.an-job-score .an-fill.is-warn { background: var(--jp-warn); }
+.an-job-score .an-fill.is-bad { background: var(--jp-bad); }
+
+.an-empty { display: grid; justify-items: center; gap: 8px; padding: 28px 12px; text-align: center; color: var(--jp-muted); }
+.an-empty svg { width: 26px; height: 26px; color: var(--jp-brand); }
+.an-empty p { margin: 0; }
+
+@media (max-width: 720px) {
+    .an-hero { padding: 20px 18px; }
+    .an-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .an-hero, .an-kpi, .an-insight, .an-grid > .d-panel, .an-row, .an-fill, .an-col .bar, .an-table tbody tr { animation: none !important; }
+}

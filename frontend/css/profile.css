@@ -17,7 +17,7 @@
 {
     display: block;
     margin-bottom: 6px;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.85rem;
     font-weight: 600;
 }
@@ -43,10 +43,10 @@
     min-height: 38px;
     padding: 0 6px 0 12px;
     background: var(--surface, #FFFFFF);
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
     font-size: 0.9rem;
     font-weight: 500;
-    border: 1px solid var(--line-strong, #C9D0DB);
+    border: 1px solid var(--line-strong, #7E7A97);
     border-radius: 999px;
     transition: opacity 140ms ease, transform 140ms ease;
 }
@@ -64,7 +64,7 @@
 .pr-chip.is-flag
 {
     border-style: dashed;
-    border-color: var(--gap, #B45309);
+    border-color: var(--gap, #A34A06);
 }
 
 .pr-chip.is-leaving
@@ -85,7 +85,7 @@
     place-items: center;
     width: 22px;
     height: 22px;
-    color: var(--gap, #B45309);
+    color: var(--gap, #A34A06);
     border-radius: 50%;
 }
 
@@ -110,14 +110,14 @@
     width: max-content;
     max-width: 230px;
     padding: 8px 10px;
-    background: var(--ink, #17233A);
-    color: var(--paper, #F6F7F9);
+    background: var(--ink, #25243A);
+    color: var(--paper, #FAF9F6);
     font-size: 0.8rem;
     font-weight: 500;
     line-height: 1.4;
     text-align: left;
     border-radius: var(--r-ctl, 6px);
-    box-shadow: 0 8px 24px rgba(10, 15, 26, 0.3);
+    box-shadow: 0 8px 24px rgba(17, 19, 47, 0.3);
     opacity: 0;
     pointer-events: none;
     transform: translateY(4px);
@@ -134,7 +134,7 @@
 .pr-flag:focus-visible,
 .pr-chip-x:focus-visible
 {
-    outline: 2px solid var(--ink, #17233A);
+    outline: 2px solid var(--accent, #5146D8);
     outline-offset: 2px;
 }
 
@@ -146,7 +146,7 @@
     height: 28px;
     padding: 0;
     background: none;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     border: 0;
     border-radius: 50%;
     cursor: pointer;
@@ -154,7 +154,7 @@
 
 .pr-chip-x:hover
 {
-    background: var(--neutral-soft, #EEF1F5);
+    background: var(--neutral-soft, #EFECFA);
     color: var(--absent, #B42318);
 }
 
@@ -167,14 +167,14 @@
 .pr-view p
 {
     margin: 2px 0 0;
-    color: var(--muted, #5B6677);
+    color: var(--muted, #5E5C75);
     font-size: 0.92rem;
     line-height: 1.5;
 }
 
 .pr-view b
 {
-    color: var(--ink, #17233A);
+    color: var(--ink, #25243A);
     font-family: var(--font-display, "Bricolage Grotesque", system-ui, sans-serif);
     font-size: 1.02rem;
     font-weight: 600;

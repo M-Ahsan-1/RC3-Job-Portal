@@ -1,0 +1,324 @@
+/* polish.css
+   loaded last on jobs.html, job-form.html and applicants.html
+   only adds new jp-* / ap-* classes, nothing here overrides the old files */
+
+:root {
+    --jp-brand: #5b4bdb;
+    --jp-brand-soft: rgba(91, 75, 219, 0.1);
+    --jp-accent: #ffc83d;
+    --jp-ink: #171a45;
+    --jp-surface: var(--surface, #ffffff);
+    --jp-line: rgba(23, 26, 69, 0.1);
+    --jp-muted: rgba(23, 26, 69, 0.62);
+    --jp-ok: #12856b;
+    --jp-warn: #c47a0a;
+    --jp-bad: #c2394b;
+    --jp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="dark"] {
+    --jp-brand-soft: rgba(140, 125, 255, 0.16);
+    --jp-ink: #eceaff;
+    --jp-surface: var(--surface, #1a1d4a);
+    --jp-line: rgba(255, 255, 255, 0.12);
+    --jp-muted: rgba(236, 234, 255, 0.66);
+}
+
+/* ---------- shared bits ---------- */
+
+@keyframes jp-rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes jp-grow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+@keyframes jp-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(18, 133, 107, 0.45); }
+    100% { box-shadow: 0 0 0 9px rgba(18, 133, 107, 0); }
+}
+
+.jp-avatar {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #fff;
+    background: linear-gradient(135deg, var(--jp-brand), #8b7dff);
+}
+
+/* ---------- jobs page ---------- */
+
+.jp-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+}
+
+.jp-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1.6fr) minmax(150px, 1fr) auto auto;
+    align-items: center;
+    gap: 18px;
+    padding: 16px 18px;
+    border: 1px solid var(--jp-line);
+    border-radius: 16px;
+    background: var(--jp-surface);
+    animation: jp-rise 0.45s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 60ms);
+    transition: transform 0.2s var(--jp-ease), border-color 0.2s, box-shadow 0.2s;
+}
+
+.jp-card::before {
+    /* thin bar on the left that lights up when the job is open */
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 18%;
+    bottom: 18%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--jp-line);
+    transition: background 0.2s;
+}
+
+.jp-card.is-open::before { background: var(--jp-ok); }
+
+.jp-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--jp-brand);
+    box-shadow: 0 10px 28px rgba(23, 26, 69, 0.1);
+}
+
+.jp-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: var(--jp-brand-soft);
+    color: var(--jp-brand);
+}
+
+.jp-icon svg { width: 22px; height: 22px; }
+
+.jp-main strong { display: block; font-size: 1.02rem; color: var(--jp-ink); }
+
+.jp-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 4px;
+    font-size: 0.82rem;
+    color: var(--jp-muted);
+}
+
+.jp-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.jp-meta svg { width: 14px; height: 14px; }
+
+.jp-apps a {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--jp-ink);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.jp-apps b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.jp-apps small { color: var(--jp-muted); font-weight: 400; }
+.jp-apps a:hover small { color: var(--jp-brand); }
+
+.jp-bar {
+    height: 5px;
+    margin-top: 8px;
+    border-radius: 5px;
+    background: var(--jp-line);
+    overflow: hidden;
+}
+
+.jp-bar i {
+    display: block;
+    height: 100%;
+    width: var(--w, 0%);
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--jp-brand), #8b7dff);
+    transform-origin: left;
+    animation: jp-grow 0.8s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 60ms + 200ms);
+}
+
+.jp-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(18, 133, 107, 0.12);
+    color: var(--jp-ok);
+}
+
+.jp-live::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: jp-pulse 1.6s ease-out infinite;
+}
+
+.jp-live.is-closed { background: var(--jp-line); color: var(--jp-muted); }
+.jp-live.is-closed::before { animation: none; }
+
+.jp-select {
+    min-width: 150px;
+}
+
+@media (max-width: 860px) {
+    .jp-card { grid-template-columns: auto 1fr auto; }
+    .jp-apps, .jp-status { grid-column: 2 / 4; }
+}
+
+/* ---------- job form ---------- */
+
+.jf-meter {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 18px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--jp-brand-soft);
+}
+
+.jf-meter-track {
+    flex: 1;
+    height: 8px;
+    border-radius: 8px;
+    background: var(--jp-line);
+    overflow: hidden;
+}
+
+.jf-meter-fill {
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--jp-brand), var(--jp-accent));
+    transition: width 0.5s var(--jp-ease);
+}
+
+.jf-meter-text { font-size: 0.85rem; font-weight: 600; color: var(--jp-ink); white-space: nowrap; }
+
+.jf-count {
+    float: right;
+    font-size: 0.78rem;
+    color: var(--jp-muted);
+    transition: color 0.2s;
+}
+
+.jf-count.is-ok { color: var(--jp-ok); }
+
+.jf-mix {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 10px 0 0;
+}
+
+.jf-mix span {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: var(--jp-brand-soft);
+    color: var(--jp-brand);
+}
+
+/* new chips bounce in a little so the AI results feel alive */
+.jf-chip.pop { animation: jp-rise 0.4s var(--jp-ease) both; animation-delay: calc(var(--i, 0) * 70ms); }
+
+/* ---------- applicants page ---------- */
+
+.ap-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.ap-stat {
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid var(--jp-line);
+    background: var(--jp-surface);
+    animation: jp-rise 0.45s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.ap-stat b {
+    display: block;
+    font-size: 1.7rem;
+    line-height: 1.1;
+    color: var(--jp-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.ap-stat span { font-size: 0.82rem; color: var(--jp-muted); }
+.ap-stat.is-hero { background: var(--jp-ink); border-color: transparent; }
+.ap-stat.is-hero b { color: var(--jp-accent); }
+.ap-stat.is-hero span { color: rgba(255, 255, 255, 0.7); }
+
+.ap-who { display: flex; align-items: center; gap: 12px; }
+
+.ap-score { display: grid; gap: 5px; min-width: 110px; }
+
+.ap-score-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.ap-meter {
+    height: 5px;
+    border-radius: 5px;
+    background: var(--jp-line);
+    overflow: hidden;
+}
+
+.ap-meter i {
+    display: block;
+    height: 100%;
+    width: var(--w, 0%);
+    border-radius: inherit;
+    background: var(--c, var(--jp-brand));
+    transform-origin: left;
+    animation: jp-grow 0.8s var(--jp-ease) both;
+}
+
+.ap-meter.is-ok { --c: var(--jp-ok); }
+.ap-meter.is-warn { --c: var(--jp-warn); }
+.ap-meter.is-bad { --c: var(--jp-bad); }
+
+.d-table tbody tr.ap-row {
+    animation: jp-rise 0.4s var(--jp-ease) both;
+    animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+.d-table tbody tr.ap-row:hover { background: var(--jp-brand-soft); }
+
+/* the top ranked person gets a quiet gold edge */
+.d-table tbody tr.ap-top td:first-child { box-shadow: inset 3px 0 0 var(--jp-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+    .jp-card, .ap-stat, .ap-row, .jf-chip.pop, .jp-bar i, .ap-meter i { animation: none !important; }
+    .jp-live::before { animation: none; }
+    .jp-card, .jf-meter-fill { transition: none; }
+}
